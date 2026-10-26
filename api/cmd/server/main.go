@@ -1,22 +1,22 @@
 // Package main is the Sushi Latte API server.
 //
-// Phase 1j: Phase 1 is complete. The catalog, pricing settings,
-// Tables, crew records, display content, reports, auth, ops
-// settings and audit view are stored in SQLite (TR-ARC-02, TRD
-// §4.1 to §4.5, §8, §13). The database path comes from
-// SUSHILATTE_DB, defaulting to data/sushi-latte.db, which is
-// git-ignored. On startup the server applies migrations 0001 to
-// 0006 and seeds Kitchen, Bar, the BR-PC-06 Dietary Tags, tax
-// (PB1, 10%), the example refund cap and the ops timer defaults
-// if they are not already present. QR payloads use
-// SUSHILATTE_PUBLIC_URL when set. Auth middleware wraps the whole
-// mux and enforces the BRD §5.1 permission matrix server-side,
-// and sets the audit actor from the authenticated crew, so audit
-// rows record the person who acted; the public display feed,
-// health and /auth/login, /auth/logout and /auth/override stay
-// public. Report source tables (bill, payment, order_item,
-// drawer_session) are created by the Waiter, Kitchen and Cashier
-// phases; until then reports return empty rows instead of errors.
+// Phase 2a: Phase 1 is complete, and Phase 2 Client Menu begins
+// with table scan, join and the single open Bill (BR-CM-01,
+// BR-CM-02, BR-CM-12, BR-CM-13, TR-DM-01, TR-AUTH-07). The database
+// path comes from SUSHILATTE_DB, defaulting to data/sushi-latte.db,
+// which is git-ignored. On startup the server applies migrations
+// 0001 to 0007 and seeds Kitchen, Bar, the BR-PC-06 Dietary Tags,
+// tax (PB1, 10%), the example refund cap and the ops timer
+// defaults if they are not already present. QR payloads use
+// SUSHILATTE_PUBLIC_URL when set. Customer personal data is
+// encrypted with per-day AES-256-GCM keys (TR-RET-04); the key
+// file defaults to data/keys.json, wrapped by SUSHILATTE_MASTER_KEY
+// or a locally generated master key in data/master.key, which is
+// demo-only and must be replaced from the environment in a real
+// deployment. Auth middleware wraps the whole mux and enforces
+// the BRD §5.1 permission matrix server-side; all /public/
+// Client Menu endpoints stay public, since scanning a QR is the
+// Customer's authentication.
 package main
 
 import (
@@ -33,8 +33,10 @@ import (
 	"github.com/morpikssolutionsDev/Shusi_latte/api/internal/auth"
 	"github.com/morpikssolutionsDev/Shusi_latte/api/internal/catalog"
 	"github.com/morpikssolutionsDev/Shusi_latte/api/internal/crew"
+	"github.com/morpikssolutionsDev/Shusi_latte/api/internal/crypto"
 	"github.com/morpikssolutionsDev/Shusi_latte/api/internal/display"
 	"github.com/morpikssolutionsDev/Shusi_latte/api/internal/ops"
+	"github.com/morpikssolutionsDev/Shusi_latte/api/internal/ordering"
 	"github.com/morpikssolutionsDev/Shusi_latte/api/internal/pricing"
 	"github.com/morpikssolutionsDev/Shusi_latte/api/internal/reports"
 	"github.com/morpikssolutionsDev/Shusi_latte/api/internal/tables"
@@ -49,7 +51,7 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(map[string]string{
 		"status":  "ok",
 		"service": "sushi-latte-api",
-		"phase":   "phase-1-complete",
+		"phase":   "phase-2a-join",
 	})
 }
 
@@ -88,6 +90,15 @@ func main() {
 	(&display.Handler{Store: display.NewStore(sqlDB)}).Register(mux)
 	(&reports.Handler{Store: reports.NewStore(sqlDB)}).Register(mux)
 	(&ops.Handler{Store: ops.NewStore(sqlDB)}).Register(mux)
+	keyFile := os.Getenv("SUSHILATTE_KEYS")
+	if keyFile == "" {
+		keyFile = filepath.Join(filepath.Dir(dbPath), "keys.json")
+	}
+	keyManager, err := crypto.NewKeyManager(keyFile, os.Getenv("SUSHILATTE_MASTER_KEY"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	(&ordering.Handler{Store: ordering.NewStore(sqlDB, keyManager), Catalog: svc}).Register(mux)
 	crewStore := crew.NewStore(sqlDB)
 	authStore := auth.NewStore(sqlDB, crewStore)
 	(&auth.Handler{Store: authStore, Limiter: auth.NewIPLimiter()}).Register(mux)

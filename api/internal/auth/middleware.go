@@ -43,8 +43,7 @@ func itoa(n int) string {
 func allowedRoles(path, method string) ([]string, bool) {
 	// Public endpoints.
 	if path == "/healthz" || path == "/api/v1/health" ||
-		path == "/public/display/slides" ||
-		strings.HasPrefix(path, "/public/tables/") ||
+		strings.HasPrefix(path, "/public/") ||
 		path == "/auth/login" || path == "/auth/override" || path == "/auth/logout" {
 		return nil, false
 	}

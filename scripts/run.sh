@@ -17,10 +17,7 @@ if ! command -v go >/dev/null 2>&1; then
   echo "Go 1.26+ not found. Install it from https://go.dev/dl/ and make sure 'go' is on your PATH, then run this script again." >&2
   exit 1
 fi
-for app in client-menu staff display; do
-  echo "==> web/apps/$app"
-  (cd "web/apps/$app" && npm install --no-audit --no-fund && npm run build)
-done
+sh scripts/build-web.sh
 # go.mod lives in api/, so run the server from there.
 # The server finds web/apps/*/dist via ../web.
 cd api

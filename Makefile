@@ -15,16 +15,13 @@
 .PHONY: run test build-web build
 
 run: build-web
-	cd api && go run ./cmd/server
+	go run .
 
 test:
 	cd api && go test ./...
 
 build-web:
-	@for app in client-menu staff display; do \
-		echo "==> web/apps/$$app"; \
-		(cd web/apps/$$app && npm install --no-audit --no-fund && npm run build); \
-	done
+	sh scripts/build-web.sh
 
 build: build-web
 	cd api && go build -o ../bin/sushi-latte ./cmd/server

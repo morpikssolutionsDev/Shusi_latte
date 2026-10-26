@@ -1,0 +1,1 @@
+{"description":"Sushi Latte — single-outlet HORECA platform. Root scripts run the whole repo: API + frontends.","name":"sushi-latte","private":true,"scripts":{"build":"sh scripts/build-web.sh","dev":"sh scripts/dev.sh","start":"sh scripts/run.sh","test":"sh -c 'cd api && go test ./...'"},"version":"1.0.0"}

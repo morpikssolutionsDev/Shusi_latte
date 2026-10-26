@@ -1,0 +1,806 @@
+<!doctype html>
+<html lang="id" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sushi Latte Styleguide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
+<style>
+/* Generated from docs/design/tokens/*.json — do not edit token values here. */
+:root {
+  --sl-color-nori-50: #F2F9F5;
+  --sl-color-nori-100: #E5F0EA;
+  --sl-color-nori-200: #CBDFD5;
+  --sl-color-nori-300: #ABC7BA;
+  --sl-color-nori-400: #8BAC9C;
+  --sl-color-nori-500: #6F9181;
+  --sl-color-nori-600: #57796A;
+  --sl-color-nori-700: #436154;
+  --sl-color-nori-800: #2E4238;
+  --sl-color-nori-900: #1E2B25;
+  --sl-color-nori-950: #12221B;
+  --sl-color-neutral-50: #F5F7F6;
+  --sl-color-neutral-100: #EAEEEC;
+  --sl-color-neutral-200: #D5DAD8;
+  --sl-color-neutral-300: #BAC1BE;
+  --sl-color-neutral-400: #9DA5A1;
+  --sl-color-neutral-500: #818A86;
+  --sl-color-neutral-600: #6A726E;
+  --sl-color-neutral-700: #545B58;
+  --sl-color-neutral-800: #3F4542;
+  --sl-color-neutral-900: #2B302E;
+  --sl-color-neutral-950: #1B1F1D;
+  --sl-color-rice-50: #FAF6F1;
+  --sl-color-rice-100: #F7F0E4;
+  --sl-color-rice-200: #E2D8C7;
+  --sl-color-rice-300: #CBBEA6;
+  --sl-color-rice-400: #B1A186;
+  --sl-color-rice-500: #968569;
+  --sl-color-rice-600: #7E6E52;
+  --sl-color-rice-700: #65573E;
+  --sl-color-rice-800: #4E422D;
+  --sl-color-rice-900: #372E1D;
+  --sl-color-rice-950: #241D10;
+  --sl-color-espresso-50: #FFF4EE;
+  --sl-color-espresso-100: #FFE8DA;
+  --sl-color-espresso-200: #F7D0B8;
+  --sl-color-espresso-300: #E8B291;
+  --sl-color-espresso-400: #D2926B;
+  --sl-color-espresso-500: #B7764C;
+  --sl-color-espresso-600: #8C5634;
+  --sl-color-espresso-700: #6F4428;
+  --sl-color-espresso-800: #653614;
+  --sl-color-espresso-900: #492408;
+  --sl-color-espresso-950: #321502;
+  --sl-color-salmon-50: #FFF4F0;
+  --sl-color-salmon-100: #FFE7DE;
+  --sl-color-salmon-200: #FFCCB8;
+  --sl-color-salmon-300: #FFA681;
+  --sl-color-salmon-400: #F2885B;
+  --sl-color-salmon-500: #D4602A;
+  --sl-color-salmon-600: #B9512B;
+  --sl-color-salmon-700: #953700;
+  --sl-color-salmon-800: #732900;
+  --sl-color-salmon-900: #521B00;
+  --sl-color-salmon-950: #380F00;
+  --sl-color-amber-50: #FFF5E8;
+  --sl-color-amber-100: #FFE9CC;
+  --sl-color-amber-200: #FCD197;
+  --sl-color-amber-300: #EEB35C;
+  --sl-color-amber-400: #D99302;
+  --sl-color-amber-500: #B57A00;
+  --sl-color-amber-600: #976500;
+  --sl-color-amber-700: #795000;
+  --sl-color-amber-800: #5D3C00;
+  --sl-color-amber-900: #422900;
+  --sl-color-amber-950: #2C1A00;
+  --sl-color-blue-50: #F2F7FF;
+  --sl-color-blue-100: #E1EEFF;
+  --sl-color-blue-200: #C0DCFF;
+  --sl-color-blue-300: #93C3FF;
+  --sl-color-blue-400: #5DA5FF;
+  --sl-color-blue-500: #3B88E5;
+  --sl-color-blue-600: #1F6FCA;
+  --sl-color-blue-700: #0758AA;
+  --sl-color-blue-800: #004285;
+  --sl-color-blue-900: #002E60;
+  --sl-color-blue-950: #001D42;
+  --sl-color-indigo-50: #F5F6FF;
+  --sl-color-indigo-100: #E9EBFF;
+  --sl-color-indigo-200: #D1D6FF;
+  --sl-color-indigo-300: #B2B9FF;
+  --sl-color-indigo-400: #9296FE;
+  --sl-color-indigo-500: #7779E5;
+  --sl-color-indigo-600: #6160CA;
+  --sl-color-indigo-700: #4C4AA9;
+  --sl-color-indigo-800: #393687;
+  --sl-color-indigo-900: #272464;
+  --sl-color-indigo-950: #181546;
+  --sl-color-green-50: #EBFCED;
+  --sl-color-green-100: #D7F7DC;
+  --sl-color-green-200: #B3E9BD;
+  --sl-color-green-300: #86D597;
+  --sl-color-green-400: #59BB72;
+  --sl-color-green-500: #30A054;
+  --sl-color-green-600: #00873C;
+  --sl-color-green-700: #006C2F;
+  --sl-color-green-800: #005322;
+  --sl-color-green-900: #003A16;
+  --sl-color-green-950: #00260C;
+  --sl-color-red-50: #FFF4F2;
+  --sl-color-red-100: #FFE6E3;
+  --sl-color-red-200: #FFCBC4;
+  --sl-color-red-300: #FFA398;
+  --sl-color-red-400: #FF6F63;
+  --sl-color-red-500: #E34B43;
+  --sl-color-red-600: #C72E2B;
+  --sl-color-red-700: #A61619;
+  --sl-color-red-800: #83020A;
+  --sl-color-red-900: #5F0005;
+  --sl-color-red-950: #410002;
+  --sl-color-plum-50: #FFF2FC;
+  --sl-color-plum-100: #FFE3F8;
+  --sl-color-plum-200: #FCC5EF;
+  --sl-color-plum-300: #EEA2DD;
+  --sl-color-plum-400: #D87FC6;
+  --sl-color-plum-500: #BD61AB;
+  --sl-color-plum-600: #A34892;
+  --sl-color-plum-700: #863478;
+  --sl-color-plum-800: #69235D;
+  --sl-color-plum-900: #4C1543;
+  --sl-color-plum-950: #34092D;
+  --sl-color-white: #FFFFFF;
+  --sl-color-black: #000000;
+  --sl-color-illustration-matcha: #7FA65A;
+  --sl-color-illustration-tamago: #F2C14E;
+  --sl-color-illustration-tuna: #C7463F;
+  --sl-color-illustration-avocado: #9BBF5A;
+  --sl-color-illustration-cucumber: #5E9E6B;
+  --sl-color-illustration-chocolate: #5A3622;
+  --sl-color-illustration-steam: #C9B79C;
+  --sl-color-illustration-riceWhite: #FFFCF5;
+  --sl-color-illustration-salmonFat: #FFD9C7;
+  --sl-font-family-display: Poppins, "Plus Jakarta Sans", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --sl-font-family-ui: "Plus Jakarta Sans", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --sl-font-family-mono: "JetBrains Mono", Consolas, Menlo, monospace;
+  --sl-font-weight-regular: 400;
+  --sl-font-weight-medium: 500;
+  --sl-font-weight-semibold: 600;
+  --sl-font-weight-bold: 700;
+  --sl-font-weight-extrabold: 800;
+  --sl-font-lineHeight-tight: 1.1;
+  --sl-font-lineHeight-snug: 1.25;
+  --sl-font-lineHeight-normal: 1.5;
+  --sl-font-lineHeight-relaxed: 1.65;
+  --sl-font-letterSpacing-tighter: -0.02em;
+  --sl-font-letterSpacing-tight: -0.01em;
+  --sl-font-letterSpacing-normal: 0em;
+  --sl-font-letterSpacing-wide: 0.04em;
+  --sl-font-letterSpacing-caps: 0.12em;
+  --sl-space-0: 0px;
+  --sl-space-1: 4px;
+  --sl-space-2: 8px;
+  --sl-space-3: 12px;
+  --sl-space-4: 16px;
+  --sl-space-5: 20px;
+  --sl-space-6: 24px;
+  --sl-space-8: 32px;
+  --sl-space-10: 40px;
+  --sl-space-12: 48px;
+  --sl-space-16: 64px;
+  --sl-space-20: 80px;
+  --sl-space-24: 96px;
+  --sl-radius-none: 0px;
+  --sl-radius-xs: 4px;
+  --sl-radius-sm: 8px;
+  --sl-radius-md: 10px;
+  --sl-radius-lg: 12px;
+  --sl-radius-xl: 20px;
+  --sl-radius-2xl: 28px;
+  --sl-radius-pill: 9999px;
+  --sl-shadow-sm: 0px 1px 2px 0px #1E2B2514;
+  --sl-shadow-md: 0px 4px 12px -2px #1E2B251A, 0px 2px 4px 0px #1E2B250F;
+  --sl-shadow-lg: 0px 12px 32px -8px #1E2B252E;
+  --sl-shadow-xl: 0px 24px 48px -12px #1E2B253D;
+  --sl-shadow-glow: 0px 0px 24px 2px #F2885B66;
+  --sl-duration-instant: 80ms;
+  --sl-duration-fast: 150ms;
+  --sl-duration-base: 200ms;
+  --sl-duration-moderate: 300ms;
+  --sl-duration-slow: 450ms;
+  --sl-duration-expressive: 600ms;
+  --sl-duration-hero: 900ms;
+  --sl-duration-celebrate: 1200ms;
+  --sl-duration-loop: 2800ms;
+  --sl-duration-slide: 8000ms;
+  --sl-easing-standard: cubic-bezier(0.2, 0, 0, 1);
+  --sl-easing-decelerate: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --sl-easing-accelerate: cubic-bezier(0.3, 0, 0.8, 0.15);
+  --sl-easing-expressive: cubic-bezier(0.22, 1, 0.36, 1);
+  --sl-easing-overshoot: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --sl-easing-linear: cubic-bezier(0, 0, 1, 1);
+  --sl-spring-gentle-stiffness: 170;
+  --sl-spring-gentle-damping: 26;
+  --sl-spring-gentle-mass: 1;
+  --sl-spring-bouncy-stiffness: 300;
+  --sl-spring-bouncy-damping: 18;
+  --sl-spring-bouncy-mass: 1;
+  --sl-spring-snappy-stiffness: 500;
+  --sl-spring-snappy-damping: 35;
+  --sl-spring-snappy-mass: 1;
+  --sl-opacity-disabled: 0.4;
+  --sl-opacity-soldOut: 0.45;
+  --sl-opacity-scrim: 0.6;
+  --sl-opacity-hover: 0.08;
+  --sl-opacity-pressed: 0.14;
+  --sl-zIndex-base: 0;
+  --sl-zIndex-sticky: 10;
+  --sl-zIndex-header: 20;
+  --sl-zIndex-overlay: 40;
+  --sl-zIndex-sheet: 50;
+  --sl-zIndex-dialog: 60;
+  --sl-zIndex-toast: 70;
+  --sl-zIndex-notification: 80;
+  --sl-breakpoint-phone: 360px;
+  --sl-breakpoint-phoneLg: 430px;
+  --sl-breakpoint-tablet: 768px;
+  --sl-breakpoint-tabletLg: 1024px;
+  --sl-breakpoint-desktop: 1280px;
+  --sl-breakpoint-wide: 1920px;
+  --sl-size-touch-desktop: 40px;
+  --sl-size-touch-phone: 44px;
+  --sl-size-touch-tablet: 48px;
+  --sl-size-touch-kitchen: 64px;
+  --sl-size-icon-xs: 14px;
+  --sl-size-icon-sm: 16px;
+  --sl-size-icon-md: 20px;
+  --sl-size-icon-lg: 24px;
+  --sl-size-icon-xl: 32px;
+  --sl-size-icon-2xl: 48px;
+  --sl-color-bg-canvas: #F5F7F6;
+  --sl-color-bg-canvasWarm: #FAF6F1;
+  --sl-color-bg-surface: #FFFFFF;
+  --sl-color-bg-raised: #FFFFFF;
+  --sl-color-bg-sunken: #EAEEEC;
+  --sl-color-bg-inverse: #1E2B25;
+  --sl-color-bg-scrim: #12221B;
+  --sl-color-text-primary: #1E2B25;
+  --sl-color-text-secondary: #545B58;
+  --sl-color-text-muted: #6A726E;
+  --sl-color-text-inverse: #FAF6F1;
+  --sl-color-text-brand: #6F4428;
+  --sl-color-text-link: #0758AA;
+  --sl-color-text-disabled: #818A86;
+  --sl-color-border-subtle: #D5DAD8;
+  --sl-color-border-default: #BAC1BE;
+  --sl-color-border-input: #818A86;
+  --sl-color-border-strong: #1E2B25;
+  --sl-color-border-focus: #1F6FCA;
+  --sl-color-action-brand-bg: #B9512B;
+  --sl-color-action-brand-bgHover: #953700;
+  --sl-color-action-brand-bgPressed: #732900;
+  --sl-color-action-brand-fg: #FFFFFF;
+  --sl-color-action-neutral-bg: #1E2B25;
+  --sl-color-action-neutral-bgHover: #2E4238;
+  --sl-color-action-neutral-bgPressed: #12221B;
+  --sl-color-action-neutral-fg: #FFFFFF;
+  --sl-color-action-secondary-bg: #EAEEEC;
+  --sl-color-action-secondary-bgHover: #D5DAD8;
+  --sl-color-action-secondary-fg: #1E2B25;
+  --sl-color-action-secondary-border: #BAC1BE;
+  --sl-color-action-danger-bg: #C72E2B;
+  --sl-color-action-danger-bgHover: #A61619;
+  --sl-color-action-danger-fg: #FFFFFF;
+  --sl-color-status-pending-bg: #FFE9CC;
+  --sl-color-status-pending-fg: #5D3C00;
+  --sl-color-status-pending-border: #EEB35C;
+  --sl-color-status-pending-icon: #976500;
+  --sl-color-status-pending-solid: #976500;
+  --sl-color-status-pending-onSolid: #FFFFFF;
+  --sl-color-status-confirmed-bg: #E1EEFF;
+  --sl-color-status-confirmed-fg: #004285;
+  --sl-color-status-confirmed-border: #93C3FF;
+  --sl-color-status-confirmed-icon: #1F6FCA;
+  --sl-color-status-confirmed-solid: #1F6FCA;
+  --sl-color-status-confirmed-onSolid: #FFFFFF;
+  --sl-color-status-preparing-bg: #E9EBFF;
+  --sl-color-status-preparing-fg: #393687;
+  --sl-color-status-preparing-border: #B2B9FF;
+  --sl-color-status-preparing-icon: #6160CA;
+  --sl-color-status-preparing-solid: #6160CA;
+  --sl-color-status-preparing-onSolid: #FFFFFF;
+  --sl-color-status-ready-bg: #D7F7DC;
+  --sl-color-status-ready-fg: #005322;
+  --sl-color-status-ready-border: #86D597;
+  --sl-color-status-ready-icon: #00873C;
+  --sl-color-status-ready-solid: #00873C;
+  --sl-color-status-ready-onSolid: #FFFFFF;
+  --sl-color-status-served-bg: #EAEEEC;
+  --sl-color-status-served-fg: #3F4542;
+  --sl-color-status-served-border: #BAC1BE;
+  --sl-color-status-served-icon: #6A726E;
+  --sl-color-status-served-solid: #6A726E;
+  --sl-color-status-served-onSolid: #FFFFFF;
+  --sl-color-status-cancelled-bg: #EAEEEC;
+  --sl-color-status-cancelled-fg: #3F4542;
+  --sl-color-status-cancelled-border: #BAC1BE;
+  --sl-color-status-cancelled-icon: #6A726E;
+  --sl-color-status-cancelled-solid: #6A726E;
+  --sl-color-status-cancelled-onSolid: #FFFFFF;
+  --sl-color-status-voided-bg: #FFE6E3;
+  --sl-color-status-voided-fg: #83020A;
+  --sl-color-status-voided-border: #FFA398;
+  --sl-color-status-voided-icon: #C72E2B;
+  --sl-color-status-voided-solid: #C72E2B;
+  --sl-color-status-voided-onSolid: #FFFFFF;
+  --sl-color-feedback-success-bg: #D7F7DC;
+  --sl-color-feedback-success-fg: #005322;
+  --sl-color-feedback-success-border: #86D597;
+  --sl-color-feedback-success-icon: #00873C;
+  --sl-color-feedback-success-solid: #00873C;
+  --sl-color-feedback-success-onSolid: #FFFFFF;
+  --sl-color-feedback-warning-bg: #FFE9CC;
+  --sl-color-feedback-warning-fg: #5D3C00;
+  --sl-color-feedback-warning-border: #EEB35C;
+  --sl-color-feedback-warning-icon: #976500;
+  --sl-color-feedback-warning-solid: #976500;
+  --sl-color-feedback-warning-onSolid: #FFFFFF;
+  --sl-color-feedback-danger-bg: #FFE6E3;
+  --sl-color-feedback-danger-fg: #83020A;
+  --sl-color-feedback-danger-border: #FFA398;
+  --sl-color-feedback-danger-icon: #C72E2B;
+  --sl-color-feedback-danger-solid: #C72E2B;
+  --sl-color-feedback-danger-onSolid: #FFFFFF;
+  --sl-color-feedback-info-bg: #E1EEFF;
+  --sl-color-feedback-info-fg: #004285;
+  --sl-color-feedback-info-border: #93C3FF;
+  --sl-color-feedback-info-icon: #1F6FCA;
+  --sl-color-feedback-info-solid: #1F6FCA;
+  --sl-color-feedback-info-onSolid: #FFFFFF;
+  --sl-color-timer-onTime: #00873C;
+  --sl-color-timer-warning: #976500;
+  --sl-color-timer-late: #C72E2B;
+  --sl-color-dietary-warning-bg: #FFE3F8;
+  --sl-color-dietary-warning-fg: #69235D;
+  --sl-color-dietary-warning-border: #EEA2DD;
+  --sl-color-dietary-warning-icon: #A34892;
+  --sl-color-dietary-warning-solid: #A34892;
+  --sl-color-dietary-warning-onSolid: #FFFFFF;
+  --sl-color-bill-settling: #1F6FCA;
+  --sl-color-bill-unpaid: #C72E2B;
+  --sl-color-soldOut-fg: #6A726E;
+  --sl-color-soldOut-badgeBg: #1E2B25;
+  --sl-color-soldOut-badgeFg: #FAF6F1;
+  --sl-color-brand-nori: #1E2B25;
+  --sl-color-brand-noriLight: #2E4238;
+  --sl-color-brand-rice: #F7F0E4;
+  --sl-color-brand-espresso: #6F4428;
+  --sl-color-brand-crema: #8C5634;
+  --sl-color-brand-salmon: #F2885B;
+  --sl-color-brand-salmonDeep: #B9512B;
+  --sl-color-brand-steam: #C9B79C;
+}
+[data-theme="dark"] {
+  --sl-color-bg-canvas: #12221B;
+  --sl-color-bg-canvasWarm: #12221B;
+  --sl-color-bg-surface: #1E2B25;
+  --sl-color-bg-raised: #2E4238;
+  --sl-color-bg-sunken: #1B1F1D;
+  --sl-color-bg-inverse: #F7F0E4;
+  --sl-color-bg-scrim: #12221B;
+  --sl-color-text-primary: #FAF6F1;
+  --sl-color-text-secondary: #BAC1BE;
+  --sl-color-text-muted: #9DA5A1;
+  --sl-color-text-inverse: #12221B;
+  --sl-color-text-brand: #E8B291;
+  --sl-color-text-link: #93C3FF;
+  --sl-color-text-disabled: #6A726E;
+  --sl-color-border-subtle: #2E4238;
+  --sl-color-border-default: #545B58;
+  --sl-color-border-input: #818A86;
+  --sl-color-border-strong: #F7F0E4;
+  --sl-color-border-focus: #5DA5FF;
+  --sl-color-action-brand-bg: #F2885B;
+  --sl-color-action-brand-bgHover: #FFA681;
+  --sl-color-action-brand-bgPressed: #FFCCB8;
+  --sl-color-action-brand-fg: #12221B;
+  --sl-color-action-neutral-bg: #F7F0E4;
+  --sl-color-action-neutral-bgHover: #E2D8C7;
+  --sl-color-action-neutral-bgPressed: #CBBEA6;
+  --sl-color-action-neutral-fg: #12221B;
+  --sl-color-action-secondary-bg: #2E4238;
+  --sl-color-action-secondary-bgHover: #436154;
+  --sl-color-action-secondary-fg: #FAF6F1;
+  --sl-color-action-secondary-border: #545B58;
+  --sl-color-action-danger-bg: #FF6F63;
+  --sl-color-action-danger-bgHover: #FFA398;
+  --sl-color-action-danger-fg: #410002;
+  --sl-color-status-pending-bg: #2C1A00;
+  --sl-color-status-pending-fg: #FCD197;
+  --sl-color-status-pending-border: #795000;
+  --sl-color-status-pending-icon: #D99302;
+  --sl-color-status-pending-solid: #D99302;
+  --sl-color-status-pending-onSolid: #2C1A00;
+  --sl-color-status-confirmed-bg: #001D42;
+  --sl-color-status-confirmed-fg: #C0DCFF;
+  --sl-color-status-confirmed-border: #0758AA;
+  --sl-color-status-confirmed-icon: #5DA5FF;
+  --sl-color-status-confirmed-solid: #5DA5FF;
+  --sl-color-status-confirmed-onSolid: #001D42;
+  --sl-color-status-preparing-bg: #181546;
+  --sl-color-status-preparing-fg: #D1D6FF;
+  --sl-color-status-preparing-border: #4C4AA9;
+  --sl-color-status-preparing-icon: #9296FE;
+  --sl-color-status-preparing-solid: #9296FE;
+  --sl-color-status-preparing-onSolid: #181546;
+  --sl-color-status-ready-bg: #00260C;
+  --sl-color-status-ready-fg: #B3E9BD;
+  --sl-color-status-ready-border: #006C2F;
+  --sl-color-status-ready-icon: #59BB72;
+  --sl-color-status-ready-solid: #59BB72;
+  --sl-color-status-ready-onSolid: #00260C;
+  --sl-color-status-served-bg: #1B1F1D;
+  --sl-color-status-served-fg: #D5DAD8;
+  --sl-color-status-served-border: #545B58;
+  --sl-color-status-served-icon: #9DA5A1;
+  --sl-color-status-served-solid: #9DA5A1;
+  --sl-color-status-served-onSolid: #1B1F1D;
+  --sl-color-status-cancelled-bg: #1B1F1D;
+  --sl-color-status-cancelled-fg: #D5DAD8;
+  --sl-color-status-cancelled-border: #545B58;
+  --sl-color-status-cancelled-icon: #9DA5A1;
+  --sl-color-status-cancelled-solid: #9DA5A1;
+  --sl-color-status-cancelled-onSolid: #1B1F1D;
+  --sl-color-status-voided-bg: #410002;
+  --sl-color-status-voided-fg: #FFCBC4;
+  --sl-color-status-voided-border: #A61619;
+  --sl-color-status-voided-icon: #FF6F63;
+  --sl-color-status-voided-solid: #FF6F63;
+  --sl-color-status-voided-onSolid: #410002;
+  --sl-color-feedback-success-bg: #00260C;
+  --sl-color-feedback-success-fg: #B3E9BD;
+  --sl-color-feedback-success-border: #006C2F;
+  --sl-color-feedback-success-icon: #59BB72;
+  --sl-color-feedback-success-solid: #59BB72;
+  --sl-color-feedback-success-onSolid: #00260C;
+  --sl-color-feedback-warning-bg: #2C1A00;
+  --sl-color-feedback-warning-fg: #FCD197;
+  --sl-color-feedback-warning-border: #795000;
+  --sl-color-feedback-warning-icon: #D99302;
+  --sl-color-feedback-warning-solid: #D99302;
+  --sl-color-feedback-warning-onSolid: #2C1A00;
+  --sl-color-feedback-danger-bg: #410002;
+  --sl-color-feedback-danger-fg: #FFCBC4;
+  --sl-color-feedback-danger-border: #A61619;
+  --sl-color-feedback-danger-icon: #FF6F63;
+  --sl-color-feedback-danger-solid: #FF6F63;
+  --sl-color-feedback-danger-onSolid: #410002;
+  --sl-color-feedback-info-bg: #001D42;
+  --sl-color-feedback-info-fg: #C0DCFF;
+  --sl-color-feedback-info-border: #0758AA;
+  --sl-color-feedback-info-icon: #5DA5FF;
+  --sl-color-feedback-info-solid: #5DA5FF;
+  --sl-color-feedback-info-onSolid: #001D42;
+  --sl-color-timer-onTime: #59BB72;
+  --sl-color-timer-warning: #D99302;
+  --sl-color-timer-late: #FF6F63;
+  --sl-color-dietary-warning-bg: #34092D;
+  --sl-color-dietary-warning-fg: #FCC5EF;
+  --sl-color-dietary-warning-border: #863478;
+  --sl-color-dietary-warning-icon: #D87FC6;
+  --sl-color-dietary-warning-solid: #D87FC6;
+  --sl-color-dietary-warning-onSolid: #34092D;
+  --sl-color-bill-settling: #5DA5FF;
+  --sl-color-bill-unpaid: #FF6F63;
+  --sl-color-soldOut-fg: #9DA5A1;
+  --sl-color-soldOut-badgeBg: #F7F0E4;
+  --sl-color-soldOut-badgeFg: #12221B;
+  --sl-color-brand-nori: #1E2B25;
+  --sl-color-brand-noriLight: #2E4238;
+  --sl-color-brand-rice: #F7F0E4;
+  --sl-color-brand-espresso: #6F4428;
+  --sl-color-brand-crema: #8C5634;
+  --sl-color-brand-salmon: #F2885B;
+  --sl-color-brand-salmonDeep: #B9512B;
+  --sl-color-brand-steam: #C9B79C;
+}
+
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { color-scheme: dark; } }
+:root[data-theme="dark"] { color-scheme: dark; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--sl-color-bg-canvasWarm); color: var(--sl-color-text-primary);
+  font-family: var(--sl-font-family-ui); font-size: 16px; line-height: 1.5; }
+.wrap { max-width: 1120px; margin: 0 auto; padding: 0 16px 96px; }
+header.top { position: sticky; top: 0; z-index: 20; background: var(--sl-color-bg-canvasWarm); border-bottom: 1px solid var(--sl-color-border-subtle); }
+header.top .wrap { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-top: 12px; padding-bottom: 12px; }
+header.top img { height: 56px; }
+nav.toc { display: flex; gap: 6px; flex-wrap: wrap; }
+nav.toc a { color: var(--sl-color-text-secondary); text-decoration: none; font-size: 13px; font-weight: 600; padding: 6px 10px; border-radius: 999px; }
+nav.toc a:hover { background: var(--sl-color-action-secondary-bg); color: var(--sl-color-text-primary); }
+.toggle { font: inherit; font-weight: 600; font-size: 14px; border: 1px solid var(--sl-color-border-input); background: var(--sl-color-bg-surface);
+  color: var(--sl-color-text-primary); border-radius: 999px; padding: 8px 14px; cursor: pointer; min-height: 40px; }
+.hero { padding: 48px 0 24px; display: grid; grid-template-columns: 1fr; gap: 24px; align-items: center; }
+.hero h1 { font-family: var(--sl-font-family-display); font-size: clamp(32px, 6vw, 56px); line-height: 1.05; letter-spacing: -0.02em; margin: 0 0 12px; }
+.hero p { color: var(--sl-color-text-secondary); max-width: 60ch; margin: 0; }
+.hero img { width: min(100%, 560px); }
+section { padding-top: 48px; }
+h2 { font-family: var(--sl-font-family-display); font-size: 28px; margin: 0 0 4px; }
+h3 { font-size: 16px; margin: 24px 0 12px; }
+.lead { color: var(--sl-color-text-secondary); margin: 0 0 20px; }
+.overline { font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--sl-color-brand-salmonDeep); }
+.grid { display: grid; gap: 16px; }
+.card { background: var(--sl-color-bg-surface); border: 1px solid var(--sl-color-border-subtle); border-radius: 20px; padding: 20px; }
+.scale { display: grid; grid-template-columns: 90px 1fr; gap: 12px; align-items: center; margin-bottom: 8px; }
+.scale-name { font-weight: 700; font-size: 14px; text-transform: capitalize; }
+.scale-cells { display: grid; grid-template-columns: repeat(11, minmax(0, 1fr)); border-radius: 12px; overflow: hidden; }
+.sw { padding: 10px 6px; min-height: 64px; display: flex; flex-direction: column; justify-content: flex-end; font-size: 10px; line-height: 1.3; }
+.sw b { font-size: 12px; }
+.sw span { font-family: var(--sl-font-family-mono); }
+@media (max-width: 720px) { .scale { grid-template-columns: 1fr; gap: 4px; } .sw span { display: none; } .sw { min-height: 44px; } }
+.chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.chip { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 12px; border-radius: 999px; border: 1px solid; font-size: 13px; font-weight: 600; }
+.strike { text-decoration: line-through; }
+.ic { flex: none; }
+.dark-panel { background: #12221B; color: #FAF6F1; border-radius: 20px; padding: 20px; }
+.type-row { display: grid; grid-template-columns: 160px 1fr; gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--sl-color-border-subtle); align-items: baseline; }
+.type-meta { display: flex; flex-direction: column; font-size: 12px; color: var(--sl-color-text-muted); }
+.type-meta b { color: var(--sl-color-text-primary); font-size: 14px; }
+@media (max-width: 720px) { .type-row { grid-template-columns: 1fr; gap: 4px; } }
+.space-row { display: flex; align-items: center; gap: 12px; font-size: 13px; margin-bottom: 6px; }
+.space-row .bar { height: 12px; background: var(--sl-color-brand-salmon); border-radius: 3px; }
+.space-row code, .mono { font-family: var(--sl-font-family-mono); font-size: 12px; color: var(--sl-color-text-secondary); min-width: 84px; }
+.radius-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 12px; }
+.radius-box { height: 80px; background: var(--sl-color-bg-surface); border: 2px solid var(--sl-color-border-strong); display: grid; place-items: center; font-size: 12px; font-weight: 600; }
+.shadow-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 24px; }
+.shadow-box { height: 96px; border-radius: 16px; background: var(--sl-color-bg-surface); display: grid; place-items: center; font-size: 13px; font-weight: 600; }
+.btn { font: inherit; font-weight: 600; font-size: 15px; display: inline-flex; align-items: center; gap: 8px; border: 1px solid transparent; cursor: pointer;
+  min-height: 44px; padding: 0 18px; transition: transform 80ms, background-color 150ms; }
+.btn:active { transform: scale(.98); }
+.btn:focus-visible, .toggle:focus-visible, a:focus-visible { outline: 2px solid var(--sl-color-border-focus); outline-offset: 2px; }
+.btn.brand { background: var(--sl-color-action-brand-bg); color: var(--sl-color-action-brand-fg); border-radius: 999px; }
+.btn.brand:hover { background: var(--sl-color-action-brand-bgHover); }
+.btn.neutral { background: var(--sl-color-action-neutral-bg); color: var(--sl-color-action-neutral-fg); border-radius: 10px; }
+.btn.neutral:hover { background: var(--sl-color-action-neutral-bgHover); }
+.btn.secondary { background: var(--sl-color-action-secondary-bg); color: var(--sl-color-action-secondary-fg); border-color: var(--sl-color-action-secondary-border); border-radius: 10px; }
+.btn.danger { background: var(--sl-color-action-danger-bg); color: var(--sl-color-action-danger-fg); border-radius: 10px; }
+.btn-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+.product { width: 220px; background: var(--sl-color-bg-surface); border-radius: 20px; overflow: hidden; box-shadow: var(--sl-shadow-md); }
+.product .img { aspect-ratio: 1/1; background: var(--sl-color-rice-100); display: grid; place-items: center; position: relative; overflow: hidden; }
+.product .img img { width: 100%; height: 100%; object-fit: cover; }
+.product .img img.ph { width: 62%; height: auto; }
+.product .body { padding: 12px 14px 14px; }
+.product .name { font-weight: 600; }
+.product .desc { font-size: 12px; color: var(--sl-color-text-muted); margin: 2px 0 10px; }
+.product .foot { display: flex; justify-content: space-between; align-items: center; }
+.product .price { font-weight: 700; font-size: 18px; color: var(--sl-color-text-brand); font-variant-numeric: tabular-nums; }
+.add { width: 44px; height: 44px; border-radius: 999px; border: 0; background: var(--sl-color-action-brand-bg); color: var(--sl-color-action-brand-fg); display: grid; place-items: center; cursor: pointer; }
+.badge-tl { position: absolute; top: 10px; left: 10px; }
+.product.soldout .img img { filter: grayscale(1); opacity: .45; }
+.soldout-label { position: absolute; inset: auto 10px 10px auto; background: var(--sl-color-soldOut-badgeBg); color: var(--sl-color-soldOut-badgeFg); font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 999px; }
+.products { display: flex; gap: 16px; flex-wrap: wrap; }
+.ticket { width: 340px; border-radius: 8px; overflow: hidden; background: #1E2B25; border: 3px solid #4E5A55; font-size: 20px; }
+.ticket.late { border-color: #FF6F63; }
+.ticket .head { padding: 12px 16px; display: flex; flex-wrap: wrap; gap: 4px 12px; justify-content: space-between; font-weight: 800; }
+.pin button:empty { visibility: hidden; }
+@media (min-width: 900px) { .hero { grid-template-columns: 1.1fr 1fr; } }
+.ticket .items { padding: 12px 16px; display: grid; gap: 8px; }
+.ticket .mod { font-size: 16px; color: #BAC1BE; padding-left: 28px; }
+.ticket .diet { background: #D87FC6; color: #34092D; font-weight: 800; padding: 8px 16px; font-size: 18px; }
+.ticket .timer { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; font-weight: 800; font-size: 40px; font-variant-numeric: tabular-nums; }
+.ticket .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 0 16px 16px; }
+.ticket .actions button { min-height: 64px; font: inherit; font-weight: 700; font-size: 20px; border-radius: 8px; border: 0; cursor: pointer; }
+.tickets { display: flex; gap: 24px; flex-wrap: wrap; }
+.tracker { display: flex; gap: 24px; align-items: center; flex-wrap: wrap; }
+.tracker .eta { font-size: 32px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.steam path { animation: steam 2.8s ease-in-out infinite both; }
+.steam path:nth-child(2) { animation-delay: .4s; } .steam path:nth-child(3) { animation-delay: .8s; }
+@keyframes steam { 0% { transform: translateY(10px); opacity: 0; } 35% { opacity: .9; } 100% { transform: translateY(-8px); opacity: 0; } }
+.ease-lane { display: grid; grid-template-columns: 110px 1fr; gap: 12px; align-items: center; margin-bottom: 8px; font-size: 13px; }
+.ease-track { height: 28px; background: var(--sl-color-bg-sunken); border-radius: 999px; position: relative; }
+.ease-dot { position: absolute; left: 2px; top: 2px; width: 24px; height: 24px; border-radius: 999px; background: var(--sl-color-brand-salmonDeep); }
+.ease-track.go .ease-dot { transform: translateX(calc(var(--w) - 28px)); }
+.pin { display: grid; grid-template-columns: repeat(3, 72px); gap: 12px; }
+.pin button { height: 72px; border-radius: 12px; font: inherit; font-size: 24px; font-weight: 700; background: var(--sl-color-bg-surface); color: var(--sl-color-text-primary); border: 1px solid var(--sl-color-border-default); cursor: pointer; }
+.dots { display: flex; gap: 12px; margin-bottom: 16px; }
+.dots span { width: 14px; height: 14px; border-radius: 999px; border: 2px solid var(--sl-color-border-strong); }
+.dots span.on { background: var(--sl-color-text-primary); }
+.two { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+footer { padding-top: 64px; color: var(--sl-color-text-muted); font-size: 13px; }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<header class="top"><div class="wrap">
+  <img src="../brand/sushi-latte-lockup.svg" alt="Sushi Latte">
+  <nav class="toc" aria-label="Sections">
+    <a href="#color">Colour</a><a href="#status">Status</a><a href="#type">Type</a><a href="#space">Space &amp; shape</a>
+    <a href="#motion">Motion</a><a href="#components">Components</a>
+  </nav>
+  <button class="toggle" id="themeToggle" type="button" aria-pressed="false">Dark mode</button>
+</div></header>
+
+<main class="wrap">
+  <div class="hero">
+    <div>
+      <div class="overline">Design system</div>
+      <h1>Warm front, calm back.</h1>
+      <p>Living reference for Sushi Latte tokens and core components. Values come from <span class="mono">docs/design/tokens/*.json</span>; see the Markdown guides in <span class="mono">docs/design/</span> for rules and rationale.</p>
+    </div>
+    <img src="../brand/sushi-latte-lockup-animated.svg" alt="Animated Sushi Latte logo">
+  </div>
+
+  <section id="color">
+    <h2>Colour scales</h2>
+    <p class="lead">OKLCH-generated, logo colours locked to their nearest step. Salmon 600 is Salmon Deep; Plum is reserved for Dietary Warnings.</p>
+    <div class="card"><div class="scale"><div class="scale-name">nori</div><div class="scale-cells"><div class="sw" style="background:#F2F9F5;color:#1E2B25"><b>50</b><span>#F2F9F5</span></div><div class="sw" style="background:#E5F0EA;color:#1E2B25"><b>100</b><span>#E5F0EA</span></div><div class="sw" style="background:#CBDFD5;color:#1E2B25"><b>200</b><span>#CBDFD5</span></div><div class="sw" style="background:#ABC7BA;color:#1E2B25"><b>300</b><span>#ABC7BA</span></div><div class="sw" style="background:#8BAC9C;color:#1E2B25"><b>400</b><span>#8BAC9C</span></div><div class="sw" style="background:#6F9181;color:#1E2B25"><b>500</b><span>#6F9181</span></div><div class="sw" style="background:#57796A;color:#FFFFFF"><b>600</b><span>#57796A</span></div><div class="sw" style="background:#436154;color:#FFFFFF"><b>700</b><span>#436154</span></div><div class="sw" style="background:#2E4238;color:#FFFFFF"><b>800</b><span>#2E4238</span></div><div class="sw" style="background:#1E2B25;color:#FFFFFF"><b>900</b><span>#1E2B25</span></div><div class="sw" style="background:#12221B;color:#FFFFFF"><b>950</b><span>#12221B</span></div></div></div>
+<div class="scale"><div class="scale-name">neutral</div><div class="scale-cells"><div class="sw" style="background:#F5F7F6;color:#1E2B25"><b>50</b><span>#F5F7F6</span></div><div class="sw" style="background:#EAEEEC;color:#1E2B25"><b>100</b><span>#EAEEEC</span></div><div class="sw" style="background:#D5DAD8;color:#1E2B25"><b>200</b><span>#D5DAD8</span></div><div class="sw" style="background:#BAC1BE;color:#1E2B25"><b>300</b><span>#BAC1BE</span></div><div class="sw" style="background:#9DA5A1;color:#1E2B25"><b>400</b><span>#9DA5A1</span></div><div class="sw" style="background:#818A86;color:#1E2B25"><b>500</b><span>#818A86</span></div><div class="sw" style="background:#6A726E;color:#FFFFFF"><b>600</b><span>#6A726E</span></div><div class="sw" style="background:#545B58;color:#FFFFFF"><b>700</b><span>#545B58</span></div><div class="sw" style="background:#3F4542;color:#FFFFFF"><b>800</b><span>#3F4542</span></div><div class="sw" style="background:#2B302E;color:#FFFFFF"><b>900</b><span>#2B302E</span></div><div class="sw" style="background:#1B1F1D;color:#FFFFFF"><b>950</b><span>#1B1F1D</span></div></div></div>
+<div class="scale"><div class="scale-name">rice</div><div class="scale-cells"><div class="sw" style="background:#FAF6F1;color:#1E2B25"><b>50</b><span>#FAF6F1</span></div><div class="sw" style="background:#F7F0E4;color:#1E2B25"><b>100</b><span>#F7F0E4</span></div><div class="sw" style="background:#E2D8C7;color:#1E2B25"><b>200</b><span>#E2D8C7</span></div><div class="sw" style="background:#CBBEA6;color:#1E2B25"><b>300</b><span>#CBBEA6</span></div><div class="sw" style="background:#B1A186;color:#1E2B25"><b>400</b><span>#B1A186</span></div><div class="sw" style="background:#968569;color:#1E2B25"><b>500</b><span>#968569</span></div><div class="sw" style="background:#7E6E52;color:#FFFFFF"><b>600</b><span>#7E6E52</span></div><div class="sw" style="background:#65573E;color:#FFFFFF"><b>700</b><span>#65573E</span></div><div class="sw" style="background:#4E422D;color:#FFFFFF"><b>800</b><span>#4E422D</span></div><div class="sw" style="background:#372E1D;color:#FFFFFF"><b>900</b><span>#372E1D</span></div><div class="sw" style="background:#241D10;color:#FFFFFF"><b>950</b><span>#241D10</span></div></div></div>
+<div class="scale"><div class="scale-name">espresso</div><div class="scale-cells"><div class="sw" style="background:#FFF4EE;color:#1E2B25"><b>50</b><span>#FFF4EE</span></div><div class="sw" style="background:#FFE8DA;color:#1E2B25"><b>100</b><span>#FFE8DA</span></div><div class="sw" style="background:#F7D0B8;color:#1E2B25"><b>200</b><span>#F7D0B8</span></div><div class="sw" style="background:#E8B291;color:#1E2B25"><b>300</b><span>#E8B291</span></div><div class="sw" style="background:#D2926B;color:#1E2B25"><b>400</b><span>#D2926B</span></div><div class="sw" style="background:#B7764C;color:#1E2B25"><b>500</b><span>#B7764C</span></div><div class="sw" style="background:#8C5634;color:#FFFFFF"><b>600</b><span>#8C5634</span></div><div class="sw" style="background:#6F4428;color:#FFFFFF"><b>700</b><span>#6F4428</span></div><div class="sw" style="background:#653614;color:#FFFFFF"><b>800</b><span>#653614</span></div><div class="sw" style="background:#492408;color:#FFFFFF"><b>900</b><span>#492408</span></div><div class="sw" style="background:#321502;color:#FFFFFF"><b>950</b><span>#321502</span></div></div></div>
+<div class="scale"><div class="scale-name">salmon</div><div class="scale-cells"><div class="sw" style="background:#FFF4F0;color:#1E2B25"><b>50</b><span>#FFF4F0</span></div><div class="sw" style="background:#FFE7DE;color:#1E2B25"><b>100</b><span>#FFE7DE</span></div><div class="sw" style="background:#FFCCB8;color:#1E2B25"><b>200</b><span>#FFCCB8</span></div><div class="sw" style="background:#FFA681;color:#1E2B25"><b>300</b><span>#FFA681</span></div><div class="sw" style="background:#F2885B;color:#1E2B25"><b>400</b><span>#F2885B</span></div><div class="sw" style="background:#D4602A;color:#1E2B25"><b>500</b><span>#D4602A</span></div><div class="sw" style="background:#B9512B;color:#FFFFFF"><b>600</b><span>#B9512B</span></div><div class="sw" style="background:#953700;color:#FFFFFF"><b>700</b><span>#953700</span></div><div class="sw" style="background:#732900;color:#FFFFFF"><b>800</b><span>#732900</span></div><div class="sw" style="background:#521B00;color:#FFFFFF"><b>900</b><span>#521B00</span></div><div class="sw" style="background:#380F00;color:#FFFFFF"><b>950</b><span>#380F00</span></div></div></div>
+<div class="scale"><div class="scale-name">amber</div><div class="scale-cells"><div class="sw" style="background:#FFF5E8;color:#1E2B25"><b>50</b><span>#FFF5E8</span></div><div class="sw" style="background:#FFE9CC;color:#1E2B25"><b>100</b><span>#FFE9CC</span></div><div class="sw" style="background:#FCD197;color:#1E2B25"><b>200</b><span>#FCD197</span></div><div class="sw" style="background:#EEB35C;color:#1E2B25"><b>300</b><span>#EEB35C</span></div><div class="sw" style="background:#D99302;color:#1E2B25"><b>400</b><span>#D99302</span></div><div class="sw" style="background:#B57A00;color:#1E2B25"><b>500</b><span>#B57A00</span></div><div class="sw" style="background:#976500;color:#FFFFFF"><b>600</b><span>#976500</span></div><div class="sw" style="background:#795000;color:#FFFFFF"><b>700</b><span>#795000</span></div><div class="sw" style="background:#5D3C00;color:#FFFFFF"><b>800</b><span>#5D3C00</span></div><div class="sw" style="background:#422900;color:#FFFFFF"><b>900</b><span>#422900</span></div><div class="sw" style="background:#2C1A00;color:#FFFFFF"><b>950</b><span>#2C1A00</span></div></div></div>
+<div class="scale"><div class="scale-name">blue</div><div class="scale-cells"><div class="sw" style="background:#F2F7FF;color:#1E2B25"><b>50</b><span>#F2F7FF</span></div><div class="sw" style="background:#E1EEFF;color:#1E2B25"><b>100</b><span>#E1EEFF</span></div><div class="sw" style="background:#C0DCFF;color:#1E2B25"><b>200</b><span>#C0DCFF</span></div><div class="sw" style="background:#93C3FF;color:#1E2B25"><b>300</b><span>#93C3FF</span></div><div class="sw" style="background:#5DA5FF;color:#1E2B25"><b>400</b><span>#5DA5FF</span></div><div class="sw" style="background:#3B88E5;color:#1E2B25"><b>500</b><span>#3B88E5</span></div><div class="sw" style="background:#1F6FCA;color:#FFFFFF"><b>600</b><span>#1F6FCA</span></div><div class="sw" style="background:#0758AA;color:#FFFFFF"><b>700</b><span>#0758AA</span></div><div class="sw" style="background:#004285;color:#FFFFFF"><b>800</b><span>#004285</span></div><div class="sw" style="background:#002E60;color:#FFFFFF"><b>900</b><span>#002E60</span></div><div class="sw" style="background:#001D42;color:#FFFFFF"><b>950</b><span>#001D42</span></div></div></div>
+<div class="scale"><div class="scale-name">indigo</div><div class="scale-cells"><div class="sw" style="background:#F5F6FF;color:#1E2B25"><b>50</b><span>#F5F6FF</span></div><div class="sw" style="background:#E9EBFF;color:#1E2B25"><b>100</b><span>#E9EBFF</span></div><div class="sw" style="background:#D1D6FF;color:#1E2B25"><b>200</b><span>#D1D6FF</span></div><div class="sw" style="background:#B2B9FF;color:#1E2B25"><b>300</b><span>#B2B9FF</span></div><div class="sw" style="background:#9296FE;color:#1E2B25"><b>400</b><span>#9296FE</span></div><div class="sw" style="background:#7779E5;color:#1E2B25"><b>500</b><span>#7779E5</span></div><div class="sw" style="background:#6160CA;color:#FFFFFF"><b>600</b><span>#6160CA</span></div><div class="sw" style="background:#4C4AA9;color:#FFFFFF"><b>700</b><span>#4C4AA9</span></div><div class="sw" style="background:#393687;color:#FFFFFF"><b>800</b><span>#393687</span></div><div class="sw" style="background:#272464;color:#FFFFFF"><b>900</b><span>#272464</span></div><div class="sw" style="background:#181546;color:#FFFFFF"><b>950</b><span>#181546</span></div></div></div>
+<div class="scale"><div class="scale-name">green</div><div class="scale-cells"><div class="sw" style="background:#EBFCED;color:#1E2B25"><b>50</b><span>#EBFCED</span></div><div class="sw" style="background:#D7F7DC;color:#1E2B25"><b>100</b><span>#D7F7DC</span></div><div class="sw" style="background:#B3E9BD;color:#1E2B25"><b>200</b><span>#B3E9BD</span></div><div class="sw" style="background:#86D597;color:#1E2B25"><b>300</b><span>#86D597</span></div><div class="sw" style="background:#59BB72;color:#1E2B25"><b>400</b><span>#59BB72</span></div><div class="sw" style="background:#30A054;color:#1E2B25"><b>500</b><span>#30A054</span></div><div class="sw" style="background:#00873C;color:#FFFFFF"><b>600</b><span>#00873C</span></div><div class="sw" style="background:#006C2F;color:#FFFFFF"><b>700</b><span>#006C2F</span></div><div class="sw" style="background:#005322;color:#FFFFFF"><b>800</b><span>#005322</span></div><div class="sw" style="background:#003A16;color:#FFFFFF"><b>900</b><span>#003A16</span></div><div class="sw" style="background:#00260C;color:#FFFFFF"><b>950</b><span>#00260C</span></div></div></div>
+<div class="scale"><div class="scale-name">red</div><div class="scale-cells"><div class="sw" style="background:#FFF4F2;color:#1E2B25"><b>50</b><span>#FFF4F2</span></div><div class="sw" style="background:#FFE6E3;color:#1E2B25"><b>100</b><span>#FFE6E3</span></div><div class="sw" style="background:#FFCBC4;color:#1E2B25"><b>200</b><span>#FFCBC4</span></div><div class="sw" style="background:#FFA398;color:#1E2B25"><b>300</b><span>#FFA398</span></div><div class="sw" style="background:#FF6F63;color:#1E2B25"><b>400</b><span>#FF6F63</span></div><div class="sw" style="background:#E34B43;color:#FFFFFF"><b>500</b><span>#E34B43</span></div><div class="sw" style="background:#C72E2B;color:#FFFFFF"><b>600</b><span>#C72E2B</span></div><div class="sw" style="background:#A61619;color:#FFFFFF"><b>700</b><span>#A61619</span></div><div class="sw" style="background:#83020A;color:#FFFFFF"><b>800</b><span>#83020A</span></div><div class="sw" style="background:#5F0005;color:#FFFFFF"><b>900</b><span>#5F0005</span></div><div class="sw" style="background:#410002;color:#FFFFFF"><b>950</b><span>#410002</span></div></div></div>
+<div class="scale"><div class="scale-name">plum</div><div class="scale-cells"><div class="sw" style="background:#FFF2FC;color:#1E2B25"><b>50</b><span>#FFF2FC</span></div><div class="sw" style="background:#FFE3F8;color:#1E2B25"><b>100</b><span>#FFE3F8</span></div><div class="sw" style="background:#FCC5EF;color:#1E2B25"><b>200</b><span>#FCC5EF</span></div><div class="sw" style="background:#EEA2DD;color:#1E2B25"><b>300</b><span>#EEA2DD</span></div><div class="sw" style="background:#D87FC6;color:#1E2B25"><b>400</b><span>#D87FC6</span></div><div class="sw" style="background:#BD61AB;color:#FFFFFF"><b>500</b><span>#BD61AB</span></div><div class="sw" style="background:#A34892;color:#FFFFFF"><b>600</b><span>#A34892</span></div><div class="sw" style="background:#863478;color:#FFFFFF"><b>700</b><span>#863478</span></div><div class="sw" style="background:#69235D;color:#FFFFFF"><b>800</b><span>#69235D</span></div><div class="sw" style="background:#4C1543;color:#FFFFFF"><b>900</b><span>#4C1543</span></div><div class="sw" style="background:#34092D;color:#FFFFFF"><b>950</b><span>#34092D</span></div></div></div></div>
+    <h3>Actions</h3>
+    <div class="btn-row">
+      <button class="btn brand" type="button"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg>Tambah ke pesanan</button>
+      <button class="btn neutral" type="button">Klaim pesanan</button>
+      <button class="btn secondary" type="button">Lihat</button>
+      <button class="btn danger" type="button">Void item</button>
+    </div>
+  </section>
+
+  <section id="status">
+    <h2>Status &amp; domain colours</h2>
+    <p class="lead">Always colour + icon + label. The dark panel shows the Kitchen tone set.</p>
+    <div class="two">
+      <div class="card"><div class="chips"><span class="chip" style="background:var(--sl-color-status-pending-bg);color:var(--sl-color-status-pending-fg);border-color:var(--sl-color-status-pending-border)"><svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><span class="">Menunggu</span></span>
+<span class="chip" style="background:var(--sl-color-status-confirmed-bg);color:var(--sl-color-status-confirmed-fg);border-color:var(--sl-color-status-confirmed-border)"><svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg><span class="">Dikonfirmasi</span></span>
+<span class="chip" style="background:var(--sl-color-status-preparing-bg);color:var(--sl-color-status-preparing-fg);border-color:var(--sl-color-status-preparing-border)"><svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg><span class="">Disiapkan</span></span>
+<span class="chip" style="background:var(--sl-color-status-ready-bg);color:var(--sl-color-status-ready-fg);border-color:var(--sl-color-status-ready-border)"><svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><span class="">Siap</span></span>
+<span class="chip" style="background:var(--sl-color-status-served-bg);color:var(--sl-color-status-served-fg);border-color:var(--sl-color-status-served-border)"><svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3zm0 0v7"/></svg><span class="">Disajikan</span></span>
+<span class="chip" style="background:var(--sl-color-status-cancelled-bg);color:var(--sl-color-status-cancelled-fg);border-color:var(--sl-color-status-cancelled-border)"><svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg><span class="strike">Dibatalkan</span></span>
+<span class="chip" style="background:var(--sl-color-status-voided-bg);color:var(--sl-color-status-voided-fg);border-color:var(--sl-color-status-voided-border)"><svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/></svg><span class="">Void</span></span>
+<span class="chip" style="background:var(--sl-color-dietary-warning-bg);color:var(--sl-color-dietary-warning-fg);border-color:var(--sl-color-dietary-warning-border)"><svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2h8"/><path d="M9 2v2.8a4 4 0 0 1-.7 2.2l-.6.9A4 4 0 0 0 7 10.2V20a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-9.8a4 4 0 0 0-.7-2.2l-.6-.9A4 4 0 0 1 15 4.8V2"/><path d="M7 15a6.47 6.47 0 0 1 5 0 6.47 6.47 0 0 0 5 0"/></svg>Mengandung susu</span></div></div>
+      <div class="dark-panel" data-theme="dark"><div class="chips"><span class="chip" style="background:var(--sl-color-status-pending-bg);color:var(--sl-color-status-pending-fg);border-color:var(--sl-color-status-pending-border)"><svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><span class="">Menunggu</span></span>
+<span class="chip" style="background:var(--sl-color-status-confirmed-bg);color:var(--sl-color-status-confirmed-fg);border-color:var(--sl-color-status-confirmed-border)"><svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg><span class="">Dikonfirmasi</span></span>
+<span class="chip" style="background:var(--sl-color-status-preparing-bg);color:var(--sl-color-status-preparing-fg);border-color:var(--sl-color-status-preparing-border)"><svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg><span class="">Disiapkan</span></span>
+<span class="chip" style="background:var(--sl-color-status-ready-bg);color:var(--sl-color-status-ready-fg);border-color:var(--sl-color-status-ready-border)"><svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><span class="">Siap</span></span>
+<span class="chip" style="background:var(--sl-color-status-served-bg);color:var(--sl-color-status-served-fg);border-color:var(--sl-color-status-served-border)"><svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3zm0 0v7"/></svg><span class="">Disajikan</span></span>
+<span class="chip" style="background:var(--sl-color-status-cancelled-bg);color:var(--sl-color-status-cancelled-fg);border-color:var(--sl-color-status-cancelled-border)"><svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg><span class="strike">Dibatalkan</span></span>
+<span class="chip" style="background:var(--sl-color-status-voided-bg);color:var(--sl-color-status-voided-fg);border-color:var(--sl-color-status-voided-border)"><svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/></svg><span class="">Void</span></span>
+<span class="chip" style="background:var(--sl-color-dietary-warning-bg);color:var(--sl-color-dietary-warning-fg);border-color:var(--sl-color-dietary-warning-border)"><svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2h8"/><path d="M9 2v2.8a4 4 0 0 1-.7 2.2l-.6.9A4 4 0 0 0 7 10.2V20a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-9.8a4 4 0 0 0-.7-2.2l-.6-.9A4 4 0 0 1 15 4.8V2"/><path d="M7 15a6.47 6.47 0 0 1 5 0 6.47 6.47 0 0 0 5 0"/></svg>Mengandung susu</span></div></div>
+    </div>
+  </section>
+
+  <section id="type">
+    <h2>Typography</h2>
+    <p class="lead">Poppins for brand moments, Plus Jakarta Sans for everything else with tabular numbers, JetBrains Mono for codes. Sizes shown at customer/staff scale.</p>
+    <div class="card"><div class="type-row"><div class="type-meta"><b>display</b><span>Poppins 700</span></div><div style="font-family:var(--sl-font-family-display);font-weight:700;font-size:32px;line-height:1.1;letter-spacing:-0.02em">Mau makan apa hari ini?</div></div>
+<div class="type-row"><div class="type-meta"><b>title</b><span>Poppins 600</span></div><div style="font-family:var(--sl-font-family-display);font-weight:600;font-size:24px;line-height:1.25">Sushi &amp; Nigiri</div></div>
+<div class="type-row"><div class="type-meta"><b>heading</b><span>Jakarta 700</span></div><div style="font-family:var(--sl-font-family-ui);font-weight:700;font-size:20px;line-height:1.25">Meja 5 · 3 item</div></div>
+<div class="type-row"><div class="type-meta"><b>body</b><span>Jakarta 400</span></div><div style="font-family:var(--sl-font-family-ui);font-size:16px;line-height:1.5">Salmon segar di atas nasi cuka hangat, disajikan dengan wasabi dan jahe.</div></div>
+<div class="type-row"><div class="type-meta"><b>label</b><span>Jakarta 600</span></div><div style="font-family:var(--sl-font-family-ui);font-weight:600;font-size:14px">Tambah ke pesanan</div></div>
+<div class="type-row"><div class="type-meta"><b>caption</b><span>Jakarta 500</span></div><div style="font-family:var(--sl-font-family-ui);font-weight:500;font-size:12px">2 mnt lalu · Andi</div></div>
+<div class="type-row"><div class="type-meta"><b>overline</b><span>Jakarta 700 caps</span></div><div style="font-family:var(--sl-font-family-ui);font-weight:700;font-size:12px;letter-spacing:0.12em;text-transform:uppercase">Sushi &amp; Coffee</div></div>
+<div class="type-row"><div class="type-meta"><b>price</b><span>Jakarta 700 tabular</span></div><div style="font-family:var(--sl-font-family-ui);font-weight:700;font-size:20px;font-variant-numeric:tabular-nums;color:var(--sl-color-text-brand)">Rp 38.000</div></div>
+<div class="type-row"><div class="type-meta"><b>amount</b><span>Jakarta 800 tabular</span></div><div style="font-family:var(--sl-font-family-ui);font-weight:800;font-size:32px;font-variant-numeric:tabular-nums">Rp 186.450</div></div>
+<div class="type-row"><div class="type-meta"><b>code</b><span>JetBrains Mono 600</span></div><div style="font-family:var(--sl-font-family-mono);font-weight:600;font-size:14px">B-0427 · W001</div></div></div>
+  </section>
+
+  <section id="space">
+    <h2>Space, radius, elevation</h2>
+    <div class="two">
+      <div class="card"><h3 style="margin-top:0">Spacing (4 px base)</h3>
+        <div class="space-row"><code>space.1</code><div class="bar" style="width:12px"></div>4px</div><div class="space-row"><code>space.2</code><div class="bar" style="width:24px"></div>8px</div><div class="space-row"><code>space.3</code><div class="bar" style="width:36px"></div>12px</div><div class="space-row"><code>space.4</code><div class="bar" style="width:48px"></div>16px</div><div class="space-row"><code>space.5</code><div class="bar" style="width:60px"></div>20px</div><div class="space-row"><code>space.6</code><div class="bar" style="width:72px"></div>24px</div><div class="space-row"><code>space.8</code><div class="bar" style="width:96px"></div>32px</div><div class="space-row"><code>space.10</code><div class="bar" style="width:120px"></div>40px</div><div class="space-row"><code>space.12</code><div class="bar" style="width:144px"></div>48px</div><div class="space-row"><code>space.16</code><div class="bar" style="width:192px"></div>64px</div>
+      </div>
+      <div class="card"><h3 style="margin-top:0">Radius</h3>
+        <div class="radius-grid"><div class="radius-box" style="border-radius:4px">xs · 4</div><div class="radius-box" style="border-radius:8px">sm · 8</div><div class="radius-box" style="border-radius:10px">md · 10</div><div class="radius-box" style="border-radius:12px">lg · 12</div><div class="radius-box" style="border-radius:20px">xl · 20</div><div class="radius-box" style="border-radius:28px">2xl · 28</div><div class="radius-box" style="border-radius:40px">pill · pill</div></div>
+      </div>
+    </div>
+    <h3>Elevation (warm Nori-tinted)</h3>
+    <div class="shadow-grid">
+      <div class="shadow-box" style="box-shadow:var(--sl-shadow-sm)">shadow.sm</div><div class="shadow-box" style="box-shadow:var(--sl-shadow-md)">shadow.md</div><div class="shadow-box" style="box-shadow:var(--sl-shadow-lg)">shadow.lg</div><div class="shadow-box" style="box-shadow:var(--sl-shadow-xl)">shadow.xl</div><div class="shadow-box" style="box-shadow:var(--sl-shadow-glow)">shadow.glow</div>
+    </div>
+  </section>
+
+  <section id="motion">
+    <h2>Motion</h2>
+    <p class="lead">Press <b>Play</b> to compare easings at the expressive duration (600 ms). Staff screens use standard/decelerate at 150–200 ms.</p>
+    <div class="card">
+      <div class="ease-lane"><code class="mono">standard</code><div class="ease-track" data-ease="cubic-bezier(0.2, 0, 0, 1)"><div class="ease-dot"></div></div></div><div class="ease-lane"><code class="mono">decelerate</code><div class="ease-track" data-ease="cubic-bezier(0.05, 0.7, 0.1, 1)"><div class="ease-dot"></div></div></div><div class="ease-lane"><code class="mono">accelerate</code><div class="ease-track" data-ease="cubic-bezier(0.3, 0, 0.8, 0.15)"><div class="ease-dot"></div></div></div><div class="ease-lane"><code class="mono">expressive</code><div class="ease-track" data-ease="cubic-bezier(0.22, 1, 0.36, 1)"><div class="ease-dot"></div></div></div><div class="ease-lane"><code class="mono">overshoot</code><div class="ease-track" data-ease="cubic-bezier(0.34, 1.56, 0.64, 1)"><div class="ease-dot"></div></div></div>
+      <div class="btn-row" style="margin-top:12px"><button class="btn neutral" id="playEase" type="button">Play</button></div>
+    </div>
+  </section>
+
+  <section id="components">
+    <h2>Components</h2>
+    <h3>ProductCard (customer)</h3>
+    <div class="products">
+      <article class="product">
+        <div class="img"><img src="../images/products/food/salmon-aburi-nigiri.jpg" alt="Salmon Aburi Nigiri"></div>
+        <div class="body"><div class="name">Salmon Aburi Nigiri</div><div class="desc">Torched salmon, kewpie mayo, tare</div>
+          <div class="foot"><span class="price">Rp 48.000</span><button class="add" type="button" aria-label="Tambah Salmon Aburi Nigiri"><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg></button></div></div>
+      </article>
+      <article class="product">
+        <div class="img"><img src="../images/products/beverages/iced-matcha-latte.jpg" alt="Iced Uji Matcha Latte">
+          <span class="badge-tl chip" style="background:var(--sl-color-dietary-warning-bg);color:var(--sl-color-dietary-warning-fg);border-color:var(--sl-color-dietary-warning-border)"><svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2h8"/><path d="M9 2v2.8a4 4 0 0 1-.7 2.2l-.6.9A4 4 0 0 0 7 10.2V20a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-9.8a4 4 0 0 0-.7-2.2l-.6-.9A4 4 0 0 1 15 4.8V2"/><path d="M7 15a6.47 6.47 0 0 1 5 0 6.47 6.47 0 0 0 5 0"/></svg>Susu</span></div>
+        <div class="body"><div class="name">Iced Uji Matcha Latte</div><div class="desc">Ceremonial matcha · oat milk option</div>
+          <div class="foot"><span class="price">Rp 45.000</span><button class="add" type="button" aria-label="Tambah Iced Uji Matcha Latte"><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg></button></div></div>
+      </article>
+      <article class="product soldout">
+        <div class="img"><img src="../images/products/food/unagi-kabayaki-nigiri.jpg" alt="Unagi Kabayaki Nigiri"><span class="soldout-label">Habis · Sold out</span></div>
+        <div class="body"><div class="name">Unagi Kabayaki Nigiri</div><div class="desc">Grilled eel, tare glaze</div>
+          <div class="foot"><span class="price">Rp 58.000</span></div></div>
+      </article>
+      <article class="product">
+        <div class="img"><img class="ph" src="../brand/sushi-latte-logo.svg" alt=""></div>
+        <div class="body"><div class="name">Iced Espresso Tonic</div><div class="desc">Placeholder (no photo yet)</div>
+          <div class="foot"><span class="price">Rp 45.000</span><button class="add" type="button" aria-label="Tambah Iced Espresso Tonic"><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg></button></div></div>
+      </article>
+    </div>
+
+    <h3>OrderStatusTracker — cup-fill Estimated Wait</h3>
+    <div class="card tracker">
+      <svg width="140" height="140" viewBox="0 0 140 140" role="progressbar" aria-label="Perkiraan waktu" aria-valuemin="0" aria-valuemax="100" aria-valuenow="40" id="cup">
+        <defs><clipPath id="cupClip"><path d="M30 50H110L104 104Q101 118 88 118H52Q39 118 36 104Z"/></clipPath></defs>
+        <g class="steam" fill="none" stroke="#C9B79C" stroke-width="5" stroke-linecap="round">
+          <path d="M55 40C48 32 62 26 55 16"/><path d="M70 36C63 28 77 22 70 12"/><path d="M85 40C78 32 92 26 85 16"/></g>
+        <path d="M108 62C130 60 132 98 104 96" fill="none" stroke="#1E2B25" stroke-width="9" stroke-linecap="round"/>
+        <path d="M30 50H110L104 104Q101 118 88 118H52Q39 118 36 104Z" fill="#E2D8C7"/>
+        <rect id="latte" clip-path="url(#cupClip)" x="20" y="88" width="100" height="40" fill="#8C5634" style="transition: y .6s cubic-bezier(.22,1,.36,1), height .6s cubic-bezier(.22,1,.36,1)"/>
+        <path d="M30 50H110L104 104Q101 118 88 118H52Q39 118 36 104Z" fill="none" stroke="#1E2B25" stroke-width="5"/>
+        <ellipse cx="70" cy="126" rx="52" ry="6" fill="#1E2B25"/>
+      </svg>
+      <div>
+        <div class="overline">Perkiraan waktu</div>
+        <div class="eta" id="eta">± 9 mnt</div>
+        <div class="chips" style="margin-top:8px">
+          <span class="chip" style="background:var(--sl-color-status-preparing-bg);color:var(--sl-color-status-preparing-fg);border-color:var(--sl-color-status-preparing-border)"><svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>Disiapkan</span>
+        </div>
+        <div class="btn-row" style="margin-top:12px"><button class="btn secondary" id="tick" type="button">Simulate +2 mnt</button></div>
+      </div>
+    </div>
+
+    <h3>KitchenTicket (Kitchen, dark)</h3>
+    <div class="dark-panel"><div class="tickets">
+      <div class="ticket">
+        <div class="head" style="background:#9296FE;color:#181546"><span>Meja 5</span><span>19.42 · Budi</span></div>
+        <div class="items"><div><b>2×</b> Salmon Nigiri</div><div class="mod">tanpa wasabi</div><div><b>1×</b> Chashu Ramen</div></div>
+        <div class="diet">⚠ SUSU — pelanggan menghindari</div>
+        <div class="timer" style="color:#D99302"><span><svg class="ic" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="10" x2="14" y1="2" y2="2"/><line x1="12" x2="15" y1="14" y2="11"/><circle cx="12" cy="14" r="8"/></svg></span><span>07:42</span></div>
+        <div class="actions"><button style="background:#59BB72;color:#00260C" type="button">Siap</button><button style="background:#2E4238;color:#FAF6F1" type="button">Batalkan</button></div>
+      </div>
+      <div class="ticket late">
+        <div class="head" style="background:#FF6F63;color:#410002"><span>Bawa pulang · Sari</span><span>TERLAMBAT</span></div>
+        <div class="items"><div><b>1×</b> Iced Latte</div><div class="mod">oat milk, less sugar</div></div>
+        <div class="timer" style="color:#FF6F63"><span><svg class="ic" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="10" x2="14" y1="2" y2="2"/><line x1="12" x2="15" y1="14" y2="11"/><circle cx="12" cy="14" r="8"/></svg></span><span>11:05</span></div>
+        <div class="actions"><button style="background:#59BB72;color:#00260C" type="button">Siap</button><button style="background:#2E4238;color:#FAF6F1" type="button">Batalkan</button></div>
+      </div>
+    </div></div>
+
+    <h3>PinPad (staff)</h3>
+    <div class="card" style="display:inline-block">
+      <div class="dots" aria-label="3 dari 6 digit"><span class="on"></span><span class="on"></span><span class="on"></span><span></span><span></span><span></span></div>
+      <div class="pin"><button type="button">1</button><button type="button">2</button><button type="button">3</button><button type="button">4</button><button type="button">5</button><button type="button">6</button><button type="button">7</button><button type="button">8</button><button type="button">9</button><button type="button"></button><button type="button">0</button><button type="button">⌫</button></div>
+    </div>
+  </section>
+
+  <footer>Sushi Latte design system · generated from DTCG tokens · see docs/design/*.md</footer>
+</main>
+
+<script>
+(function () {
+  var root = document.documentElement, btn = document.getElementById('themeToggle');
+  function set(mode) { root.setAttribute('data-theme', mode); btn.setAttribute('aria-pressed', String(mode === 'dark'));
+    btn.textContent = mode === 'dark' ? 'Light mode' : 'Dark mode';
+    try { localStorage.setItem('sl-theme', mode); } catch (e) {} }
+  var saved = null; try { saved = localStorage.getItem('sl-theme'); } catch (e) {}
+  set(saved || (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+  btn.addEventListener('click', function () { set(root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'); });
+
+  document.getElementById('playEase').addEventListener('click', function () {
+    document.querySelectorAll('.ease-track').forEach(function (t) {
+      t.style.setProperty('--w', t.clientWidth + 'px');
+      var d = t.querySelector('.ease-dot');
+      d.style.transition = 'none'; t.classList.remove('go'); void d.offsetWidth;
+      d.style.transition = 'transform 600ms ' + t.dataset.ease; t.classList.add('go');
+    });
+  });
+
+  var level = 40, eta = 9, latte = document.getElementById('latte'), cup = document.getElementById('cup');
+  function draw() { var h = 68 * level / 100; latte.setAttribute('y', 118 - h); latte.setAttribute('height', h + 10);
+    cup.setAttribute('aria-valuenow', String(level)); document.getElementById('eta').textContent = level >= 100 ? 'Siap!' : '± ' + eta + ' mnt'; }
+  document.getElementById('tick').addEventListener('click', function () {
+    if (level >= 100) { level = 10; eta = 14; } else { eta = Math.max(0, eta - 2); level = eta === 0 ? 100 : Math.min(95, level + 15); }
+    draw();
+  });
+  draw();
+})();
+</script>
+</body>
+</html>

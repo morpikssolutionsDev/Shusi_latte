@@ -1,0 +1,73 @@
+{
+  "$description": "Product Display TV (1920x1080, 4K safe). Expressive, dark, brand-led. Mode: dark. Motion profile: expressive. Density: spacious.",
+  "color": {
+    "canvas": {
+      "$type": "color",
+      "$value": "{color.bg.canvas}"
+    },
+    "primary": {
+      "bg": {
+        "$type": "color",
+        "$value": "{color.action.brand.bg}"
+      },
+      "bgHover": {
+        "$type": "color",
+        "$value": "{color.action.brand.bgHover}"
+      },
+      "bgPressed": {
+        "$type": "color",
+        "$value": "{color.action.brand.bgPressed}"
+      },
+      "fg": {
+        "$type": "color",
+        "$value": "{color.action.brand.fg}"
+      }
+    }
+  },
+  "font": {
+    "size": {
+      "base": {
+        "$type": "dimension",
+        "$value": "32px"
+      },
+      "lg": {
+        "$type": "dimension",
+        "$value": "40px"
+      },
+      "xl": {
+        "$type": "dimension",
+        "$value": "56px"
+      },
+      "2xl": {
+        "$type": "dimension",
+        "$value": "72px"
+      },
+      "3xl": {
+        "$type": "dimension",
+        "$value": "96px"
+      },
+      "4xl": {
+        "$type": "dimension",
+        "$value": "120px"
+      }
+    }
+  },
+  "radius": {
+    "control": {
+      "$type": "dimension",
+      "$value": "{radius.pill}"
+    },
+    "card": {
+      "$type": "dimension",
+      "$value": "{radius.2xl}"
+    },
+    "sheet": {
+      "$type": "dimension",
+      "$value": "{radius.2xl}"
+    },
+    "chip": {
+      "$type": "dimension",
+      "$value": "{radius.pill}"
+    }
+  }
+}

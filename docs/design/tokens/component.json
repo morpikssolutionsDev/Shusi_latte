@@ -1,0 +1,221 @@
+{
+  "$description": "Component tokens. Values reference semantic or surface tokens; surface radius/size resolve per app.",
+  "button": {
+    "height": {
+      "sm": {
+        "$type": "dimension",
+        "$value": "36px"
+      },
+      "md": {
+        "$type": "dimension",
+        "$value": "44px"
+      },
+      "lg": {
+        "$type": "dimension",
+        "$value": "52px"
+      },
+      "xl": {
+        "$type": "dimension",
+        "$value": "64px",
+        "$description": "Kitchen and Payment confirm"
+      }
+    },
+    "paddingX": {
+      "sm": {
+        "$type": "dimension",
+        "$value": "{space.3}"
+      },
+      "md": {
+        "$type": "dimension",
+        "$value": "{space.4}"
+      },
+      "lg": {
+        "$type": "dimension",
+        "$value": "{space.6}"
+      }
+    },
+    "radius": {
+      "$type": "dimension",
+      "$value": "{radius.control}"
+    },
+    "fontWeight": {
+      "$type": "fontWeight",
+      "$value": "{font.weight.semibold}"
+    }
+  },
+  "input": {
+    "height": {
+      "$type": "dimension",
+      "$value": "44px"
+    },
+    "radius": {
+      "$type": "dimension",
+      "$value": "{radius.control}"
+    },
+    "border": {
+      "$type": "color",
+      "$value": "{color.border.input}"
+    },
+    "borderFocus": {
+      "$type": "color",
+      "$value": "{color.border.focus}"
+    },
+    "bg": {
+      "$type": "color",
+      "$value": "{color.bg.surface}"
+    }
+  },
+  "card": {
+    "radius": {
+      "$type": "dimension",
+      "$value": "{radius.card}"
+    },
+    "padding": {
+      "$type": "dimension",
+      "$value": "{space.4}"
+    },
+    "bg": {
+      "$type": "color",
+      "$value": "{color.bg.surface}"
+    },
+    "border": {
+      "$type": "color",
+      "$value": "{color.border.subtle}"
+    }
+  },
+  "chip": {
+    "height": {
+      "$type": "dimension",
+      "$value": "28px"
+    },
+    "paddingX": {
+      "$type": "dimension",
+      "$value": "{space.3}"
+    },
+    "radius": {
+      "$type": "dimension",
+      "$value": "{radius.chip}"
+    }
+  },
+  "sheet": {
+    "radius": {
+      "$type": "dimension",
+      "$value": "{radius.sheet}"
+    },
+    "bg": {
+      "$type": "color",
+      "$value": "{color.bg.surface}"
+    }
+  },
+  "productCard": {
+    "imageRatio": {
+      "$type": "string",
+      "$value": "1/1"
+    },
+    "displayImageRatio": {
+      "$type": "string",
+      "$value": "16/9",
+      "$description": "Product Display slides"
+    },
+    "radius": {
+      "$type": "dimension",
+      "$value": "{radius.xl}"
+    },
+    "shadow": {
+      "$type": "shadow",
+      "$value": "{shadow.md}"
+    },
+    "priceColor": {
+      "$type": "color",
+      "$value": "{color.text.brand}"
+    }
+  },
+  "dietaryBadge": {
+    "bg": {
+      "$type": "color",
+      "$value": "{color.dietary.warning.bg}"
+    },
+    "fg": {
+      "$type": "color",
+      "$value": "{color.dietary.warning.fg}"
+    },
+    "border": {
+      "$type": "color",
+      "$value": "{color.dietary.warning.border}"
+    },
+    "icon": {
+      "$type": "color",
+      "$value": "{color.dietary.warning.icon}"
+    }
+  },
+  "kitchenTicket": {
+    "radius": {
+      "$type": "dimension",
+      "$value": "{radius.sm}"
+    },
+    "headerHeight": {
+      "$type": "dimension",
+      "$value": "56px"
+    },
+    "width": {
+      "$type": "dimension",
+      "$value": "360px"
+    },
+    "remakeBorder": {
+      "$type": "color",
+      "$value": "{color.salmon.400}"
+    },
+    "lateBorder": {
+      "$type": "color",
+      "$value": "{color.timer.late}"
+    }
+  },
+  "pinPad": {
+    "keySize": {
+      "$type": "dimension",
+      "$value": "72px"
+    },
+    "gap": {
+      "$type": "dimension",
+      "$value": "{space.3}"
+    },
+    "radius": {
+      "$type": "dimension",
+      "$value": "{radius.lg}"
+    }
+  },
+  "paymentPad": {
+    "keyHeight": {
+      "$type": "dimension",
+      "$value": "64px"
+    },
+    "amountSize": {
+      "$type": "dimension",
+      "$value": "40px"
+    }
+  },
+  "toast": {
+    "radius": {
+      "$type": "dimension",
+      "$value": "{radius.lg}"
+    },
+    "shadow": {
+      "$type": "shadow",
+      "$value": "{shadow.lg}"
+    }
+  },
+  "focusRing": {
+    "width": {
+      "$type": "dimension",
+      "$value": "2px"
+    },
+    "offset": {
+      "$type": "dimension",
+      "$value": "2px"
+    },
+    "color": {
+      "$type": "color",
+      "$value": "{color.border.focus}"
+    }
+  }
+}

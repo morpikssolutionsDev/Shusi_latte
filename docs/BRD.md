@@ -315,7 +315,7 @@ See [ADR-0002](adr/0002-two-day-customer-data-retention.md).
 - **BR-P-02** Dietary Restrictions and Dietary Notes are health data, classified as **specific personal data** under UU PDP (Law 27/2022) Art. 4; explicit consent is collected before entry.
 - **BR-P-03** Two days after a Bill closes, it is Anonymised: names become "Customer", and Dietary Restrictions and Dietary Notes are deleted. Dietary Warnings on Order Items keep only the Product-side tag ("contained Dairy"), not who avoided it. This applies UU PDP Art. 43 (delete data no longer needed for its purpose). The 2-day period is the Business's own necessity judgement; the law sets no fixed number.
 - **BR-P-04** Sales, Payment and Receipt figures are retained for 10 years per UU KUP Art. 28(11); they contain no Customer personal data after Anonymisation.
-- **BR-P-05** Data is hosted in a cloud region in Jakarta.
+- **BR-P-05** Data is hosted in a cloud region in Jakarta for a real deployment. The prototype/demo runs on a single local host with fictional data only ([ADR-0005](adr/0005-sqlite-for-demo.md)).
 - **BR-P-06** Database backups must not keep Customer names or dietary data readable beyond the 2 days: these fields are encrypted with a daily key, and keys older than 48 hours are destroyed ([ADR-0002](adr/0002-two-day-customer-data-retention.md)).
 - **BR-P-07** While a Bill is open, anyone who scans its Table QR sees the full names of the Customers on it (BR-CM-12). This is an accepted owner decision; see §11.
 
@@ -327,13 +327,13 @@ See [ADR-0002](adr/0002-two-day-customer-data-retention.md).
 | BR-NF-02 | Availability: 99.5% during opening hours. |
 | BR-NF-03 | Language: Client Menu in Indonesian and English; staff Modules in Indonesian. |
 | BR-NF-04 | Devices: Android tablets and Windows PCs running Chrome; Kitchen and Product Display on large screens. |
-| BR-NF-05 | Printing works without internet (local Bluetooth to the device); all other functions require internet. |
+| BR-NF-05 | Printing works without the server (local Bluetooth to the device); all other functions require a connection to the server (internet in production, the local network in the demo). |
 | BR-NF-06 | Currency: Indonesian Rupiah, no decimal places. Time zone: WIB (Asia/Jakarta). |
 
 ## 10. Assumptions and constraints
 
 - One Business, one outlet, permanently ([ADR-0001](adr/0001-single-business-single-outlet.md)).
-- The outlet has reliable internet; during outages, staff fall back to paper ([ADR-0003](adr/0003-online-only-with-future-local-server.md)).
+- The outlet has reliable internet (production) or the demo host is on the same Wi-Fi as all devices (demo); during outages, staff fall back to paper ([ADR-0003](adr/0003-online-only-with-future-local-server.md)).
 - Customers use their own phones on mobile data or outlet Wi-Fi.
 - Receipt printers are 58 mm Bluetooth thermal printers compatible with browser printing ([ADR-0004](adr/0004-browser-bluetooth-printing.md)).
 - Staff devices run Chrome; iPads/Safari are not supported.
@@ -349,6 +349,10 @@ See [ADR-0002](adr/0002-two-day-customer-data-retention.md).
 | Staff resist QR ordering | O1 missed | Waiters coach Customers; Waiter-entered Orders still supported |
 | Rejoin shows full names and needs no verification: someone with a photo of the QR can see who is seated, Rejoin as them, and see their Dietary Warnings | Personal and health data exposure; Orders placed in another person's name | Accepted by owner. Names visible only while the Bill is open; every Order still needs Waiter Claim; Rejoin signs out the previous device, so the real Customer notices; staff can regenerate a Table QR |
 | Cash held by Waiters goes missing | Cash loss | Held by Waiter tracking, Cash Handover confirmation, clock-out blocked until handed over |
+
+## 11a. Prototype and demo
+
+The current build is a **prototype and showcase**, not a live café system. It runs on one local machine with SQLite ([ADR-0005](adr/0005-sqlite-for-demo.md)), uses only fictional data, and adds a Demo mode (seeded scenarios, demo launcher, demo logins, receipt preview, nightly reset) described in [DEMO-AND-SEED.md](DEMO-AND-SEED.md). All business rules in this document apply unchanged in the demo.
 
 ## 12. Open items
 

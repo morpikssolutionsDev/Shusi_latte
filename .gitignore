@@ -1,0 +1,35 @@
+# Runtime data: SQLite database, crypto-shredding keys, generated images, backups
+/data/
+*.db
+*.db-wal
+*.db-shm
+*.db-journal
+
+# Secrets
+.env
+.env.*
+!.env.example
+/secret
+
+# Go
+/api/bin/
+*.test
+*.out
+
+# Node / web
+node_modules/
+dist/
+.turbo/
+*.tsbuildinfo
+coverage/
+playwright-report/
+test-results/
+
+# Design tooling cache
+/tools/design/.build/
+__pycache__/
+
+# Editors and OS
+.idea/
+.DS_Store
+Thumbs.db

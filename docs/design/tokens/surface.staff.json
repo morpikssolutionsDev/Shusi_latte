@@ -1,0 +1,91 @@
+{
+  "$description": "Waiter (8\" tablet portrait) and Cashier (10-11\" landscape or PC). Functional, calm. Mode: light (dark available). Motion profile: functional. Density: compact.",
+  "color": {
+    "canvas": {
+      "$type": "color",
+      "$value": "{color.bg.canvas}"
+    },
+    "primary": {
+      "bg": {
+        "$type": "color",
+        "$value": "{color.action.neutral.bg}"
+      },
+      "bgHover": {
+        "$type": "color",
+        "$value": "{color.action.neutral.bgHover}"
+      },
+      "bgPressed": {
+        "$type": "color",
+        "$value": "{color.action.neutral.bgPressed}"
+      },
+      "fg": {
+        "$type": "color",
+        "$value": "{color.action.neutral.fg}"
+      }
+    }
+  },
+  "font": {
+    "size": {
+      "xs": {
+        "$type": "dimension",
+        "$value": "12px"
+      },
+      "sm": {
+        "$type": "dimension",
+        "$value": "14px"
+      },
+      "base": {
+        "$type": "dimension",
+        "$value": "16px"
+      },
+      "lg": {
+        "$type": "dimension",
+        "$value": "20px"
+      },
+      "xl": {
+        "$type": "dimension",
+        "$value": "24px"
+      },
+      "2xl": {
+        "$type": "dimension",
+        "$value": "28px"
+      },
+      "amountMd": {
+        "$type": "dimension",
+        "$value": "24px"
+      },
+      "amountLg": {
+        "$type": "dimension",
+        "$value": "32px"
+      },
+      "amountXl": {
+        "$type": "dimension",
+        "$value": "40px"
+      }
+    }
+  },
+  "radius": {
+    "control": {
+      "$type": "dimension",
+      "$value": "{radius.md}"
+    },
+    "card": {
+      "$type": "dimension",
+      "$value": "{radius.lg}"
+    },
+    "sheet": {
+      "$type": "dimension",
+      "$value": "{radius.xl}"
+    },
+    "chip": {
+      "$type": "dimension",
+      "$value": "{radius.pill}"
+    }
+  },
+  "size": {
+    "touchMin": {
+      "$type": "dimension",
+      "$value": "{size.touch.tablet}"
+    }
+  }
+}

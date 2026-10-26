@@ -24,6 +24,8 @@ Charts use Mermaid. They render on GitHub and in VS Code with a Mermaid-enabled 
 | [BRD.md](BRD.md) | *What* the business needs: scope, roles, requirements (BR-*), business rules, privacy | Owner, developers |
 | [TRD.md](TRD.md) | *How* it is built: architecture, data model, API, realtime, security, printing, jobs (TR-*) | Developers |
 | [adr/](adr/) | *Why* hard-to-reverse decisions were made | Developers, future maintainers |
+| [DEMO-AND-SEED.md](DEMO-AND-SEED.md) | Demo mode, seed data and where every scenario is visible | Developers, presenters |
+| [design/](design/) · [brand/](brand/) · [images/](images/) | Design system, logo, demo photography | Designers, frontend |
 | This file | *How it all flows*, and the record of gaps resolved | Owner, developers |
 
 ```mermaid
@@ -33,7 +35,7 @@ flowchart LR
   GL --> BRD
   GL --> TRD[TRD.md]
   BRD -->|"BR-* requirements"| TRD
-  TRD --> ADR["ADRs 0001–0004"]
+  TRD --> ADR["ADRs 0001–0005"]
   BRD --> FLOW[Overview and Flows]
   TRD --> FLOW
   FLOW -->|"new gaps"| BRD
@@ -42,7 +44,7 @@ flowchart LR
 
 ## 2. System at a glance
 
-One Business, one outlet, online-only except printing ([ADR-0001](adr/0001-single-business-single-outlet.md), [ADR-0003](adr/0003-online-only-with-future-local-server.md)). Every Module reads the same **Product catalog** and works on the same **Bills**. All cash ends up in one **Cash Drawer**.
+One Business, one outlet, one host machine on the local network (SQLite), with printing done device-to-printer ([ADR-0001](adr/0001-single-business-single-outlet.md), [ADR-0003](adr/0003-online-only-with-future-local-server.md)). Every Module reads the same **Product catalog** and works on the same **Bills**. All cash ends up in one **Cash Drawer**.
 
 ```mermaid
 flowchart TB
@@ -646,7 +648,7 @@ stateDiagram-v2
 sequenceDiagram
   participant D as Device
   participant API as Go API
-  participant DB as PostgreSQL
+  participant DB as SQLite
   D->>API: POST /auth/login (crew_id, pin)
   API->>DB: load crew row
   alt locked_until in the future
@@ -667,7 +669,7 @@ sequenceDiagram
   participant C as Client Menu (new device)
   participant O as Old device
   participant API as Go API
-  participant DB as PostgreSQL
+  participant DB as SQLite
   participant HUB as WebSocket hub
   C->>API: GET /public/tables/{qr_token}
   API->>DB: find open Bill for Table
@@ -682,8 +684,8 @@ sequenceDiagram
     alt "I'm Andi"
       C->>API: POST rejoin (customer_entry_id)
       API->>DB: set active_device_id, revoke old token
-      API->>DB: NOTIFY customer:{id}
-      DB-->>HUB: event
+      API->>HUB: publish customer:{id}
+      Note over HUB: fan out to subscribers
       HUB-->>O: You continued on another device
       API-->>C: guest token for Andi
     else "I'm joining this table"
@@ -692,7 +694,7 @@ sequenceDiagram
       API-->>C: guest token
     else "This isn't my table"
       C->>API: POST not-mine
-      API->>DB: NOTIFY waiters
+      API->>HUB: publish waiters
       API-->>C: please ask staff
     end
   end
@@ -704,19 +706,19 @@ sequenceDiagram
 sequenceDiagram
   participant C as Client Menu
   participant API as Go API
-  participant DB as PostgreSQL
+  participant DB as SQLite
   participant HUB as WebSocket hub
   participant W as Waiter devices
   C->>API: POST /public/orders (Idempotency-Key)
-  API->>DB: BEGIN
+  API->>DB: BEGIN IMMEDIATE
   API->>DB: verify Bill open and not settling
   API->>DB: verify Products Active, Variants not Sold Out
-  API->>DB: INSERT order (Pending), order_items with snapshots
+  API->>DB: INSERT orders (Pending), order_items with snapshots
   API->>DB: compute Dietary Warnings → order_item_dietary_warning
-  API->>DB: NOTIFY waiters + bill:{id}
   API->>DB: COMMIT
+  API->>HUB: publish waiters + bill:{id}
   API-->>C: 201 Order
-  DB-->>HUB: LISTEN event
+  Note over HUB: fan out to subscribers
   HUB-->>W: order.pending (id only)
   W->>API: GET order (refetch)
 ```
@@ -729,24 +731,24 @@ sequenceDiagram
   participant W2 as Waiter B
   participant J as Escalation job
   participant API as Go API
-  participant DB as PostgreSQL
+  participant DB as SQLite
   participant HUB as WebSocket hub
   J->>DB: Orders unclaimed past 2 min / 5 min
-  J->>DB: NOTIFY waiters (re-notify) or outlet-admin (escalate)
+  J->>HUB: publish waiters (re-notify) or outlet-admin (escalate)
   W1->>API: POST /orders/{id}/claim
   W2->>API: POST /orders/{id}/claim
-  API->>DB: UPDATE order SET claimed_by=A WHERE claimed_by IS NULL
+  API->>DB: UPDATE orders SET claimed_by=A WHERE claimed_by IS NULL
   DB-->>API: 1 row
   API-->>W1: 200 Claimed
   API->>DB: same UPDATE for B
   DB-->>API: 0 rows
   API-->>W2: 409 Already claimed
-  API->>DB: NOTIFY waiters order.claimed
-  DB-->>HUB: event
+  API->>HUB: publish waiters order.claimed
+  Note over HUB: fan out to subscribers
   HUB-->>W2: withdraw notification
   W2->>API: POST /orders/{id}/takeover (later)
   API->>DB: claimed_by=B, INSERT claim_transfer, audit_log
-  API->>DB: NOTIFY waiters
+  API->>HUB: publish waiters
   HUB-->>W1: Claim taken over by B
 ```
 
@@ -756,19 +758,19 @@ sequenceDiagram
 sequenceDiagram
   participant W as Waiter
   participant API as Go API
-  participant DB as PostgreSQL
+  participant DB as SQLite
   participant HUB as WebSocket hub
   participant K as Prep Area display
   participant C as Client Menu
   W->>API: POST /orders/{id}/confirm
   API->>DB: items Pending → Confirmed (WHERE status = Pending)
-  API->>DB: NOTIFY prep-area:{id} for each Prep Area involved
-  DB-->>HUB: events
+  API->>HUB: publish prep-area:{id} for each Prep Area involved
+  Note over HUB: fan out to subscribers
   HUB-->>K: new items (Remakes sorted first)
   K->>API: transition → Preparing, later → Ready
   API->>DB: optimistic status update, set ready_at
   API->>API: recompute Estimated Wait for Prep Area queue
-  API->>DB: NOTIFY bill:{id}, waiters
+  API->>HUB: publish bill:{id}, waiters
   HUB-->>C: status + Estimated Wait
   HUB-->>W: item Ready
 ```
@@ -779,18 +781,17 @@ sequenceDiagram
 sequenceDiagram
   participant K as Kitchen or Waiter
   participant API as Go API
-  participant DB as PostgreSQL
+  participant DB as SQLite
   participant HUB as WebSocket hub
   K->>API: POST /order-items/{id}/cancel (reason out_of_stock)
-  API->>DB: BEGIN
+  API->>DB: BEGIN IMMEDIATE
   API->>DB: item → Cancelled (guarded by role and status)
   API->>DB: variant.sold_out = true, source cancel_out_of_stock
   API->>DB: flag open Pending/Confirmed items with same Variant
   API->>DB: INSERT audit_log
-  API->>DB: NOTIFY menu, waiters, prep-area
   API->>DB: COMMIT
-  DB-->>HUB: events
-  HUB-->>HUB: fan out to all menus (grey out) and owning Waiters (flags)
+  API->>HUB: publish menu, waiters, prep-area
+  Note over HUB: fan out to all menus (grey out) and owning Waiters (flags)
 ```
 
 ### BE-07 PIN Override (Void, Remake, Unpaid, manual discount, Refund, pending QRIS)
@@ -800,7 +801,7 @@ sequenceDiagram
   participant S as Staff device
   participant A as Approver (on same device)
   participant API as Go API
-  participant DB as PostgreSQL
+  participant DB as SQLite
   S->>A: hand device for approval
   A->>API: POST /auth/override (approver PIN, action)
   API->>DB: verify approver role allows action (and Refund cap)
@@ -816,10 +817,10 @@ sequenceDiagram
 sequenceDiagram
   participant S as Waiter/Cashier PWA
   participant API as Go API
-  participant DB as PostgreSQL
+  participant DB as SQLite
   participant P as Bluetooth printer
   S->>API: POST /bills/{id}/settle
-  API->>DB: status → settling, NOTIFY bill:{id}
+  API->>DB: status → settling
   S->>API: GET /bills/{id}/summary
   API->>API: pricing engine (discounts → service → tax)
   API-->>S: totals + unfinished-item warning
@@ -846,7 +847,7 @@ sequenceDiagram
   participant W as Waiter
   participant C as Cashier
   participant API as Go API
-  participant DB as PostgreSQL
+  participant DB as SQLite
   C->>API: POST /drawer-sessions (opening_float)
   API->>DB: INSERT drawer_session
   W->>C: hands over cash
@@ -868,8 +869,8 @@ sequenceDiagram
 
 ```mermaid
 flowchart LR
-  TX["API transaction<br/>COMMIT"] --> N["pg NOTIFY<br/>(topic, entity id, version)"]
-  N --> L[Go LISTEN goroutine]
+  TX["API transaction<br/>COMMIT"] --> N["event bus publish<br/>(topic, entity id, version)"]
+  N --> L[Hub subscriber goroutine]
   L --> H[WebSocket hub]
   H -->|"waiters"| WD[Waiter devices]
   H -->|"outlet-admin"| OA[Outlet Admin devices]
@@ -885,11 +886,11 @@ flowchart LR
 
 ```mermaid
 flowchart TD
-  S([Scheduler — advisory lock]) --> J1["Every 15 s: Claim re-notify / escalate<br/>pickup reminders"]
+  S([In-process scheduler]) --> J1["Every 15 s: Claim re-notify / escalate<br/>pickup reminders"]
   S --> J2["Every 1 min: close empty Bills > 30 min<br/>activate/deactivate promos"]
   S --> J3["Every 5 min: auto clock-out<br/>past shift end + 2 h"]
   S --> J4["Every 1 h: Anonymise Bills<br/>closed/unpaid > 48 h"]
-  S --> J5["Daily: destroy expired data keys<br/>run backup"]
+  S --> J5["Daily: destroy expired data keys, backup<br/>03:00 demo reset (Demo mode)"]
   J1 & J2 & J3 & J4 & J5 --> F{Failure?}
   F -->|Yes| A[Alert via monitoring]
   F -->|No| OK([Done])

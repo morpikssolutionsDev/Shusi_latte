@@ -1,0 +1,566 @@
+{
+  "$description": "Sushi Latte semantic colour roles, light mode.",
+  "color": {
+    "bg": {
+      "canvas": {
+        "$type": "color",
+        "$value": "{color.neutral.50}",
+        "$description": "App background (staff); customer surfaces override with Rice"
+      },
+      "canvasWarm": {
+        "$type": "color",
+        "$value": "{color.rice.50}",
+        "$description": "Customer surface background"
+      },
+      "surface": {
+        "$type": "color",
+        "$value": "{color.white}",
+        "$description": "Cards, sheets, panels"
+      },
+      "raised": {
+        "$type": "color",
+        "$value": "{color.white}",
+        "$description": "Popovers, menus, raised cards"
+      },
+      "sunken": {
+        "$type": "color",
+        "$value": "{color.neutral.100}",
+        "$description": "Wells, table stripes, inputs on surface"
+      },
+      "inverse": {
+        "$type": "color",
+        "$value": "{color.nori.900}"
+      },
+      "scrim": {
+        "$type": "color",
+        "$value": "{color.nori.950}",
+        "$description": "Use with opacity.scrim"
+      }
+    },
+    "text": {
+      "primary": {
+        "$type": "color",
+        "$value": "{color.nori.900}"
+      },
+      "secondary": {
+        "$type": "color",
+        "$value": "{color.neutral.700}"
+      },
+      "muted": {
+        "$type": "color",
+        "$value": "{color.neutral.600}",
+        "$description": "Minimum for readable text; never lighter"
+      },
+      "inverse": {
+        "$type": "color",
+        "$value": "{color.rice.50}"
+      },
+      "brand": {
+        "$type": "color",
+        "$value": "{color.espresso.700}",
+        "$description": "\"latte\" in wordmark, prices on customer surfaces"
+      },
+      "link": {
+        "$type": "color",
+        "$value": "{color.blue.700}"
+      },
+      "disabled": {
+        "$type": "color",
+        "$value": "{color.neutral.500}",
+        "$description": "Use with opacity.disabled on the control"
+      }
+    },
+    "border": {
+      "subtle": {
+        "$type": "color",
+        "$value": "{color.neutral.200}",
+        "$description": "Dividers; decorative only"
+      },
+      "default": {
+        "$type": "color",
+        "$value": "{color.neutral.300}",
+        "$description": "Card outlines"
+      },
+      "input": {
+        "$type": "color",
+        "$value": "{color.neutral.500}",
+        "$description": "Form controls; meets 3:1"
+      },
+      "strong": {
+        "$type": "color",
+        "$value": "{color.nori.900}"
+      },
+      "focus": {
+        "$type": "color",
+        "$value": "{color.blue.600}",
+        "$description": "Focus ring, 2px + 2px offset"
+      }
+    },
+    "action": {
+      "brand": {
+        "$description": "Customer primary: Salmon Deep",
+        "bg": {
+          "$type": "color",
+          "$value": "{color.salmon.600}"
+        },
+        "bgHover": {
+          "$type": "color",
+          "$value": "{color.salmon.700}"
+        },
+        "bgPressed": {
+          "$type": "color",
+          "$value": "{color.salmon.800}"
+        },
+        "fg": {
+          "$type": "color",
+          "$value": "{color.white}"
+        }
+      },
+      "neutral": {
+        "$description": "Staff primary: Nori",
+        "bg": {
+          "$type": "color",
+          "$value": "{color.nori.900}"
+        },
+        "bgHover": {
+          "$type": "color",
+          "$value": "{color.nori.800}"
+        },
+        "bgPressed": {
+          "$type": "color",
+          "$value": "{color.nori.950}"
+        },
+        "fg": {
+          "$type": "color",
+          "$value": "{color.white}"
+        }
+      },
+      "secondary": {
+        "bg": {
+          "$type": "color",
+          "$value": "{color.neutral.100}"
+        },
+        "bgHover": {
+          "$type": "color",
+          "$value": "{color.neutral.200}"
+        },
+        "fg": {
+          "$type": "color",
+          "$value": "{color.nori.900}"
+        },
+        "border": {
+          "$type": "color",
+          "$value": "{color.neutral.300}"
+        }
+      },
+      "danger": {
+        "bg": {
+          "$type": "color",
+          "$value": "{color.red.600}"
+        },
+        "bgHover": {
+          "$type": "color",
+          "$value": "{color.red.700}"
+        },
+        "fg": {
+          "$type": "color",
+          "$value": "{color.white}"
+        }
+      }
+    },
+    "status": {
+      "pending": {
+        "bg": {
+          "$type": "color",
+          "$value": "{color.amber.100}"
+        },
+        "fg": {
+          "$type": "color",
+          "$value": "{color.amber.800}"
+        },
+        "border": {
+          "$type": "color",
+          "$value": "{color.amber.300}"
+        },
+        "icon": {
+          "$type": "color",
+          "$value": "{color.amber.600}"
+        },
+        "solid": {
+          "$type": "color",
+          "$value": "{color.amber.600}"
+        },
+        "onSolid": {
+          "$type": "color",
+          "$value": "{color.white}"
+        }
+      },
+      "confirmed": {
+        "bg": {
+          "$type": "color",
+          "$value": "{color.blue.100}"
+        },
+        "fg": {
+          "$type": "color",
+          "$value": "{color.blue.800}"
+        },
+        "border": {
+          "$type": "color",
+          "$value": "{color.blue.300}"
+        },
+        "icon": {
+          "$type": "color",
+          "$value": "{color.blue.600}"
+        },
+        "solid": {
+          "$type": "color",
+          "$value": "{color.blue.600}"
+        },
+        "onSolid": {
+          "$type": "color",
+          "$value": "{color.white}"
+        }
+      },
+      "preparing": {
+        "bg": {
+          "$type": "color",
+          "$value": "{color.indigo.100}"
+        },
+        "fg": {
+          "$type": "color",
+          "$value": "{color.indigo.800}"
+        },
+        "border": {
+          "$type": "color",
+          "$value": "{color.indigo.300}"
+        },
+        "icon": {
+          "$type": "color",
+          "$value": "{color.indigo.600}"
+        },
+        "solid": {
+          "$type": "color",
+          "$value": "{color.indigo.600}"
+        },
+        "onSolid": {
+          "$type": "color",
+          "$value": "{color.white}"
+        }
+      },
+      "ready": {
+        "bg": {
+          "$type": "color",
+          "$value": "{color.green.100}"
+        },
+        "fg": {
+          "$type": "color",
+          "$value": "{color.green.800}"
+        },
+        "border": {
+          "$type": "color",
+          "$value": "{color.green.300}"
+        },
+        "icon": {
+          "$type": "color",
+          "$value": "{color.green.600}"
+        },
+        "solid": {
+          "$type": "color",
+          "$value": "{color.green.600}"
+        },
+        "onSolid": {
+          "$type": "color",
+          "$value": "{color.white}"
+        }
+      },
+      "served": {
+        "bg": {
+          "$type": "color",
+          "$value": "{color.neutral.100}"
+        },
+        "fg": {
+          "$type": "color",
+          "$value": "{color.neutral.800}"
+        },
+        "border": {
+          "$type": "color",
+          "$value": "{color.neutral.300}"
+        },
+        "icon": {
+          "$type": "color",
+          "$value": "{color.neutral.600}"
+        },
+        "solid": {
+          "$type": "color",
+          "$value": "{color.neutral.600}"
+        },
+        "onSolid": {
+          "$type": "color",
+          "$value": "{color.white}"
+        }
+      },
+      "cancelled": {
+        "bg": {
+          "$type": "color",
+          "$value": "{color.neutral.100}"
+        },
+        "fg": {
+          "$type": "color",
+          "$value": "{color.neutral.800}"
+        },
+        "border": {
+          "$type": "color",
+          "$value": "{color.neutral.300}"
+        },
+        "icon": {
+          "$type": "color",
+          "$value": "{color.neutral.600}"
+        },
+        "solid": {
+          "$type": "color",
+          "$value": "{color.neutral.600}"
+        },
+        "onSolid": {
+          "$type": "color",
+          "$value": "{color.white}"
+        }
+      },
+      "voided": {
+        "bg": {
+          "$type": "color",
+          "$value": "{color.red.100}"
+        },
+        "fg": {
+          "$type": "color",
+          "$value": "{color.red.800}"
+        },
+        "border": {
+          "$type": "color",
+          "$value": "{color.red.300}"
+        },
+        "icon": {
+          "$type": "color",
+          "$value": "{color.red.600}"
+        },
+        "solid": {
+          "$type": "color",
+          "$value": "{color.red.600}"
+        },
+        "onSolid": {
+          "$type": "color",
+          "$value": "{color.white}"
+        }
+      }
+    },
+    "feedback": {
+      "success": {
+        "bg": {
+          "$type": "color",
+          "$value": "{color.green.100}"
+        },
+        "fg": {
+          "$type": "color",
+          "$value": "{color.green.800}"
+        },
+        "border": {
+          "$type": "color",
+          "$value": "{color.green.300}"
+        },
+        "icon": {
+          "$type": "color",
+          "$value": "{color.green.600}"
+        },
+        "solid": {
+          "$type": "color",
+          "$value": "{color.green.600}"
+        },
+        "onSolid": {
+          "$type": "color",
+          "$value": "{color.white}"
+        }
+      },
+      "warning": {
+        "bg": {
+          "$type": "color",
+          "$value": "{color.amber.100}"
+        },
+        "fg": {
+          "$type": "color",
+          "$value": "{color.amber.800}"
+        },
+        "border": {
+          "$type": "color",
+          "$value": "{color.amber.300}"
+        },
+        "icon": {
+          "$type": "color",
+          "$value": "{color.amber.600}"
+        },
+        "solid": {
+          "$type": "color",
+          "$value": "{color.amber.600}"
+        },
+        "onSolid": {
+          "$type": "color",
+          "$value": "{color.white}"
+        }
+      },
+      "danger": {
+        "bg": {
+          "$type": "color",
+          "$value": "{color.red.100}"
+        },
+        "fg": {
+          "$type": "color",
+          "$value": "{color.red.800}"
+        },
+        "border": {
+          "$type": "color",
+          "$value": "{color.red.300}"
+        },
+        "icon": {
+          "$type": "color",
+          "$value": "{color.red.600}"
+        },
+        "solid": {
+          "$type": "color",
+          "$value": "{color.red.600}"
+        },
+        "onSolid": {
+          "$type": "color",
+          "$value": "{color.white}"
+        }
+      },
+      "info": {
+        "bg": {
+          "$type": "color",
+          "$value": "{color.blue.100}"
+        },
+        "fg": {
+          "$type": "color",
+          "$value": "{color.blue.800}"
+        },
+        "border": {
+          "$type": "color",
+          "$value": "{color.blue.300}"
+        },
+        "icon": {
+          "$type": "color",
+          "$value": "{color.blue.600}"
+        },
+        "solid": {
+          "$type": "color",
+          "$value": "{color.blue.600}"
+        },
+        "onSolid": {
+          "$type": "color",
+          "$value": "{color.white}"
+        }
+      }
+    },
+    "timer": {
+      "onTime": {
+        "$type": "color",
+        "$value": "{color.green.600}"
+      },
+      "warning": {
+        "$type": "color",
+        "$value": "{color.amber.600}",
+        "$description": ">= 80% of Prep Time"
+      },
+      "late": {
+        "$type": "color",
+        "$value": "{color.red.600}",
+        "$description": ">= 100% of Prep Time"
+      }
+    },
+    "dietary": {
+      "warning": {
+        "bg": {
+          "$type": "color",
+          "$value": "{color.plum.100}"
+        },
+        "fg": {
+          "$type": "color",
+          "$value": "{color.plum.800}"
+        },
+        "border": {
+          "$type": "color",
+          "$value": "{color.plum.300}"
+        },
+        "icon": {
+          "$type": "color",
+          "$value": "{color.plum.600}"
+        },
+        "solid": {
+          "$type": "color",
+          "$value": "{color.plum.600}"
+        },
+        "onSolid": {
+          "$type": "color",
+          "$value": "{color.white}"
+        }
+      },
+      "$description": "Plum is reserved for Dietary Warnings and nothing else"
+    },
+    "bill": {
+      "settling": {
+        "$type": "color",
+        "$value": "{color.blue.600}"
+      },
+      "unpaid": {
+        "$type": "color",
+        "$value": "{color.red.600}"
+      }
+    },
+    "soldOut": {
+      "fg": {
+        "$type": "color",
+        "$value": "{color.neutral.600}"
+      },
+      "badgeBg": {
+        "$type": "color",
+        "$value": "{color.nori.900}"
+      },
+      "badgeFg": {
+        "$type": "color",
+        "$value": "{color.rice.50}"
+      }
+    },
+    "brand": {
+      "nori": {
+        "$type": "color",
+        "$value": "{color.nori.900}"
+      },
+      "noriLight": {
+        "$type": "color",
+        "$value": "{color.nori.800}"
+      },
+      "rice": {
+        "$type": "color",
+        "$value": "{color.rice.100}"
+      },
+      "espresso": {
+        "$type": "color",
+        "$value": "{color.espresso.700}"
+      },
+      "crema": {
+        "$type": "color",
+        "$value": "{color.espresso.600}"
+      },
+      "salmon": {
+        "$type": "color",
+        "$value": "{color.salmon.400}",
+        "$description": "Decorative only: fails text contrast on light"
+      },
+      "salmonDeep": {
+        "$type": "color",
+        "$value": "{color.salmon.600}"
+      },
+      "steam": {
+        "$type": "color",
+        "$value": "#C9B79C"
+      }
+    }
+  }
+}

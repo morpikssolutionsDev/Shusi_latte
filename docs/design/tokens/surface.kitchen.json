@@ -1,0 +1,75 @@
+{
+  "$description": "Kitchen display per Prep Area (1920x1080). Dark default, readable from ~3 m. Mode: dark. Motion profile: functional. Density: spacious.",
+  "color": {
+    "canvas": {
+      "$type": "color",
+      "$value": "{color.bg.canvas}"
+    },
+    "primary": {
+      "bg": {
+        "$type": "color",
+        "$value": "{color.action.neutral.bg}"
+      },
+      "bgHover": {
+        "$type": "color",
+        "$value": "{color.action.neutral.bgHover}"
+      },
+      "bgPressed": {
+        "$type": "color",
+        "$value": "{color.action.neutral.bgPressed}"
+      },
+      "fg": {
+        "$type": "color",
+        "$value": "{color.action.neutral.fg}"
+      }
+    }
+  },
+  "font": {
+    "size": {
+      "sm": {
+        "$type": "dimension",
+        "$value": "20px"
+      },
+      "base": {
+        "$type": "dimension",
+        "$value": "24px"
+      },
+      "lg": {
+        "$type": "dimension",
+        "$value": "30px"
+      },
+      "xl": {
+        "$type": "dimension",
+        "$value": "36px"
+      },
+      "2xl": {
+        "$type": "dimension",
+        "$value": "48px"
+      }
+    }
+  },
+  "radius": {
+    "control": {
+      "$type": "dimension",
+      "$value": "{radius.sm}"
+    },
+    "card": {
+      "$type": "dimension",
+      "$value": "{radius.sm}"
+    },
+    "sheet": {
+      "$type": "dimension",
+      "$value": "{radius.lg}"
+    },
+    "chip": {
+      "$type": "dimension",
+      "$value": "{radius.pill}"
+    }
+  },
+  "size": {
+    "touchMin": {
+      "$type": "dimension",
+      "$value": "{size.touch.kitchen}"
+    }
+  }
+}

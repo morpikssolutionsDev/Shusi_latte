@@ -1,0 +1,83 @@
+{
+  "$description": "Admin Panel and HRIS (desktop >= 1280px, usable on landscape tablet). Mode: light (dark available). Motion profile: functional. Density: dense.",
+  "color": {
+    "canvas": {
+      "$type": "color",
+      "$value": "{color.bg.canvas}"
+    },
+    "primary": {
+      "bg": {
+        "$type": "color",
+        "$value": "{color.action.neutral.bg}"
+      },
+      "bgHover": {
+        "$type": "color",
+        "$value": "{color.action.neutral.bgHover}"
+      },
+      "bgPressed": {
+        "$type": "color",
+        "$value": "{color.action.neutral.bgPressed}"
+      },
+      "fg": {
+        "$type": "color",
+        "$value": "{color.action.neutral.fg}"
+      }
+    }
+  },
+  "font": {
+    "size": {
+      "xs": {
+        "$type": "dimension",
+        "$value": "12px"
+      },
+      "sm": {
+        "$type": "dimension",
+        "$value": "13px"
+      },
+      "base": {
+        "$type": "dimension",
+        "$value": "14px"
+      },
+      "lg": {
+        "$type": "dimension",
+        "$value": "16px"
+      },
+      "xl": {
+        "$type": "dimension",
+        "$value": "20px"
+      },
+      "2xl": {
+        "$type": "dimension",
+        "$value": "24px"
+      },
+      "3xl": {
+        "$type": "dimension",
+        "$value": "28px"
+      }
+    }
+  },
+  "radius": {
+    "control": {
+      "$type": "dimension",
+      "$value": "{radius.sm}"
+    },
+    "card": {
+      "$type": "dimension",
+      "$value": "{radius.lg}"
+    },
+    "sheet": {
+      "$type": "dimension",
+      "$value": "{radius.xl}"
+    },
+    "chip": {
+      "$type": "dimension",
+      "$value": "{radius.pill}"
+    }
+  },
+  "size": {
+    "touchMin": {
+      "$type": "dimension",
+      "$value": "{size.touch.desktop}"
+    }
+  }
+}

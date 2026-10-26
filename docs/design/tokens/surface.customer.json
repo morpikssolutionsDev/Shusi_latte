@@ -1,0 +1,79 @@
+{
+  "$description": "Client Menu (phone, portrait). Expressive, warm, light only. Mode: light. Motion profile: expressive. Density: comfortable.",
+  "color": {
+    "canvas": {
+      "$type": "color",
+      "$value": "{color.bg.canvasWarm}"
+    },
+    "primary": {
+      "bg": {
+        "$type": "color",
+        "$value": "{color.action.brand.bg}"
+      },
+      "bgHover": {
+        "$type": "color",
+        "$value": "{color.action.brand.bgHover}"
+      },
+      "bgPressed": {
+        "$type": "color",
+        "$value": "{color.action.brand.bgPressed}"
+      },
+      "fg": {
+        "$type": "color",
+        "$value": "{color.action.brand.fg}"
+      }
+    }
+  },
+  "font": {
+    "size": {
+      "xs": {
+        "$type": "dimension",
+        "$value": "12px"
+      },
+      "sm": {
+        "$type": "dimension",
+        "$value": "14px"
+      },
+      "base": {
+        "$type": "dimension",
+        "$value": "16px"
+      },
+      "lg": {
+        "$type": "dimension",
+        "$value": "20px"
+      },
+      "xl": {
+        "$type": "dimension",
+        "$value": "24px"
+      },
+      "2xl": {
+        "$type": "dimension",
+        "$value": "32px"
+      }
+    }
+  },
+  "radius": {
+    "control": {
+      "$type": "dimension",
+      "$value": "{radius.pill}"
+    },
+    "card": {
+      "$type": "dimension",
+      "$value": "{radius.xl}"
+    },
+    "sheet": {
+      "$type": "dimension",
+      "$value": "{radius.2xl}"
+    },
+    "chip": {
+      "$type": "dimension",
+      "$value": "{radius.pill}"
+    }
+  },
+  "size": {
+    "touchMin": {
+      "$type": "dimension",
+      "$value": "{size.touch.phone}"
+    }
+  }
+}

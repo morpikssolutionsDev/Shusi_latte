@@ -1,0 +1,44 @@
+<p align="center"><img src="docs/brand/sushi-latte-lockup-animated.svg" alt="Sushi Latte" width="520"></p>
+
+# Sushi Latte
+
+A HORECA web platform for a sushi-and-coffee outlet: Customers order from a QR code at their Table, Waiters claim and confirm Orders, the Kitchen and Bar work from live displays, and Cashiers settle Bills and close the drawer. Management configures the menu, prices and discounts; HRIS handles shifts, attendance and leave.
+
+**Status:** specification complete, implementation not started. This build is a **prototype and showcase** that runs on one local machine with fictional demo data.
+
+## Modules
+
+| Module | Who | Device |
+|---|---|---|
+| Client Menu | Customer | Phone (QR per Table) |
+| Waiter | Waiter | 8″ tablet |
+| Cashier | Cashier | Tablet or PC |
+| Kitchen | Kitchen / Bar crew | Large display per Prep Area |
+| Product Display | Customers in the outlet | TV |
+| Admin Panel | Management, Outlet Admin | Desktop |
+| HRIS | Everyone | Shared clock-in tablet, desktop |
+
+## Stack
+
+Go (chi, sqlc, goose) · SQLite · WebSockets · React + Vite + TypeScript · TanStack Router/Query · Tailwind · shadcn/ui · Motion · PWA with Web Bluetooth receipt printing.
+
+## Documentation
+
+| Document | Contents |
+|---|---|
+| [GLOSSARY.md](GLOSSARY.md) | Domain vocabulary |
+| [docs/BRD.md](docs/BRD.md) | Business requirements and rules |
+| [docs/TRD.md](docs/TRD.md) | Technical requirements |
+| [docs/OVERVIEW-AND-FLOWS.md](docs/OVERVIEW-AND-FLOWS.md) | Document map, operational and backend flowcharts |
+| [docs/DEMO-AND-SEED.md](docs/DEMO-AND-SEED.md) | Demo mode and seed scenarios |
+| [docs/adr/](docs/adr/) | Architecture decision records |
+| [docs/design/](docs/design/) | Design system: philosophy, tokens, colour, type, motion, components ([style guide](docs/design/styleguide.html)) |
+| [docs/brand/](docs/brand/) | Logo and brand assets |
+| [docs/images/](docs/images/) | Demo product, staff and marketing photos |
+| [project goals.md](project%20goals.md) | The owner's original brief |
+
+## Design tooling
+
+```sh
+python tools/design/build.py   # regenerate tokens, COLOR.md and the style guide
+```

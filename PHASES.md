@@ -163,10 +163,32 @@ this phase: re-running migrations on an existing database
 no longer fails on ALTER TABLE ADD COLUMN created_by, so a
 server restart works.
 
-All 7 phases are now complete on the API side. The web
-frontends (Staff PWA, Client Menu, Product Display TV app,
-Kitchen display, Cashier app, HRIS app) have not been built.
-Realtime WebSocket push has not been built. Nothing is
-merged unless the owner asks for a merge.
+All 7 phases are now complete on the API side, and the
+frontends are now built too (commit 72c5e346).
+
+Frontends status: complete (first pass)
+
+Three React + Vite + TypeScript apps under web/apps/,
+served by the Go API server at /client-menu/, /staff/ and
+/display/ (build each app with npm run build first; the
+server serves dist if present, otherwise a
+build-instructions page). Client Menu: table scan, join
+with name/restriction/consent, catalog with variants and
+modifiers, cart, dietary-warning acknowledgement, bill
+view, waiter call, rejoin and not-mine. Staff: sign-in
+(Crew ID + PIN), Waiter, Kitchen, Cashier, Admin, HRIS and
+HRIS Clock screens. Display: TV slideshow polling
+/public/display/version every 10 seconds, refetching only
+on change, looping by duration_seconds, marking Sold Out
+featured Products. Verified: tsc + vite build for all
+three apps, Go vet/build, and live server serving all
+three index pages plus a JS asset (200). Deviations are
+documented in web/README.md: plain CSS instead of
+Tailwind/shadcn, plain fetch instead of TanStack, no PWA
+manifest or Motion, receipts via browser print not Web
+Bluetooth, and QR codes still point to the API scan
+endpoint. Realtime WebSocket push has not been built.
+Nothing is merged unless the owner asks for a merge.
+
 
 

@@ -46,5 +46,21 @@ logic is tested against TRD-schema sample data.
 Gate met: catalog and config can be created, read, updated and
 audited; no ordering, payment or HRIS logic is claimed in this phase.
 
-Next phase: Client Menu (Phase 2). Each phase ends with a PR for
+Phase 2 status: complete (API)
+
+Phase 2 is complete on the API side, covering BR-CM-01 to BR-CM-15:
+table scan free/occupied, join with name and explicit consent,
+single open Bill per Table, rejoin with guest-token revocation,
+not-mine and waiter calls, public catalog of Active Products only,
+customer Orders with Variants, Modifiers, quantity and notes,
+server-side Dietary Warnings with acknowledgement, edit and
+cancel of a Customer's own Pending unclaimed Order, settling
+blocks new Orders with 409, and the Customer bill view with
+pricing totals and Estimated Wait. Customer names and dietary
+data are AES-256-GCM encrypted with per-day keys (TR-RET-04).
+The Client Menu web app itself has not been built; this phase
+is the API it will use. Waiter Claim and confirmation, Kitchen
+queue, payment and HRIS are later phases.
+
+Next phase: Product Display (Phase 3). Each phase ends with a PR for
 review; nothing is merged unless the owner asks for a merge.

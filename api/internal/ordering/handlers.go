@@ -2,18 +2,22 @@ package ordering
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/morpikssolutionsDev/Shusi_latte/api/internal/catalog"
+	"github.com/morpikssolutionsDev/Shusi_latte/api/internal/pricing"
 )
 
-// Handler wires Phase 2a public Client Menu endpoints. These are
+// Handler wires Phase 2 public Client Menu endpoints. These are
 // public by design: scanning a QR is the Customer's authentication,
 // and guest tokens authenticate subsequent Customer requests.
 // Staff auth middleware must allow /public/ paths through.
 type Handler struct {
 	Store   *Store
 	Catalog catalog.Store
+	Pricing *pricing.Store
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
@@ -35,6 +39,150 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("POST /public/tables/{qr_token}/not-mine", h.notMine)
 	mux.HandleFunc("POST /public/waiter-calls", h.waiterCall)
 	mux.HandleFunc("GET /public/catalog", h.publicCatalog)
+	mux.HandleFunc("POST /public/orders", h.createOrder)
+	mux.HandleFunc("GET /public/orders/{id}", h.getOrder)
+	mux.HandleFunc("PATCH /public/orders/{id}", h.patchOrder)
+	mux.HandleFunc("DELETE /public/orders/{id}", h.cancelOrder)
+	mux.HandleFunc("GET /public/bills/me", h.billMe)
+}
+
+func (h *Handler) guestCustomer(r *http.Request) (Customer, bool) {
+	token := r.Header.Get("X-Guest-Token")
+	if token == "" {
+		if auth := r.Header.Get("Authorization"); strings.HasPrefix(auth, "Bearer ") {
+			token = strings.TrimPrefix(auth, "Bearer ")
+		}
+	}
+	if token == "" {
+		return Customer{}, false
+	}
+	customer, err := h.Store.ValidateGuestToken(token)
+	if err != nil {
+		return Customer{}, false
+	}
+	return customer, true
+}
+
+func (h *Handler) createOrder(w http.ResponseWriter, r *http.Request) {
+	customer, ok := h.guestCustomer(r)
+	if !ok {
+		writeProblem(w, http.StatusUnauthorized, "guest_token_invalid", "guest token is invalid, revoked, or the bill is closed")
+		return
+	}
+	var req CreateOrderInput
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeProblem(w, http.StatusBadRequest, "invalid_json", "request body is not valid JSON")
+		return
+	}
+	order, err := h.Store.CreateOrder(customer, req)
+	if err != nil {
+		var we *WarningError
+		if errors.As(err, &we) {
+			writeJSON(w, http.StatusConflict, map[string]any{
+				"type": "about:blank", "title": "dietary warnings require acknowledgement", "status": 409, "code": "dietary_warning_ack_required", "warnings": we.Warnings,
+			})
+			return
+		}
+		if errors.Is(err, ErrBillSettling) {
+			writeProblem(w, http.StatusConflict, "bill_settling", err.Error())
+			return
+		}
+		writeProblem(w, http.StatusBadRequest, "invalid_order", err.Error())
+		return
+	}
+	writeJSON(w, http.StatusCreated, order)
+}
+
+func (h *Handler) getOrder(w http.ResponseWriter, r *http.Request) {
+	customer, ok := h.guestCustomer(r)
+	if !ok {
+		writeProblem(w, http.StatusUnauthorized, "guest_token_invalid", "guest token is invalid, revoked, or the bill is closed")
+		return
+	}
+	order, err := h.Store.LoadOrderForGuest(customer, r.PathValue("id"))
+	if err != nil {
+		if errors.Is(err, ErrNotOrderOwner) {
+			writeProblem(w, http.StatusForbidden, "not_order_owner", err.Error())
+			return
+		}
+		writeProblem(w, http.StatusNotFound, "order_not_found", err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, order)
+}
+
+func (h *Handler) patchOrder(w http.ResponseWriter, r *http.Request) {
+	customer, ok := h.guestCustomer(r)
+	if !ok {
+		writeProblem(w, http.StatusUnauthorized, "guest_token_invalid", "guest token is invalid, revoked, or the bill is closed")
+		return
+	}
+	var req CreateOrderInput
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeProblem(w, http.StatusBadRequest, "invalid_json", "request body is not valid JSON")
+		return
+	}
+	order, err := h.Store.PatchOrder(customer, r.PathValue("id"), req)
+	if err != nil {
+		var we *WarningError
+		if errors.As(err, &we) {
+			writeJSON(w, http.StatusConflict, map[string]any{
+				"type": "about:blank", "title": "dietary warnings require acknowledgement", "status": 409, "code": "dietary_warning_ack_required", "warnings": we.Warnings,
+			})
+			return
+		}
+		if errors.Is(err, ErrNotOrderOwner) {
+			writeProblem(w, http.StatusForbidden, "not_order_owner", err.Error())
+			return
+		}
+		if errors.Is(err, ErrOrderClaimed) || errors.Is(err, ErrOrderNotPending) {
+			writeProblem(w, http.StatusConflict, "order_not_editable", err.Error())
+			return
+		}
+		writeProblem(w, http.StatusBadRequest, "invalid_order", err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, order)
+}
+
+func (h *Handler) cancelOrder(w http.ResponseWriter, r *http.Request) {
+	customer, ok := h.guestCustomer(r)
+	if !ok {
+		writeProblem(w, http.StatusUnauthorized, "guest_token_invalid", "guest token is invalid, revoked, or the bill is closed")
+		return
+	}
+	var req struct {
+		Reason string `json:"reason"`
+	}
+	_ = json.NewDecoder(r.Body).Decode(&req)
+	order, err := h.Store.CancelOrder(customer, r.PathValue("id"), req.Reason)
+	if err != nil {
+		if errors.Is(err, ErrNotOrderOwner) {
+			writeProblem(w, http.StatusForbidden, "not_order_owner", err.Error())
+			return
+		}
+		if errors.Is(err, ErrOrderClaimed) || errors.Is(err, ErrOrderNotPending) {
+			writeProblem(w, http.StatusConflict, "order_not_cancellable", err.Error())
+			return
+		}
+		writeProblem(w, http.StatusBadRequest, "invalid_cancel", err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, order)
+}
+
+func (h *Handler) billMe(w http.ResponseWriter, r *http.Request) {
+	customer, ok := h.guestCustomer(r)
+	if !ok {
+		writeProblem(w, http.StatusUnauthorized, "guest_token_invalid", "guest token is invalid, revoked, or the bill is closed")
+		return
+	}
+	view, err := h.Store.BillView(customer, h.Pricing)
+	if err != nil {
+		writeProblem(w, http.StatusBadRequest, "bill_unavailable", err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, view)
 }
 
 func (h *Handler) scanTable(w http.ResponseWriter, r *http.Request) {

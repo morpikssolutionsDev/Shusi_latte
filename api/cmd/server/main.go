@@ -1,11 +1,13 @@
 // Package main is the Sushi Latte API server.
 //
-// Phase 2a: Phase 1 is complete, and Phase 2 Client Menu begins
-// with table scan, join and the single open Bill (BR-CM-01,
-// BR-CM-02, BR-CM-12, BR-CM-13, TR-DM-01, TR-AUTH-07). The database
+// Phase 2b: Phase 2 Client Menu is complete on the API side:
+// table scan, join and the single open Bill, plus customer
+// Orders with Variants, Modifiers, dietary warnings, edit and
+// cancel before Claim, and the Customer bill view (BR-CM-01 to
+// BR-CM-15, TR-DM-01, TR-DM-02, TR-DM-05, TR-AUTH-07). The database
 // path comes from SUSHILATTE_DB, defaulting to data/sushi-latte.db,
 // which is git-ignored. On startup the server applies migrations
-// 0001 to 0007 and seeds Kitchen, Bar, the BR-PC-06 Dietary Tags,
+// 0001 to 0008 and seeds Kitchen, Bar, the BR-PC-06 Dietary Tags,
 // tax (PB1, 10%), the example refund cap and the ops timer
 // defaults if they are not already present. QR payloads use
 // SUSHILATTE_PUBLIC_URL when set. Customer personal data is
@@ -16,7 +18,9 @@
 // deployment. Auth middleware wraps the whole mux and enforces
 // the BRD §5.1 permission matrix server-side; all /public/
 // Client Menu endpoints stay public, since scanning a QR is the
-// Customer's authentication.
+// Customer's authentication and guest tokens authenticate
+// subsequent Customer requests. The Client Menu web app itself
+// has not been built; this phase is the API it will use.
 package main
 
 import (
@@ -51,7 +55,7 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(map[string]string{
 		"status":  "ok",
 		"service": "sushi-latte-api",
-		"phase":   "phase-2a-join",
+		"phase":   "phase-2-complete",
 	})
 }
 
@@ -98,7 +102,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	(&ordering.Handler{Store: ordering.NewStore(sqlDB, keyManager), Catalog: svc}).Register(mux)
+	(&ordering.Handler{Store: ordering.NewStore(sqlDB, keyManager), Catalog: svc, Pricing: pricing.NewStore(sqlDB)}).Register(mux)
 	crewStore := crew.NewStore(sqlDB)
 	authStore := auth.NewStore(sqlDB, crewStore)
 	(&auth.Handler{Store: authStore, Limiter: auth.NewIPLimiter()}).Register(mux)

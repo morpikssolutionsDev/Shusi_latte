@@ -1,19 +1,20 @@
 // Package main is the Sushi Latte API server.
 //
-// Phase 1h: the catalog, pricing settings, Tables, crew records,
-// display content, reports and auth are stored in SQLite
-// (TR-ARC-02, TRD §4.1 to §4.5, §8). The database path comes from
-// SUSHILATTE_DB, defaulting to data/sushi-latte.db, which is
-// git-ignored. On startup the server applies migrations 0001 to
-// 0005 and seeds Kitchen, Bar, the BR-PC-06 Dietary Tags, tax
-// (PB1, 10%) and the example refund cap if they are not already
-// present. QR payloads use SUSHILATTE_PUBLIC_URL when set. Auth
-// middleware wraps the whole mux and enforces the BRD §5.1
-// permission matrix server-side; the public display feed, health
-// and /auth/login, /auth/logout and /auth/override stay public.
-// Report source tables (bill, payment, order_item,
-// drawer_session) are created by the Waiter, Kitchen and Cashier
-// phases; until then reports return empty rows instead of errors.
+// Phase 1i: the catalog, pricing settings, Tables, crew records,
+// display content, reports, auth and ops settings are stored in
+// SQLite (TR-ARC-02, TRD §4.1 to §4.5, §8). The database path
+// comes from SUSHILATTE_DB, defaulting to data/sushi-latte.db,
+// which is git-ignored. On startup the server applies migrations
+// 0001 to 0006 and seeds Kitchen, Bar, the BR-PC-06 Dietary Tags,
+// tax (PB1, 10%), the example refund cap and the ops timer
+// defaults if they are not already present. QR payloads use
+// SUSHILATTE_PUBLIC_URL when set. Auth middleware wraps the whole
+// mux and enforces the BRD §5.1 permission matrix server-side;
+// the public display feed, health and /auth/login, /auth/logout
+// and /auth/override stay public. Report source tables (bill,
+// payment, order_item, drawer_session) are created by the Waiter,
+// Kitchen and Cashier phases; until then reports return empty
+// rows instead of errors.
 package main
 
 import (
@@ -31,6 +32,7 @@ import (
 	"github.com/morpikssolutionsDev/Shusi_latte/api/internal/catalog"
 	"github.com/morpikssolutionsDev/Shusi_latte/api/internal/crew"
 	"github.com/morpikssolutionsDev/Shusi_latte/api/internal/display"
+	"github.com/morpikssolutionsDev/Shusi_latte/api/internal/ops"
 	"github.com/morpikssolutionsDev/Shusi_latte/api/internal/pricing"
 	"github.com/morpikssolutionsDev/Shusi_latte/api/internal/reports"
 	"github.com/morpikssolutionsDev/Shusi_latte/api/internal/tables"
@@ -45,7 +47,7 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(map[string]string{
 		"status":  "ok",
 		"service": "sushi-latte-api",
-		"phase":   "phase-1h-auth",
+		"phase":   "phase-1i-ops",
 	})
 }
 
@@ -83,6 +85,7 @@ func main() {
 	(&crew.Handler{Store: crew.NewStore(sqlDB)}).Register(mux)
 	(&display.Handler{Store: display.NewStore(sqlDB)}).Register(mux)
 	(&reports.Handler{Store: reports.NewStore(sqlDB)}).Register(mux)
+	(&ops.Handler{Store: ops.NewStore(sqlDB)}).Register(mux)
 	crewStore := crew.NewStore(sqlDB)
 	authStore := auth.NewStore(sqlDB, crewStore)
 	(&auth.Handler{Store: authStore, Limiter: auth.NewIPLimiter()}).Register(mux)

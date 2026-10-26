@@ -62,7 +62,7 @@ func allowedRoles(path, method string) ([]string, bool) {
 	if strings.HasPrefix(path, "/api/v1/crew") ||
 		strings.HasPrefix(path, "/api/v1/display/slides") ||
 		strings.HasPrefix(path, "/api/v1/reports/") ||
-		strings.HasPrefix(path, "/api/v1/settings/pricing") ||
+		strings.HasPrefix(path, "/api/v1/settings/") ||
 		strings.HasPrefix(path, "/api/v1/discounts") ||
 		path == "/api/v1/audit-log" {
 		return []string{crew.RoleManagement}, true

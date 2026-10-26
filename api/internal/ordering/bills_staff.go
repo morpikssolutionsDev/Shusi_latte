@@ -219,6 +219,12 @@ func (s *Store) SplitBill(crewID, billID, method string, shareCount int, assignm
 	if shareCount < 2 {
 		return nil, errors.New("split requires at least 2 shares")
 	}
+	// BR-R-29: a Bill cannot be split once any Payment exists.
+	var paymentCount int
+	_ = s.db.QueryRow(`SELECT COUNT(*) FROM payment WHERE bill_id = ?`, billID).Scan(&paymentCount)
+	if paymentCount > 0 {
+		return nil, errors.New("bill cannot be split once a payment has been recorded")
+	}
 	tx, err := s.db.Begin()
 	if err != nil {
 		return nil, err

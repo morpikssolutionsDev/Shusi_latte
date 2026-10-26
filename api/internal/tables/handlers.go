@@ -1,0 +1,123 @@
+package tables
+
+import (
+	"encoding/json"
+	"net/http"
+
+	qrcode "github.com/skip2/go-qrcode"
+)
+
+// Handler wires Table management to the Admin Panel endpoints.
+// The QR PNG endpoint returns a 256px PNG encoding the Client Menu
+// URL for the Table, suitable for printing on a Table stand.
+type Handler struct {
+	Store      *Store
+	PublicBase string
+}
+
+func writeJSON(w http.ResponseWriter, status int, v any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(v)
+}
+
+func writeProblem(w http.ResponseWriter, status int, code, title string) {
+	writeJSON(w, status, map[string]any{
+		"type": "about:blank", "title": title, "status": status, "code": code,
+	})
+}
+
+type tableResponse struct {
+	Table
+	QRURL string `json:"qr_url"`
+}
+
+func (h *Handler) respond(w http.ResponseWriter, status int, t Table) {
+	writeJSON(w, status, tableResponse{Table: t, QRURL: QRURL(h.PublicBase, t)})
+}
+
+func (h *Handler) Register(mux *http.ServeMux) {
+	mux.HandleFunc("GET /api/v1/tables", h.listTables)
+	mux.HandleFunc("POST /api/v1/tables", h.createTable)
+	mux.HandleFunc("GET /api/v1/tables/{id}", h.getTable)
+	mux.HandleFunc("PUT /api/v1/tables/{id}", h.updateTable)
+	mux.HandleFunc("POST /api/v1/tables/{id}/regenerate-qr", h.regenerateQR)
+	mux.HandleFunc("GET /api/v1/tables/{id}/qr.png", h.qrPNG)
+}
+
+func (h *Handler) listTables(w http.ResponseWriter, r *http.Request) {
+	includeInactive := r.URL.Query().Get("include_inactive") == "true"
+	tables := h.Store.ListTables(includeInactive)
+	out := make([]tableResponse, 0, len(tables))
+	for _, t := range tables {
+		out = append(out, tableResponse{Table: t, QRURL: QRURL(h.PublicBase, t)})
+	}
+	writeJSON(w, http.StatusOK, out)
+}
+
+func (h *Handler) createTable(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Label string `json:"label"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeProblem(w, http.StatusBadRequest, "invalid_json", "request body is not valid JSON")
+		return
+	}
+	t, err := h.Store.CreateTable(req.Label)
+	if err != nil {
+		writeProblem(w, http.StatusBadRequest, "invalid_table", err.Error())
+		return
+	}
+	h.respond(w, http.StatusCreated, t)
+}
+
+func (h *Handler) getTable(w http.ResponseWriter, r *http.Request) {
+	t, err := h.Store.GetTable(r.PathValue("id"))
+	if err != nil {
+		writeProblem(w, http.StatusNotFound, "table_not_found", err.Error())
+		return
+	}
+	h.respond(w, http.StatusOK, t)
+}
+
+func (h *Handler) updateTable(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Label  string `json:"label"`
+		Active bool   `json:"active"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeProblem(w, http.StatusBadRequest, "invalid_json", "request body is not valid JSON")
+		return
+	}
+	t, err := h.Store.UpdateTable(r.PathValue("id"), req.Label, req.Active)
+	if err != nil {
+		writeProblem(w, http.StatusBadRequest, "invalid_table", err.Error())
+		return
+	}
+	h.respond(w, http.StatusOK, t)
+}
+
+func (h *Handler) regenerateQR(w http.ResponseWriter, r *http.Request) {
+	t, err := h.Store.RegenerateQRToken(r.PathValue("id"))
+	if err != nil {
+		writeProblem(w, http.StatusNotFound, "table_not_found", err.Error())
+		return
+	}
+	h.respond(w, http.StatusOK, t)
+}
+
+func (h *Handler) qrPNG(w http.ResponseWriter, r *http.Request) {
+	t, err := h.Store.GetTable(r.PathValue("id"))
+	if err != nil {
+		writeProblem(w, http.StatusNotFound, "table_not_found", err.Error())
+		return
+	}
+	png, err := qrcode.Encode(QRURL(h.PublicBase, t), qrcode.Medium, 256)
+	if err != nil {
+		writeProblem(w, http.StatusInternalServerError, "qr_failed", err.Error())
+		return
+	}
+	w.Header().Set("Content-Type", "image/png")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(png)
+}

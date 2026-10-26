@@ -17,7 +17,7 @@ func testDB(t *testing.T) *sql.DB {
 	db.SetMaxOpenConns(1)
 	schema := `
 CREATE TABLE bill (id TEXT PRIMARY KEY, number TEXT, type TEXT, source TEXT, status TEXT, unpaid_reason TEXT, opened_at INTEGER, closed_at INTEGER);
-CREATE TABLE payment (id TEXT PRIMARY KEY, bill_id TEXT, method TEXT, status TEXT, amount INTEGER, taken_at INTEGER);
+CREATE TABLE payment (id TEXT PRIMARY KEY, bill_id TEXT, method TEXT, status TEXT, amount INTEGER, created_at INTEGER);
 CREATE TABLE orders (id TEXT PRIMARY KEY, bill_id TEXT, confirmed_at INTEGER);
 CREATE TABLE order_item (id TEXT PRIMARY KEY, order_id TEXT, product_id TEXT, product_name_snapshot TEXT, quantity INTEGER, unit_price INTEGER, status TEXT, remake_of_id TEXT, remake_reason TEXT, ready_at INTEGER);
 CREATE TABLE product (id TEXT PRIMARY KEY, category_id TEXT, name_id TEXT, prep_time_seconds INTEGER);
@@ -45,8 +45,8 @@ func TestReportsWithSampleData(t *testing.T) {
 		args []any
 	}{
 		{`INSERT INTO bill VALUES ('b1','1','dine_in','live','closed',NULL,?,?)`, []any{ms("2026-10-26 10:00"), ms("2026-10-26 12:00")}},
-		{`INSERT INTO payment VALUES ('p1','b1','cash','settled',100000,?)`, []any{ms("2026-10-26 12:00")}},
-		{`INSERT INTO payment VALUES ('p2','b1','qris','settled',50000,?)`, []any{ms("2026-10-26 12:00")}},
+		{`INSERT INTO payment VALUES ('p1','b1','cash','verified',100000,?)`, []any{ms("2026-10-26 12:00")}},
+		{`INSERT INTO payment VALUES ('p2','b1','qris','verified',50000,?)`, []any{ms("2026-10-26 12:00")}},
 		{`INSERT INTO orders VALUES ('o1','b1',?)`, []any{ms("2026-10-26 11:00")}},
 		{`INSERT INTO order_item VALUES ('i1','o1','prod1','Salmon Nigiri',2,45000,'served',NULL,NULL,?)`, []any{ms("2026-10-26 11:05")}},
 		{`INSERT INTO order_item VALUES ('i2','o1','prod1','Salmon Nigiri',1,0,'served','i1','wrong order',?)`, []any{ms("2026-10-26 11:10")}},

@@ -121,7 +121,7 @@ func (s *Store) DailySales(r Range) []DailySalesRow {
 		`SELECT b.closed_at, p.method, p.amount FROM bill b
 		 JOIN payment p ON p.bill_id = b.id
 		 WHERE b.status = 'closed' AND b.closed_at >= ? AND b.closed_at < ?
-		   AND p.status IN ('settled', 'held_by_waiter')`,
+		   AND p.status IN ('verified', 'settled', 'held_by_waiter')`,
 		r.FromMS, r.ToMS,
 	)
 	if err != nil {
@@ -202,7 +202,7 @@ func (s *Store) PaymentMethods(r Range) []PaymentMethodRow {
 	}
 	rows, err := s.db.Query(
 		`SELECT method, COUNT(*), COALESCE(SUM(amount), 0) FROM payment
-		 WHERE taken_at >= ? AND taken_at < ? AND status IN ('settled', 'held_by_waiter')
+		 WHERE created_at >= ? AND created_at < ? AND status IN ('verified', 'settled', 'held_by_waiter')
 		 GROUP BY method ORDER BY method`,
 		r.FromMS, r.ToMS,
 	)

@@ -248,12 +248,15 @@ func (s *Store) CreateOrder(customer Customer, in CreateOrderInput) (Order, erro
 
 func (s *Store) loadOrder(orderID string) (Order, error) {
 	var o Order
-	var claimedBy sql.NullString
+	var claimedBy, createdBy sql.NullString
 	var claimedAt, confirmedAt sql.NullInt64
 	err := s.db.QueryRow(`SELECT id, bill_id, customer_entry_id, source, status, claimed_by, claimed_at, confirmed_at, created_at FROM orders WHERE id = ?`, orderID).Scan(&o.ID, &o.BillID, &o.CustomerEntryID, &o.Source, &o.Status, &claimedBy, &claimedAt, &confirmedAt, &o.CreatedAt)
 	if err != nil {
 		return Order{}, ErrOrderNotFound
 	}
+	// created_by is added by migration 0009; read it separately
+	// so older test databases without the column still load.
+	_ = s.db.QueryRow(`SELECT created_by FROM orders WHERE id = ?`, orderID).Scan(&createdBy)
 	o.ClaimedBy = strPtr(claimedBy)
 	o.ClaimedAt = intPtr(claimedAt)
 	o.ConfirmedAt = intPtr(confirmedAt)
@@ -261,6 +264,9 @@ func (s *Store) loadOrder(orderID string) (Order, error) {
 		if c, err := s.loadCustomer(*o.CustomerEntryID); err == nil {
 			o.PlacedBy = c.Name
 		}
+	}
+	if o.PlacedBy == "" && createdBy.Valid {
+		o.PlacedBy = createdBy.String
 	}
 	rows, err := s.db.Query(`SELECT id, product_id, variant_id, product_name_snapshot, variant_name_snapshot, quantity, unit_price, note, status FROM order_item WHERE order_id = ? ORDER BY rowid`, orderID)
 	if err != nil {

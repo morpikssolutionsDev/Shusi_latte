@@ -32,7 +32,10 @@ CREATE TABLE modifier_group (id TEXT PRIMARY KEY, product_id TEXT, name_id TEXT,
 CREATE TABLE modifier (id TEXT PRIMARY KEY, modifier_group_id TEXT, name_id TEXT, name_en TEXT, price INTEGER, sort INTEGER, archived_at INTEGER);
 CREATE TABLE product_dietary_tag (product_id TEXT, dietary_tag_id TEXT, PRIMARY KEY (product_id, dietary_tag_id));
 CREATE TABLE modifier_dietary_tag (modifier_id TEXT, dietary_tag_id TEXT, PRIMARY KEY (modifier_id, dietary_tag_id));
-CREATE TABLE orders (id TEXT PRIMARY KEY, bill_id TEXT NOT NULL, customer_entry_id TEXT, source TEXT NOT NULL, status TEXT NOT NULL, claimed_by TEXT, claimed_at INTEGER, confirmed_at INTEGER, key_id TEXT, restriction_tags_enc TEXT, created_at INTEGER NOT NULL);
+CREATE TABLE orders (id TEXT PRIMARY KEY, bill_id TEXT NOT NULL, customer_entry_id TEXT, source TEXT NOT NULL, status TEXT NOT NULL, claimed_by TEXT, claimed_at INTEGER, confirmed_at INTEGER, key_id TEXT, restriction_tags_enc TEXT, created_by TEXT, created_at INTEGER NOT NULL);
+CREATE TABLE audit_log (id TEXT PRIMARY KEY, at INTEGER, actor_crew_id TEXT, override_crew_id TEXT, action TEXT, entity TEXT, entity_id TEXT, before_json TEXT, after_json TEXT, reason TEXT);
+CREATE TABLE sub_bill (id TEXT PRIMARY KEY, bill_id TEXT NOT NULL, method TEXT NOT NULL, share_index INTEGER NOT NULL, share_count INTEGER NOT NULL, status TEXT NOT NULL);
+CREATE TABLE receipt_print (id TEXT PRIMARY KEY, bill_id TEXT NOT NULL, copy_type TEXT NOT NULL, is_reprint INTEGER NOT NULL, printed_by TEXT, printed_at INTEGER NOT NULL);
 CREATE TABLE order_item (id TEXT PRIMARY KEY, order_id TEXT NOT NULL, product_id TEXT NOT NULL, variant_id TEXT NOT NULL, product_name_snapshot TEXT NOT NULL, variant_name_snapshot TEXT NOT NULL, quantity INTEGER NOT NULL, unit_price INTEGER NOT NULL, note TEXT, status TEXT NOT NULL, cancel_reason TEXT, cancel_note TEXT, cancelled_by TEXT, void_reason TEXT, voided_by TEXT, voided_override_by TEXT, remake_of_id TEXT, remake_reason TEXT, remake_override_by TEXT, ready_at INTEGER, sub_bill_id TEXT, sold_out_flag INTEGER NOT NULL DEFAULT 0, unavailable_flag INTEGER NOT NULL DEFAULT 0);
 CREATE TABLE order_item_modifier (order_item_id TEXT NOT NULL, modifier_id TEXT NOT NULL, name_snapshot TEXT NOT NULL, price INTEGER NOT NULL, PRIMARY KEY (order_item_id, modifier_id));
 CREATE TABLE order_item_dietary_warning (order_item_id TEXT NOT NULL, dietary_tag_id TEXT NOT NULL, acknowledged_at INTEGER, PRIMARY KEY (order_item_id, dietary_tag_id));
@@ -167,5 +170,53 @@ func TestCreateOrderWarningsEditCancel(t *testing.T) {
 	}
 	if cancelled.Status != "cancelled" || cancelled.Items[0].Status != "cancelled" {
 		t.Fatalf("cancelled = %+v", cancelled)
+	}
+}
+
+func TestWaiterClaimConfirmServe(t *testing.T) {
+	s := testStore(t)
+	joined, err := s.Join("t1", "Andi", nil, nil, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	customer, _ := s.ValidateGuestToken(joined.GuestToken)
+	order, err := s.CreateOrder(customer, CreateOrderInput{Items: []OrderItemInput{{ProductID: "p1", VariantID: "v1", Quantity: 1}}, AcknowledgeWarnings: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Second claim fails.
+	if _, err := s.ClaimOrder("W01", order.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.ClaimOrder("W02", order.ID); err == nil {
+		t.Fatal("second claim should fail")
+	}
+	// Takeover, then confirm by new owner.
+	if _, err := s.TakeoverOrder("W02", order.ID); err != nil {
+		t.Fatal(err)
+	}
+	confirmed, err := s.ConfirmOrder("W02", order.ID, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if confirmed.Status != "confirmed" || confirmed.Items[0].Status != "confirmed" {
+		t.Fatalf("confirmed = %+v", confirmed)
+	}
+	// Staff direct order for same table.
+	staffOrder, err := s.StaffCreateOrder("W02", "t1", nil, nil, []OrderItemInput{{ProductID: "p1", VariantID: "v1", Quantity: 1}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if staffOrder.Status != "confirmed" || staffOrder.PlacedBy != "W02" {
+		t.Fatalf("staff order = %+v", staffOrder)
+	}
+	// Cancel item with out_of_stock sets variant sold out.
+	if _, err := s.CancelItem("W02", staffOrder.Items[0].ID, "out_of_stock"); err != nil {
+		t.Fatal(err)
+	}
+	var soldOut int
+	_ = s.db.QueryRow(`SELECT sold_out FROM variant WHERE id = 'v1'`).Scan(&soldOut)
+	if soldOut != 1 {
+		t.Fatal("out_of_stock cancel should set variant sold out")
 	}
 }

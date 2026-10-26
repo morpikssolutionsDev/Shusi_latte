@@ -44,7 +44,7 @@ func allowedRoles(path, method string) ([]string, bool) {
 	// Public endpoints.
 	if path == "/healthz" || path == "/api/v1/health" ||
 		strings.HasPrefix(path, "/public/") ||
-		path == "/auth/login" || path == "/auth/override" || path == "/auth/logout" || path == "/auth/screen-login" {
+		path == "/auth/login" || path == "/auth/override" || path == "/auth/logout" || path == "/auth/screen-login" || path == "/api/v1/attendance/clock" {
 		return nil, false
 	}
 	if !strings.HasPrefix(path, "/api/v1/") && path != "/auth/me" {

@@ -18,7 +18,7 @@ var migrationsFS embed.FS
 // the migrations use CREATE TABLE IF NOT EXISTS, INSERT OR IGNORE and
 // IF NOT EXISTS triggers.
 func Apply(db *sql.DB) error {
-	for _, name := range []string{"migrations/0001_catalog.sql", "migrations/0002_pricing.sql", "migrations/0003_tables.sql", "migrations/0004_crew.sql", "migrations/0005_display.sql", "migrations/0006_ops.sql", "migrations/0007_ordering.sql", "migrations/0008_orders.sql", "migrations/0009_staff.sql", "migrations/0010_cashier.sql"} {
+	for _, name := range []string{"migrations/0001_catalog.sql", "migrations/0002_pricing.sql", "migrations/0003_tables.sql", "migrations/0004_crew.sql", "migrations/0005_display.sql", "migrations/0006_ops.sql", "migrations/0007_ordering.sql", "migrations/0008_orders.sql", "migrations/0009_staff.sql", "migrations/0010_cashier.sql", "migrations/0011_hris.sql"} {
 		data, err := migrationsFS.ReadFile(name)
 		if err != nil {
 			return err
@@ -30,6 +30,14 @@ func Apply(db *sql.DB) error {
 				continue
 			}
 			if _, err := db.Exec(stmt); err != nil {
+				// ALTER TABLE ADD COLUMN is not idempotent in
+				// SQLite: re-running migrations on an existing
+				// database (for example after a server restart)
+				// reports "duplicate column name". That case is
+				// safe to ignore; any other error is fatal.
+				if strings.Contains(err.Error(), "duplicate column name") {
+					continue
+				}
 				return err
 			}
 		}

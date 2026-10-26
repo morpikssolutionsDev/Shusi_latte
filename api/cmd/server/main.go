@@ -30,6 +30,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 
 	_ "modernc.org/sqlite"
 
@@ -39,6 +40,7 @@ import (
 	"github.com/morpikssolutionsDev/Shusi_latte/api/internal/crew"
 	"github.com/morpikssolutionsDev/Shusi_latte/api/internal/crypto"
 	"github.com/morpikssolutionsDev/Shusi_latte/api/internal/display"
+	"github.com/morpikssolutionsDev/Shusi_latte/api/internal/hris"
 	"github.com/morpikssolutionsDev/Shusi_latte/api/internal/ops"
 	"github.com/morpikssolutionsDev/Shusi_latte/api/internal/ordering"
 	"github.com/morpikssolutionsDev/Shusi_latte/api/internal/pricing"
@@ -55,7 +57,7 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(map[string]string{
 		"status":  "ok",
 		"service": "sushi-latte-api",
-		"phase":   "phase-6-complete",
+		"phase":   "phase-7-complete",
 	})
 }
 
@@ -111,6 +113,18 @@ func main() {
 	staffHandler.Register(mux)
 	staffHandler.RegisterKitchen(mux)
 	staffHandler.RegisterCashier(mux)
+	hrisStore := hris.NewStore(sqlDB, crewStore, ops.NewStore(sqlDB))
+	hrisStore.HeldCash = orderingStore.HeldCash
+	(&hris.Handler{Store: hrisStore, Auth: authStore}).Register(mux)
+	// Auto clock-out job (BR-HR-06, TRD scheduler): every 5
+	// minutes, close open attendance past shift end + grace.
+	go func() {
+		ticker := time.NewTicker(5 * time.Minute)
+		defer ticker.Stop()
+		for range ticker.C {
+			hrisStore.AutoClockOut()
+		}
+	}()
 
 	log.Println("sushi-latte-api listening on :8080, db:", dbPath)
 	if err := http.ListenAndServe(":8080", authStore.Middleware(mux)); err != nil {

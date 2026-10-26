@@ -14,22 +14,24 @@ import (
 //go:embed migrations/*.sql
 var migrationsFS embed.FS
 
-// Apply runs migration 0001_catalog.sql (Up part only) if its tables
-// are not already present. It is idempotent: the migration itself uses
-// CREATE TABLE IF NOT EXISTS, INSERT OR IGNORE and IF NOT EXISTS triggers.
+// Apply runs the migrations in order (Up part only). It is idempotent:
+// the migrations use CREATE TABLE IF NOT EXISTS, INSERT OR IGNORE and
+// IF NOT EXISTS triggers.
 func Apply(db *sql.DB) error {
-	data, err := migrationsFS.ReadFile("migrations/0001_catalog.sql")
-	if err != nil {
-		return err
-	}
-	up := strings.Split(string(data), "-- +goose Down")[0]
-	up = strings.Replace(up, "-- +goose Up", "", 1)
-	for _, stmt := range splitStatements(up) {
-		if strings.TrimSpace(stmt) == "" {
-			continue
-		}
-		if _, err := db.Exec(stmt); err != nil {
+	for _, name := range []string{"migrations/0001_catalog.sql", "migrations/0002_pricing.sql"} {
+		data, err := migrationsFS.ReadFile(name)
+		if err != nil {
 			return err
+		}
+		up := strings.Split(string(data), "-- +goose Down")[0]
+		up = strings.Replace(up, "-- +goose Up", "", 1)
+		for _, stmt := range splitStatements(up) {
+			if strings.TrimSpace(stmt) == "" {
+				continue
+			}
+			if _, err := db.Exec(stmt); err != nil {
+				return err
+			}
 		}
 	}
 	return nil

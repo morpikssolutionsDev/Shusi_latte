@@ -16,6 +16,7 @@ Prototype and showcase of a single-outlet HORECA platform: one Go API with SQLit
 | the reason behind a hard-to-reverse choice | [docs/adr/](docs/adr/) |
 | demo mode, seed data, which Table shows which scenario | [docs/DEMO-AND-SEED.md](docs/DEMO-AND-SEED.md) |
 | any UI work: tokens, colour, type, motion, components, copy | [docs/design/DESIGN-PHILOSOPHY.md](docs/design/DESIGN-PHILOSOPHY.md), then the guide it points to |
+| what to build next and its done-criteria | [todolist.md](todolist.md) |
 | logo or photos | [docs/brand/](docs/brand/), [docs/images/README.md](docs/images/README.md) |
 
 The spec is the source of truth. When code and spec disagree, or a behaviour is not covered, ask the user, record the answer in the BRD/TRD (plus an ADR when hard to reverse), then build it.
@@ -27,5 +28,7 @@ The spec is the source of truth. When code and spec disagree, or a behaviour is 
 - Realtime events are published on the in-process event bus after `COMMIT`.
 - UI code uses semantic, surface or component tokens. Plum is reserved for Dietary Warnings; logo Salmon `#F2885B` is decoration, Salmon Deep is the text and action colour.
 - `docs/design/tokens/*.json`, the tables in `docs/design/COLOR.md` and `docs/design/styleguide.html` are generated: edit `tools/design/*.py`, then run `python tools/design/build.py`.
+- After changing a migration or query in `api/db/`, or `api/openapi.yaml`, run `pnpm gen`; `api/internal/store` and `web/packages/api-client/src/schema.d.ts` are generated. Every endpoint added in Go is described in `api/openapi.yaml` in the same change.
+- Database writes go through `dbx.DB.Write`, which publishes queued realtime events only after commit; restricted actions consume a PIN Override with `auth.ConsumeOverride` inside that transaction.
 - Demo helpers live behind `DEMO_MODE`; seed data goes through the domain packages so every seeded record obeys the same rules as live data.
 - `project goals.md` is the owner's original brief and stays as written.

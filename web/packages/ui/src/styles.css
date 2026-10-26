@@ -1,0 +1,117 @@
+/* Sushi Latte design system entry: fonts, generated tokens, Tailwind theme mapped to tokens.
+   Apps set <html data-surface="customer|staff|admin|kitchen|display" data-theme="light|dark">. */
+@import '@fontsource/poppins/600.css';
+@import '@fontsource/poppins/700.css';
+@import '@fontsource-variable/plus-jakarta-sans';
+@import '@fontsource-variable/jetbrains-mono';
+
+@import 'tailwindcss';
+/* Apps reach this package through node_modules, which Tailwind skips: scan it explicitly. */
+@source './';
+
+@import './tokens/primitive.css';
+@import './tokens/semantic.light.css';
+@import './tokens/semantic.dark.css';
+@import './tokens/surface.customer.css';
+@import './tokens/surface.staff.css';
+@import './tokens/surface.admin.css';
+@import './tokens/surface.kitchen.css';
+@import './tokens/surface.display.css';
+@import './tokens/component.css';
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/* shadcn/ui variable names → Sushi Latte tokens (TOKENS.md §5). */
+@theme inline {
+  --color-background: var(--sl-color-canvas, var(--sl-color-bg-canvas));
+  --color-foreground: var(--sl-color-text-primary);
+  --color-card: var(--sl-color-bg-surface);
+  --color-card-foreground: var(--sl-color-text-primary);
+  --color-popover: var(--sl-color-bg-raised);
+  --color-popover-foreground: var(--sl-color-text-primary);
+  --color-primary: var(--sl-color-primary-bg);
+  --color-primary-hover: var(--sl-color-primary-bg-hover);
+  --color-primary-pressed: var(--sl-color-primary-bg-pressed);
+  --color-primary-foreground: var(--sl-color-primary-fg);
+  --color-secondary: var(--sl-color-action-secondary-bg);
+  --color-secondary-hover: var(--sl-color-action-secondary-bg-hover);
+  --color-secondary-foreground: var(--sl-color-action-secondary-fg);
+  --color-muted: var(--sl-color-bg-sunken);
+  --color-muted-foreground: var(--sl-color-text-muted);
+  --color-accent: var(--sl-color-action-secondary-bg-hover);
+  --color-accent-foreground: var(--sl-color-text-primary);
+  --color-destructive: var(--sl-color-action-danger-bg);
+  --color-destructive-foreground: var(--sl-color-action-danger-fg);
+  --color-border: var(--sl-color-border-default);
+  --color-border-subtle: var(--sl-color-border-subtle);
+  --color-input: var(--sl-color-border-input);
+  --color-ring: var(--sl-color-border-focus);
+  --color-text-secondary: var(--sl-color-text-secondary);
+  --color-text-brand: var(--sl-color-text-brand);
+  --color-sunken: var(--sl-color-bg-sunken);
+
+  --color-nori: var(--sl-color-brand-nori);
+  --color-rice: var(--sl-color-brand-rice);
+  --color-espresso: var(--sl-color-brand-espresso);
+  --color-salmon: var(--sl-color-brand-salmon);
+  --color-salmon-deep: var(--sl-color-brand-salmon-deep);
+  --color-dietary: var(--sl-color-dietary-warning-solid);
+
+  --font-display: var(--sl-font-family-display);
+  --font-sans: var(--sl-font-family-ui);
+  --font-mono: var(--sl-font-family-mono);
+
+  --text-xs: var(--sl-font-size-xs, 12px);
+  --text-sm: var(--sl-font-size-sm, 14px);
+  --text-base: var(--sl-font-size-base, 16px);
+  --text-lg: var(--sl-font-size-lg, 20px);
+  --text-xl: var(--sl-font-size-xl, 24px);
+  --text-2xl: var(--sl-font-size-2xl, 32px);
+
+  --radius-control: var(--sl-radius-control);
+  --radius-card: var(--sl-radius-card);
+  --radius-sheet: var(--sl-radius-sheet);
+  --radius-chip: var(--sl-radius-chip);
+
+  --shadow-sm: var(--sl-shadow-sm);
+  --shadow-md: var(--sl-shadow-md);
+  --shadow-lg: var(--sl-shadow-lg);
+  --shadow-xl: var(--sl-shadow-xl);
+  --shadow-glow: var(--sl-shadow-glow);
+
+  --ease-standard: var(--sl-easing-standard);
+  --ease-expressive: var(--sl-easing-expressive);
+  --ease-overshoot: var(--sl-easing-overshoot);
+
+  --spacing-touch: var(--sl-size-touch-min, 44px);
+}
+
+@layer base {
+  html {
+    background: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    font-size: var(--sl-font-size-base, 16px);
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    margin: 0;
+    min-height: 100dvh;
+    background: var(--color-background);
+  }
+  :focus-visible {
+    outline: var(--sl-focus-ring-width) solid var(--sl-focus-ring-color);
+    outline-offset: var(--sl-focus-ring-offset);
+  }
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+  }
+}

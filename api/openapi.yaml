@@ -1,0 +1,570 @@
+openapi: 3.1.0
+info:
+  title: Sushi Latte API
+  version: 0.1.0
+  description: |
+    REST API for the Sushi Latte prototype (TRD §6). Errors use RFC 9457 problem details
+    with a stable `code`. Mutating requests may carry an `Idempotency-Key` header (TR-API-01).
+    Restricted actions require `X-Override-Token` from `POST /auth/override` (TR-API-03).
+servers:
+  - url: /api/v1
+paths:
+  /auth/login:
+    post:
+      operationId: login
+      summary: Sign in with Crew ID and PIN (TR-AUTH-01)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '200':
+          description: Signed in; sets the `sl_session` cookie
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Principal' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '423': { $ref: '#/components/responses/Problem' }
+        '429': { $ref: '#/components/responses/Problem' }
+  /auth/me:
+    get:
+      operationId: me
+      summary: Current principal
+      responses:
+        '200':
+          description: Signed-in principal
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Principal' }
+        '401': { $ref: '#/components/responses/Problem' }
+  /auth/logout:
+    post:
+      operationId: logout
+      responses:
+        '204': { description: Signed out }
+  /auth/override:
+    post:
+      operationId: issueOverride
+      summary: Approver enters their PIN for one restricted action (TR-AUTH-06)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/OverrideRequest' }
+      responses:
+        '200':
+          description: One-time token valid for 60 seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OverrideResponse' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '423': { $ref: '#/components/responses/Problem' }
+  /auth/screen-mode:
+    post:
+      operationId: enterScreenMode
+      summary: Turn this device into a Kitchen, Bar, Display or HRIS screen (TR-AUTH-08)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ScreenModeRequest' }
+      responses:
+        '200':
+          description: Screen-mode principal; replaces the session cookie
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Principal' }
+        '403': { $ref: '#/components/responses/Problem' }
+  /demo/accounts:
+    get:
+      operationId: demoAccounts
+      summary: Demo logins (Demo mode only)
+      responses:
+        '200':
+          description: Seeded demo Crew with PINs
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/DemoAccount' }
+  # ---------------------------------------------------------------- Phase 1: Admin Panel
+  /catalog:
+    get:
+      operationId: getCatalog
+      summary: Full Product catalog (any signed-in staff; TR-PC-05)
+      parameters:
+        - { name: archived, in: query, schema: { type: boolean }, description: Include Archived Products }
+      responses:
+        '200': { description: Catalog, content: { application/json: { schema: { $ref: '#/components/schemas/Catalog' } } } }
+  /catalog/categories:
+    post:
+      operationId: createCategory
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/Category' } } } }
+      responses:
+        '200': { description: Saved, content: { application/json: { schema: { $ref: '#/components/schemas/Category' } } } }
+        '422': { $ref: '#/components/responses/Problem' }
+  /catalog/categories/{id}:
+    put:
+      operationId: updateCategory
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/Category' } } } }
+      responses:
+        '200': { description: Saved, content: { application/json: { schema: { $ref: '#/components/schemas/Category' } } } }
+        '422': { $ref: '#/components/responses/Problem' }
+  /catalog/products:
+    post:
+      operationId: createProduct
+      summary: Create a Product with Variants, Modifier groups and Dietary Tags (Management)
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/Product' } } } }
+      responses:
+        '200': { description: Saved, content: { application/json: { schema: { $ref: '#/components/schemas/Product' } } } }
+        '422': { $ref: '#/components/responses/Problem' }
+  /catalog/products/{id}:
+    put:
+      operationId: updateProduct
+      summary: Replace a Product; Variants and Modifiers left out are archived (TR-PC-03)
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/Product' } } } }
+      responses:
+        '200': { description: Saved, content: { application/json: { schema: { $ref: '#/components/schemas/Product' } } } }
+        '403': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+  /catalog/dietary-tags:
+    post:
+      operationId: createDietaryTag
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/DietaryTag' } } } }
+      responses:
+        '200': { description: Saved, content: { application/json: { schema: { $ref: '#/components/schemas/DietaryTag' } } } }
+  /catalog/dietary-tags/{id}:
+    put:
+      operationId: updateDietaryTag
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/DietaryTag' } } } }
+      responses:
+        '200': { description: Saved, content: { application/json: { schema: { $ref: '#/components/schemas/DietaryTag' } } } }
+  /catalog/prep-areas/{id}/capacity:
+    put:
+      operationId: setPrepAreaCapacity
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [parallelCapacity], properties: { parallelCapacity: { type: integer } } }
+      responses:
+        '204': { description: Saved }
+  /catalog/variants/{id}/sold-out:
+    put:
+      operationId: setSoldOut
+      summary: Mark a Variant Sold Out or re-enable it (Outlet Admin, Management; BR-ADM-07)
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [soldOut], properties: { soldOut: { type: boolean } } }
+      responses:
+        '200': { description: Updated Variant, content: { application/json: { schema: { $ref: '#/components/schemas/Variant' } } } }
+  /settings:
+    get:
+      operationId: getSettings
+      responses:
+        '200': { description: Settings, content: { application/json: { schema: { $ref: '#/components/schemas/Settings' } } } }
+  /settings/pricing:
+    put:
+      operationId: updatePricingSettings
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/PricingSettings' } } } }
+      responses:
+        '200': { description: Settings, content: { application/json: { schema: { $ref: '#/components/schemas/Settings' } } } }
+        '422': { $ref: '#/components/responses/Problem' }
+  /settings/ops:
+    put:
+      operationId: updateOpsSettings
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/OpsSettings' } } } }
+      responses:
+        '200': { description: Settings, content: { application/json: { schema: { $ref: '#/components/schemas/Settings' } } } }
+        '422': { $ref: '#/components/responses/Problem' }
+  /discounts:
+    get:
+      operationId: listDiscounts
+      responses:
+        '200': { description: Discounts, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Discount' } } } } }
+    post:
+      operationId: createDiscount
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/Discount' } } } }
+      responses:
+        '200': { description: Saved, content: { application/json: { schema: { $ref: '#/components/schemas/Discount' } } } }
+        '422': { $ref: '#/components/responses/Problem' }
+  /discounts/{id}:
+    put:
+      operationId: updateDiscount
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/Discount' } } } }
+      responses:
+        '200': { description: Saved, content: { application/json: { schema: { $ref: '#/components/schemas/Discount' } } } }
+        '422': { $ref: '#/components/responses/Problem' }
+  /tables:
+    get:
+      operationId: listTables
+      responses:
+        '200': { description: Tables, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Table' } } } } }
+    post:
+      operationId: createTable
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/Table' } } } }
+      responses:
+        '200': { description: Saved, content: { application/json: { schema: { $ref: '#/components/schemas/Table' } } } }
+        '422': { $ref: '#/components/responses/Problem' }
+  /tables/{id}:
+    put:
+      operationId: updateTable
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/Table' } } } }
+      responses:
+        '200': { description: Saved, content: { application/json: { schema: { $ref: '#/components/schemas/Table' } } } }
+        '422': { $ref: '#/components/responses/Problem' }
+  /tables/{id}/regenerate-qr:
+    post:
+      operationId: regenerateTableQr
+      summary: Issue a new QR token; old printed codes stop working (TR-AUTH-07)
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses:
+        '200': { description: Table, content: { application/json: { schema: { $ref: '#/components/schemas/Table' } } } }
+  /crew:
+    get:
+      operationId: listCrew
+      responses:
+        '200': { description: Crew, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/CrewMember' } } } } }
+    post:
+      operationId: createCrew
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/CrewInput' } } } }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/CrewMember' } } } }
+        '422': { $ref: '#/components/responses/Problem' }
+  /crew/{id}:
+    put:
+      operationId: updateCrew
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/CrewInput' } } } }
+      responses:
+        '200': { description: Updated, content: { application/json: { schema: { $ref: '#/components/schemas/CrewMember' } } } }
+        '422': { $ref: '#/components/responses/Problem' }
+  /crew/{id}/reset-pin:
+    post:
+      operationId: resetCrewPin
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [pin], properties: { pin: { type: string, pattern: '^[0-9]{6}$' } } }
+      responses:
+        '204': { description: PIN reset; lockout cleared; sessions ended }
+        '422': { $ref: '#/components/responses/Problem' }
+  /images:
+    post:
+      operationId: uploadImage
+      summary: Upload a JPEG, PNG or WebP image (≤ 10 MB); returns its content-addressed key (TR-DM-09)
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema: { type: object, required: [file], properties: { file: { type: string, format: binary } } }
+      responses:
+        '201':
+          description: Stored
+          content:
+            application/json:
+              schema: { type: object, required: [imageKey], properties: { imageKey: { type: string } } }
+        '415': { $ref: '#/components/responses/Problem' }
+  /audit:
+    get:
+      operationId: searchAudit
+      summary: Audit log, newest first (Outlet Admin, Management; BR-ADM-12)
+      parameters:
+        - { name: entity, in: query, schema: { type: string } }
+        - { name: action, in: query, schema: { type: string }, description: Action prefix, e.g. variant.sold_out }
+        - { name: actor, in: query, schema: { type: string }, description: crew id as actor or approver }
+        - { name: from, in: query, schema: { type: integer, format: int64 } }
+        - { name: before, in: query, schema: { type: integer, format: int64 } }
+        - { name: limit, in: query, schema: { type: integer } }
+      responses:
+        '200': { description: Entries, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/AuditEntry' } } } } }
+components:
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema: { type: string }
+  responses:
+    Problem:
+      description: Problem details
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+  schemas:
+    PrepArea:
+      type: object
+      required: [id, code, nameId, nameEn, parallelCapacity]
+      properties:
+        id: { type: string }
+        code: { type: string }
+        nameId: { type: string }
+        nameEn: { type: string }
+        parallelCapacity: { type: integer }
+    Category:
+      type: object
+      required: [nameId, nameEn, prepAreaId]
+      properties:
+        id: { type: string }
+        nameId: { type: string }
+        nameEn: { type: string }
+        prepAreaId: { type: string }
+        sort: { type: integer }
+        active: { type: boolean }
+    DietaryTag:
+      type: object
+      required: [code, nameId, nameEn]
+      properties:
+        id: { type: string }
+        code: { type: string }
+        nameId: { type: string }
+        nameEn: { type: string }
+        icon: { type: string }
+        sort: { type: integer }
+        active: { type: boolean }
+    Focus:
+      type: object
+      required: [x, y]
+      properties:
+        x: { type: integer, minimum: 0, maximum: 100 }
+        y: { type: integer, minimum: 0, maximum: 100 }
+    Variant:
+      type: object
+      required: [nameId, nameEn, price, isDefault]
+      properties:
+        id: { type: string, description: Omit to create }
+        nameId: { type: string }
+        nameEn: { type: string }
+        price: { type: integer, format: int64, description: Rupiah excluding tax and service }
+        isDefault: { type: boolean }
+        sort: { type: integer }
+        soldOut: { type: boolean, readOnly: true }
+        soldOutAt: { type: integer, format: int64, readOnly: true }
+        soldOutSource: { type: string, enum: [manual, cancel_out_of_stock], readOnly: true }
+    Modifier:
+      type: object
+      required: [nameId, nameEn, price, dietaryTagIds]
+      properties:
+        id: { type: string }
+        nameId: { type: string }
+        nameEn: { type: string }
+        price: { type: integer, format: int64 }
+        sort: { type: integer }
+        dietaryTagIds: { type: array, items: { type: string }, description: Tags this Modifier adds }
+    ModifierGroup:
+      type: object
+      required: [nameId, nameEn, minSelect, maxSelect, modifiers]
+      properties:
+        id: { type: string }
+        nameId: { type: string }
+        nameEn: { type: string }
+        minSelect: { type: integer }
+        maxSelect: { type: integer }
+        sort: { type: integer }
+        modifiers: { type: array, items: { $ref: '#/components/schemas/Modifier' } }
+    Product:
+      type: object
+      required: [categoryId, nameId, nameEn, prepTimeSeconds, dietaryTagIds, variants, modifierGroups]
+      properties:
+        id: { type: string }
+        categoryId: { type: string }
+        nameId: { type: string }
+        nameEn: { type: string }
+        descriptionId: { type: string }
+        descriptionEn: { type: string }
+        imageKey: { type: string }
+        imageFocus: { $ref: '#/components/schemas/Focus' }
+        prepTimeSeconds: { type: integer }
+        status: { type: string, enum: [active, hidden, archived] }
+        sort: { type: integer }
+        dietaryTagIds: { type: array, items: { type: string } }
+        variants: { type: array, items: { $ref: '#/components/schemas/Variant' } }
+        modifierGroups: { type: array, items: { $ref: '#/components/schemas/ModifierGroup' } }
+    Catalog:
+      type: object
+      required: [prepAreas, categories, dietaryTags, products]
+      properties:
+        prepAreas: { type: array, items: { $ref: '#/components/schemas/PrepArea' } }
+        categories: { type: array, items: { $ref: '#/components/schemas/Category' } }
+        dietaryTags: { type: array, items: { $ref: '#/components/schemas/DietaryTag' } }
+        products: { type: array, items: { $ref: '#/components/schemas/Product' } }
+    PricingSettings:
+      type: object
+      required: [serviceRateBp, taxRateBp, priceMode, refundCap]
+      properties:
+        serviceRateBp: { type: integer, description: Basis points (500 = 5 %) }
+        taxRateBp: { type: integer }
+        priceMode: { type: string, enum: [exclusive, inclusive] }
+        refundCap: { type: integer, format: int64 }
+    OpsSettings:
+      type: object
+      required: [claimRenotifySeconds, claimEscalateSeconds, pickupReminderSeconds, emptyBillCloseSeconds, autoClockOutGraceSeconds]
+      properties:
+        claimRenotifySeconds: { type: integer }
+        claimEscalateSeconds: { type: integer }
+        pickupReminderSeconds: { type: integer }
+        emptyBillCloseSeconds: { type: integer }
+        autoClockOutGraceSeconds: { type: integer }
+    Settings:
+      type: object
+      required: [pricing, ops]
+      properties:
+        pricing: { $ref: '#/components/schemas/PricingSettings' }
+        ops: { $ref: '#/components/schemas/OpsSettings' }
+    Discount:
+      type: object
+      required: [name, kind, value, scope, trigger, daysMask, active, categoryIds, productIds, variantIds]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        kind: { type: string, enum: [percent, nominal] }
+        value: { type: integer, format: int64, description: Basis points for percent, Rupiah for nominal }
+        scope: { type: string, enum: [item, bill] }
+        trigger: { type: string, enum: [auto, manual] }
+        daysMask: { type: integer, description: Bit 0 = Monday … bit 6 = Sunday }
+        startMinute: { type: integer }
+        endMinute: { type: integer }
+        validFrom: { type: integer, format: int64 }
+        validTo: { type: integer, format: int64 }
+        minSubtotal: { type: integer, format: int64 }
+        active: { type: boolean }
+        categoryIds: { type: array, items: { type: string } }
+        productIds: { type: array, items: { type: string } }
+        variantIds: { type: array, items: { type: string } }
+    Table:
+      type: object
+      required: [number, label, active]
+      properties:
+        id: { type: string }
+        number: { type: integer }
+        label: { type: string }
+        qrToken: { type: string, readOnly: true }
+        active: { type: boolean }
+        qrRegeneratedAt: { type: integer, format: int64, readOnly: true }
+    CrewMember:
+      type: object
+      required: [id, crewId, fullName, role, stations, active]
+      properties:
+        id: { type: string }
+        crewId: { type: string }
+        fullName: { type: string }
+        role: { $ref: '#/components/schemas/Role' }
+        stations: { type: array, items: { $ref: '#/components/schemas/Station' } }
+        imageKey: { type: string }
+        active: { type: boolean }
+        lockedUntil: { type: integer, format: int64 }
+    CrewInput:
+      type: object
+      required: [crewId, fullName, role, stations, active]
+      properties:
+        crewId: { type: string, pattern: '^[A-Z][0-9]{3}$' }
+        fullName: { type: string }
+        role: { $ref: '#/components/schemas/Role' }
+        stations: { type: array, items: { $ref: '#/components/schemas/Station' } }
+        imageKey: { type: string }
+        active: { type: boolean }
+        pin: { type: string, pattern: '^[0-9]{6}$', description: Required on create }
+    AuditEntry:
+      type: object
+      required: [id, at, action, entity]
+      properties:
+        id: { type: string }
+        at: { type: integer, format: int64 }
+        actorId: { type: string }
+        approverId: { type: string }
+        action: { type: string }
+        entity: { type: string }
+        entityId: { type: string }
+        before: {}
+        after: {}
+        reason: { type: string }
+    Role:
+      type: string
+      enum: [management, outlet_admin, crew]
+    Station:
+      type: string
+      enum: [waiter, cashier, kitchen]
+    Screen:
+      type: string
+      enum: [kitchen, bar, display, hris]
+    OverrideAction:
+      type: string
+      enum: [manual_discount, void, remake, unpaid_bill, qris_unverified, refund_within_cap, refund_above_cap, demo_reset]
+    LoginRequest:
+      type: object
+      required: [crewId, pin]
+      properties:
+        crewId: { type: string, example: W001 }
+        pin: { type: string, pattern: '^[0-9]{6}$' }
+        deviceLabel: { type: string }
+    Principal:
+      type: object
+      required: [crewId, name, role, stations, kind, expiresAt]
+      properties:
+        crewId: { type: string }
+        name: { type: string }
+        role: { $ref: '#/components/schemas/Role' }
+        stations:
+          type: array
+          items: { $ref: '#/components/schemas/Station' }
+        imageKey: { type: string }
+        kind: { type: string, enum: [crew, screen] }
+        screen: { $ref: '#/components/schemas/Screen' }
+        expiresAt: { type: integer, format: int64, description: UTC Unix milliseconds }
+    OverrideRequest:
+      type: object
+      required: [crewId, pin, action]
+      properties:
+        crewId: { type: string }
+        pin: { type: string, pattern: '^[0-9]{6}$' }
+        action: { $ref: '#/components/schemas/OverrideAction' }
+    OverrideResponse:
+      type: object
+      required: [token, expiresAt]
+      properties:
+        token: { type: string }
+        expiresAt: { type: integer, format: int64 }
+    ScreenModeRequest:
+      type: object
+      required: [screen]
+      properties:
+        screen: { $ref: '#/components/schemas/Screen' }
+        deviceLabel: { type: string }
+    DemoAccount:
+      type: object
+      required: [crewId, name, role, stations, pin, portrait]
+      properties:
+        crewId: { type: string }
+        name: { type: string }
+        role: { $ref: '#/components/schemas/Role' }
+        stations:
+          type: array
+          items: { $ref: '#/components/schemas/Station' }
+        pin: { type: string }
+        portrait: { type: string, description: Source photo under docs/images }
+        imageKey: { type: string, description: Processed image key (see /media/images) }
+        note: { type: string }
+    Problem:
+      type: object
+      required: [status, code, title]
+      properties:
+        status: { type: integer }
+        code: { type: string }
+        title: { type: string }
+        detail: { type: string }
+        extra:
+          type: object
+          additionalProperties: true

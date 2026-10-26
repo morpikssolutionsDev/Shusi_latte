@@ -1,0 +1,28 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "tasks": {
+    "tokens": {
+      "inputs": ["../../../docs/design/tokens/**", "style-dictionary.config.mjs"],
+      "outputs": ["src/tokens/**"]
+    },
+    "gen": {
+      "inputs": ["../../../api/openapi.yaml"],
+      "outputs": ["src/schema.d.ts"]
+    },
+    "build": {
+      "dependsOn": ["^build", "^tokens", "^gen"],
+      "outputs": ["dist/**"]
+    },
+    "typecheck": {
+      "dependsOn": ["^tokens", "^gen"]
+    },
+    "test": {
+      "dependsOn": ["^tokens", "^gen"]
+    },
+    "dev": {
+      "dependsOn": ["^tokens", "^gen"],
+      "cache": false,
+      "persistent": true
+    }
+  }
+}

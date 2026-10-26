@@ -50,8 +50,8 @@ The prototype runs on **one machine** (the demo host, e.g. a laptop) on the outl
 | WebSocket | `coder/websocket` | Maintained, context-aware |
 | Database | SQLite (WAL) via `modernc.org/sqlite` | One file, pure Go (no CGO on Windows), transactions, partial unique indexes, JSON functions ([ADR-0005](adr/0005-sqlite-for-demo.md)) |
 | Event bus | In-process publish/subscribe (Go channels) | Replaces Postgres `LISTEN/NOTIFY` in a single-process deployment |
-| Images | `govips` or build-time `sharp` script | WebP variants 320/640/1024 px and 16:9 display crops |
-| Frontend | React + Vite + TypeScript | Fast SPA builds; no server rendering needed for QR menu or kiosk screens |
+| Images | `gen2brain/webp` (no cgo) + `golang.org/x/image/draw` | WebP variants 320/640/1024 px and 16:9 display crops, generated in the API on upload and at seed time |
+| Frontend | React + Vite + TypeScript 5.9 | Fast SPA builds; no server rendering needed for QR menu or kiosk screens. TypeScript is pinned to 5.9: TypeScript 7 has no JavaScript compiler API, which `openapi-typescript` needs |
 | Routing / data | TanStack Router, TanStack Query | Type-safe routes; server-state caching and WebSocket-driven invalidation |
 | UI | Tailwind CSS, shadcn/ui, Motion (formerly Framer Motion) | Modern, accessible components and animation |
 | PWA | `vite-plugin-pwa` | Installable Staff app, cached shell |
@@ -59,7 +59,7 @@ The prototype runs on **one machine** (the demo host, e.g. a laptop) on the outl
 | Monorepo | pnpm workspaces + Turborepo | Shared UI, types and API client across apps |
 | API contract | OpenAPI 3 | Generated TypeScript client for all apps |
 | Edge | Caddy | Local HTTPS (internal CA), static serving, reverse proxy |
-| Runtime | Native binaries on the demo host (Go API + Caddy), started by one `make demo` / script | No Docker needed |
+| Runtime | Native binaries on the demo host (Go API + Caddy), started by `pnpm demo` (`scripts/run.mjs`); sqlc and Caddy are pinned in `tools/fetch-tools.ps1` | No Docker needed |
 
 Next.js was considered and not chosen: none of the apps need server rendering or SEO, and an extra Node server adds an operational component without benefit.
 
@@ -138,7 +138,7 @@ category ──1:N── product ──1:N── variant          (price, Sold O
 |---|---|
 | `prep_area` | id, name (Kitchen, Bar), parallel_capacity |
 | `category` | id, name_id, name_en, sort, prep_area_id |
-| `product` | id, category_id, name_id, name_en, description_id, description_en, image_key (nullable; WebP variants generated from the original), image_focus (focal point `x,y` in %, default `50,50`, used for 16:9 crops), prep_time_seconds, status (`active`, `hidden`, `archived`), sort, created_at, updated_at |
+| `product` | id, category_id, name_id, name_en, description_id, description_en, image_key (nullable; WebP variants generated from the original), image_focus_x, image_focus_y (focal point in %, default 50/50, used for 16:9 crops), prep_time_seconds, status (`active`, `hidden`, `archived`), sort, created_at, updated_at |
 | `variant` | id, product_id, name_id, name_en, price, is_default, sort, sold_out, sold_out_at, sold_out_by, sold_out_source (`manual`, `cancel_out_of_stock`) |
 | `modifier_group` | id, product_id, name_id, name_en, min_select, max_select, sort |
 | `modifier` | id, modifier_group_id, name_id, name_en, price, sort |
@@ -182,12 +182,12 @@ Constraints:
 
 | Table | Key columns |
 |---|---|
-| `tax_setting` | service_rate_bp, tax_rate_bp, price_mode (`exclusive`, `inclusive`) — basis points |
-| `discount` | id, name, kind (`percent`, `nominal`), value, scope (`item`, `bill`), trigger (`auto`, `manual`), schedule (days, start_time, end_time, valid_from, valid_to), target (category/product/variant ids) |
+| `pricing_setting` | single row: service_rate_bp, tax_rate_bp (basis points), price_mode (`exclusive`, `inclusive`), refund_cap |
+| `discount` | id, name, kind (`percent` value in basis points, `nominal` value in Rupiah), value, scope (`item`, `bill`), trigger (`auto`, `manual`), days_mask (bit 0 = Monday), start_minute, end_minute (WIB minutes; start > end crosses midnight), valid_from, valid_to, min_subtotal (Bill discounts), active |
+| `discount_target` | discount_id, target_type (`category`, `product`, `variant`), target_id — none means every Product |
 | `applied_discount` | id, order_item_id or bill_id or sub_bill_id, discount_id, amount, override_by |
 | `payment` | id, bill_id, sub_bill_id, method (`cash`, `qris`, `card`), status (`settled`, `held_by_waiter`, `pending_verification`, `written_off`), amount, tendered, change, rounding, taken_by, taken_at, cash_handover_id, verified_by, verified_at |
 | `refund` | id, bill_id, amount, reason, approved_by, drawer_session_id, created_at — always paid in cash |
-| `refund_setting` | cap_amount |
 | `cash_drawer` | id, label — exactly one row in the MVP |
 | `drawer_session` | id, cash_drawer_id, cashier_crew_id, opening_float, opened_at, expected_cash, counted_cash, difference, closed_at — one Shift Closing per session |
 | `cash_handover` | id, drawer_session_id, waiter_crew_id, expected_amount, received_amount, difference, received_by, received_at |
@@ -210,7 +210,7 @@ Constraints:
 | `audit_log` | id, at, actor_crew_id, override_crew_id, action, entity, entity_id, before (JSON text), after (JSON text), reason |
 
 - **TR-DM-04** `audit_log` is append-only: `BEFORE UPDATE` and `BEFORE DELETE` triggers raise `ABORT`. The only exception is the demo reset, which replaces the whole database file.
-- **TR-DM-09** Product and slide images: originals are stored under `data/images/originals/{image_key}`; on upload (and at seed time) WebP variants at 320, 640 and 1024 px (1:1) and a 1920×1080 crop (16:9, Product Display) are generated and served with long-lived cache headers. A Product without an image renders the branded placeholder (logo badge on Rice).
+- **TR-DM-09** Images are content-addressed: `image_key` is `img/<sha256 prefix>` of the uploaded bytes, stored under `data/images/<image_key>/` as `original.<ext>`, `sq320.webp`, `sq640.webp`, `sq1024.webp` (centre crops, 1:1) and `wide-<x>-<y>.webp` (1920×1080 crop at the focal point, created when a Product is saved). Files never change in place, so `/media/images/img/*` is served `immutable` for a year; a new focal point produces a new file name. Re-uploading identical bytes reuses the key, which also makes repeated demo seeds fast. A Product without an image renders the branded placeholder (logo badge on Rice).
 
 ## 5. State machines
 
@@ -262,7 +262,8 @@ REST, JSON, under `/api/v1`, described in an OpenAPI 3 spec from which the TypeS
 |---|---|
 | Auth | `POST /auth/login` (crew_id, pin) · `POST /auth/logout` · `POST /auth/override` (pin, action) → short-lived override token |
 | Client Menu | `GET /public/tables/{qr_token}` → `free` or `occupied` with Customer names · `POST /public/tables/{qr_token}/join` (name, Dietary Restriction tag ids, Dietary Note, consent) → guest token for a new Customer · `POST /public/tables/{qr_token}/rejoin` (customer_entry_id) → guest token, previous device revoked · `POST /public/tables/{qr_token}/not-mine` → notify Waiters · `GET /public/catalog` · `POST /public/orders` · `PATCH`/`DELETE /public/orders/{id}` (before Claim) · `POST /public/waiter-calls` · `GET /public/bills/me` |
-| Catalog | `GET /catalog` (staff, includes Hidden) · CRUD `/categories`, `/products`, `/variants`, `/modifier-groups`, `/modifiers`, `/dietary-tags`, `/prep-areas` · `PUT /products/{id}/dietary-tags` · `PUT /modifiers/{id}/dietary-tags` · `POST /products/{id}/status` · `POST /variants/{id}/sold-out` · `DELETE /variants/{id}/sold-out` |
+| Catalog | `GET /catalog` (staff; `?archived=true` includes Archived) · `POST /catalog/products`, `PUT /catalog/products/{id}` — the whole Product document (details, Dietary Tags, Variants, Modifier groups) in one transaction; children left out are archived · `POST`/`PUT /catalog/categories`, `/catalog/dietary-tags` · `PUT /catalog/prep-areas/{id}/capacity` · `PUT /catalog/variants/{id}/sold-out` · `POST /images` (multipart upload) |
+| Admin | `GET /settings`, `PUT /settings/pricing`, `PUT /settings/ops` · `GET`/`POST /discounts`, `PUT /discounts/{id}` · `GET`/`POST /tables`, `PUT /tables/{id}`, `POST /tables/{id}/regenerate-qr` · `GET`/`POST /crew`, `PUT /crew/{id}`, `POST /crew/{id}/reset-pin` · `GET /audit` |
 | Ordering | `POST /orders/{id}/claim` · `POST /orders/{id}/takeover` · `POST /orders/{id}/reassign` · `POST /orders/{id}/confirm` · `POST /order-items/{id}/transition` · `POST /order-items/{id}/cancel` · `POST /order-items/{id}/void` · `POST /order-items/{id}/remake` |
 | Bills | `POST /bills` (takeaway) · `POST /bills/{id}/move` · `POST /bills/merge` · `POST /bills/{id}/split` · `GET /bills/{id}/summary` · `POST /bills/{id}/settle` · `POST /bills/{id}/unlock` · `POST /bills/{id}/close-unpaid` · `POST /post-outage/bills` |
 | Payment | `POST /bills/{id}/payments` · `POST /payments/{id}/verify` · `POST /bills/{id}/close` · `POST /bills/{id}/refunds` · `POST /bills/{id}/receipts/reprint` |
@@ -271,7 +272,6 @@ REST, JSON, under `/api/v1`, described in an OpenAPI 3 spec from which the TypeS
 | Display | `GET /public/display/slides` |
 | HRIS | `/employees`, `/shifts`, `POST /attendance/clock` (crew_id, pin; clock-in screen session only), `POST /attendance/{id}/correct`, `/leave-requests` |
 | Reports | `/reports/daily-sales`, `/reports/payment-methods`, `/reports/best-sellers`, `/reports/prep-time`, `/reports/shift-closings`, `/reports/unpaid-bills`, `/reports/remakes`, `/reports/post-outage` (CSV export on each) |
-| Settings | `GET`/`PUT /settings/ops` (escalation and auto-close timers) |
 
 ### 6.2 Conventions
 

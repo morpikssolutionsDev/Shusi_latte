@@ -25,6 +25,14 @@ coverage/
 playwright-report/
 test-results/
 
+# Downloaded dev tools (see tools/fetch-tools.ps1)
+/.tools/
+
+# Generated web sources (rebuilt by `pnpm tokens` / `pnpm gen`)
+/web/packages/ui/src/tokens/
+/web/packages/ui/src/brand/
+/web/packages/api-client/src/schema.d.ts
+
 # Design tooling cache
 /tools/design/.build/
 __pycache__/
@@ -33,3 +41,8 @@ __pycache__/
 .idea/
 .DS_Store
 Thumbs.db
+
+# App icons copied from docs/brand by web/apps/copy-brand.mjs
+/web/apps/*/public/favicon.svg
+/web/apps/*/public/icon-*.png
+/web/apps/*/dev-dist/

@@ -49,7 +49,7 @@ Sushi Latte is a web platform for a single HORECA (hotel, restaurant, café) Bus
 | Cashier | Crew (Cashier Station) | Takeaway Bills, Payment, Shift Closing |
 | HRIS | All roles | Employee records, shifts, attendance, leave |
 
-Modules are delivered in this order: Admin Panel → Client Menu → Product Display → Waiter → Kitchen → Cashier → HRIS.
+Modules are delivered in this order: Admin Panel → Product Display → Client Menu → Waiter → Kitchen → Cashier → HRIS (tracked in [todolist.md](../todolist.md)).
 
 ### 4.2 Out of scope
 

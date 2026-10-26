@@ -4,7 +4,7 @@
 
 A HORECA web platform for a sushi-and-coffee outlet: Customers order from a QR code at their Table, Waiters claim and confirm Orders, the Kitchen and Bar work from live displays, and Cashiers settle Bills and close the drawer. Management configures the menu, prices and discounts; HRIS handles shifts, attendance and leave.
 
-**Status:** specification complete, implementation not started. This build is a **prototype and showcase** that runs on one local machine with fictional demo data.
+**Status:** Phase 0 (foundation) and Phase 1 (Admin Panel) complete; progress in [todolist.md](todolist.md). This build is a **prototype and showcase** that runs on one local machine with fictional demo data.
 
 ## Modules
 
@@ -37,8 +37,25 @@ Go (chi, sqlc, goose) · SQLite · WebSockets · React + Vite + TypeScript · Ta
 | [docs/images/](docs/images/) | Demo product, staff and marketing photos |
 | [project goals.md](project%20goals.md) | The owner's original brief |
 
-## Design tooling
+## Development
+
+Requirements: Go 1.27+, Node 24+, pnpm 12, Python 3.10+ (design tooling only), Windows PowerShell for the tool fetch script.
 
 ```sh
-python tools/design/build.py   # regenerate tokens, COLOR.md and the style guide
+powershell -ExecutionPolicy Bypass -File tools/fetch-tools.ps1   # once: pinned sqlc + Caddy into .tools/
+pnpm install
+pnpm dev     # API in Demo mode + Client Menu :5173, Staff :5174/staff/, Display :5175/display/
 ```
+
+| Command | Does |
+|---|---|
+| `pnpm dev` | Generates API types and tokens, seeds if no database exists, runs the API and all Vite dev servers |
+| `pnpm seed` | Rebuilds `data/sushi-latte.db` anchored at now (stop the API first) |
+| `pnpm demo` | Builds the apps and API, then serves everything over LAN HTTPS through Caddy (prints the URLs and the CA download link) |
+| `pnpm gen` | Regenerates sqlc code (`api/internal/store`), API client types and design tokens |
+| `pnpm test` | Web tests and `go test ./...` |
+| `python tools/design/build.py` | Regenerates design tokens, `COLOR.md` and the style guide |
+
+Demo logins are listed on the staff login screen (Crew ID + PIN, e.g. `M001` / `111111`).
+
+**LAN demo devices:** open `http://<host-ip>:8081/ca.crt` on each phone or tablet once and install it as a trusted CA. Web Bluetooth printing and installing the staff app require HTTPS ([TRD TR-ARC-05](docs/TRD.md)).

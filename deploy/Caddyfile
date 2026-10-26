@@ -1,0 +1,57 @@
+# Demo host: HTTPS on the LAN with Caddy's internal CA (TR-ARC-05, TR-DEP-01).
+# Started by `pnpm demo`, which sets SL_LAN_IP and SL_ROOT.
+{
+	local_certs
+	skip_install_trust
+	storage file_system {$SL_ROOT}/data/caddy
+}
+
+https://localhost:8443, https://{$SL_LAN_IP}:8443 {
+	tls internal
+
+	encode zstd gzip
+
+	handle /api/* {
+		reverse_proxy 127.0.0.1:8080
+	}
+	handle /ws {
+		reverse_proxy 127.0.0.1:8080
+	}
+	handle /healthz {
+		reverse_proxy 127.0.0.1:8080
+	}
+	handle /media/* {
+		reverse_proxy 127.0.0.1:8080
+	}
+
+	handle_path /staff/* {
+		root * {$SL_ROOT}/web/apps/staff/dist
+		try_files {path} /index.html
+		file_server
+	}
+	redir /staff /staff/
+
+	handle_path /display/* {
+		root * {$SL_ROOT}/web/apps/display/dist
+		try_files {path} /index.html
+		file_server
+	}
+	redir /display /display/
+
+	handle {
+		root * {$SL_ROOT}/web/apps/client-menu/dist
+		try_files {path} /index.html
+		file_server
+	}
+}
+
+# Plain HTTP only for downloading the demo CA root before devices trust it.
+http://{$SL_LAN_IP}:8081, http://localhost:8081 {
+	handle /ca.crt {
+		root * {$SL_ROOT}/data/caddy/pki/authorities/local
+		rewrite * /root.crt
+		header Content-Type application/x-x509-ca-cert
+		file_server
+	}
+	respond "Download the demo certificate at /ca.crt" 200
+}

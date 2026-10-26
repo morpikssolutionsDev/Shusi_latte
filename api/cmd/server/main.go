@@ -55,7 +55,7 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(map[string]string{
 		"status":  "ok",
 		"service": "sushi-latte-api",
-		"phase":   "phase-4-complete",
+		"phase":   "phase-5-complete",
 	})
 }
 
@@ -107,7 +107,9 @@ func main() {
 	crewStore := crew.NewStore(sqlDB)
 	authStore := auth.NewStore(sqlDB, crewStore)
 	(&auth.Handler{Store: authStore, Limiter: auth.NewIPLimiter()}).Register(mux)
-	(&ordering.StaffHandler{Store: orderingStore, Auth: authStore, Pricing: pricing.NewStore(sqlDB)}).Register(mux)
+	staffHandler := &ordering.StaffHandler{Store: orderingStore, Auth: authStore, Pricing: pricing.NewStore(sqlDB)}
+	staffHandler.Register(mux)
+	staffHandler.RegisterKitchen(mux)
 
 	log.Println("sushi-latte-api listening on :8080, db:", dbPath)
 	if err := http.ListenAndServe(":8080", authStore.Middleware(mux)); err != nil {

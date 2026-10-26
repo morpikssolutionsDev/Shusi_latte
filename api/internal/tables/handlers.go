@@ -43,7 +43,12 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/tables/{id}", h.getTable)
 	mux.HandleFunc("PUT /api/v1/tables/{id}", h.updateTable)
 	mux.HandleFunc("POST /api/v1/tables/{id}/regenerate-qr", h.regenerateQR)
+	mux.HandleFunc("POST /api/v1/tables/{id}/regenerate-slug", h.regenerateSlug)
 	mux.HandleFunc("GET /api/v1/tables/{id}/qr.png", h.qrPNG)
+	// Public: resolve a static order slug to its Table, so the
+	// client-menu app at /order/{slug} can bind to the Table.
+	// This path is public in the auth middleware ("/public/" prefix).
+	mux.HandleFunc("GET /public/tables/by-slug/{slug}", h.bySlug)
 }
 
 func (h *Handler) listTables(w http.ResponseWriter, r *http.Request) {
@@ -108,6 +113,25 @@ func (h *Handler) regenerateQR(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.respond(w, http.StatusOK, t)
+}
+
+func (h *Handler) bySlug(w http.ResponseWriter, r *http.Request) {
+	tbl, err := h.Store.GetBySlug(r.PathValue("slug"))
+	if err != nil {
+		writeProblem(w, http.StatusNotFound, "table_not_found", err.Error())
+		return
+	}
+	h.respond(w, http.StatusOK, tbl)
+}
+
+func (h *Handler) regenerateSlug(w http.ResponseWriter, r *http.Request) {
+	h = h.withActor(r)
+	tbl, err := h.Store.RegenerateSlug(r.PathValue("id"))
+	if err != nil {
+		writeProblem(w, http.StatusNotFound, "table_not_found", err.Error())
+		return
+	}
+	h.respond(w, http.StatusOK, tbl)
 }
 
 func (h *Handler) qrPNG(w http.ResponseWriter, r *http.Request) {

@@ -211,7 +211,8 @@ function Admin({ setError, setNotice }: Any) {
       <button onClick={async () => { try { await api('/api/v1/categories', { method: 'POST', body: JSON.stringify({ name_id: newCat, name_en: newCat, sort: 99, prep_area_id: 'prep-kitchen' }) }); setNotice('Category created'); location.reload() } catch (e: any) { setError(e.message) } }}>Create category</button>
     </div>
     <div className="card"><h2>Tables & QR / Meja & QR</h2>
-      <table><tbody>{(tables || []).map((t: Any) => <tr key={t.id}><td>{t.label}</td><td>{t.active ? 'active' : 'inactive'}</td><td><a href={`/api/v1/tables/${t.id}/qr.png`} target="_blank">QR PNG</a></td><td><button onClick={async () => { await api(`/api/v1/tables/${t.id}/regenerate-qr`, { method: 'POST' }); setNotice('QR regenerated — old printed QR no longer works'); location.reload() }}>Regenerate QR</button></td></tr>)}</tbody></table>
+      <p className="muted">Printed QR codes link to the static order URL (e.g. /order/table3 for Table 3) — print the QR PNG and put it on the table. That URL stays the same unless you regenerate the slug.</p>
+      <table><tbody>{(tables || []).map((t: Any) => <tr key={t.id}><td>{t.label}</td><td>{t.qr_url || ('/order/' + t.slug)}</td><td>{t.active ? 'active' : 'inactive'}</td><td><a href={`/api/v1/tables/${t.id}/qr.png`} target="_blank">QR PNG</a></td><td><button onClick={async () => { await api(`/api/v1/tables/${t.id}/regenerate-slug`, { method: 'POST' }); setNotice('Slug regenerated — old printed QR no longer works, print the new QR PNG'); location.reload() }}>Invalidate old QR (new slug)</button></td></tr>)}</tbody></table>
       <Field label="New table label" value={newTable} onChange={setNewTable} />
       <button onClick={async () => { try { await api('/api/v1/tables', { method: 'POST', body: JSON.stringify({ label: newTable }) }); setNotice('Table created'); location.reload() } catch (e: any) { setError(e.message) } }}>Create table</button>
     </div>

@@ -26,6 +26,24 @@ sh scripts/run.sh    # build + serve from the API server
 
 Requires Go 1.26+ and Node 20+ with npm.
 
+## Customer order URLs (QR codes)
+
+Each Table gets a static, printable slug from its label
+("Table 3" -> `table3`). Its QR code prints:
+
+```
+{SUSHILATTE_PUBLIC_URL}/order/{slug}
+```
+
+For example, with `SUSHILATTE_PUBLIC_URL=https://sushi.latte`,
+Table 3's barcode is `https://sushi.latte/order/table3`.
+Scanning it opens the Client Menu for that table — no token
+in the URL, nothing to reprint if the internal token changes.
+To invalidate a printed barcode, use "Invalidate old QR
+(new slug)" in Staff -> Admin -> Tables; the old slug then
+stops resolving. Print the QR PNG from the same screen
+(`GET /api/v1/tables/{id}/qr.png`).
+
 ## Open it
 
 Dev mode (note the path — opening just the port gives a 404,

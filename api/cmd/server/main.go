@@ -93,6 +93,9 @@ func main() {
 	// The server looks for dist in several places so it works
 	// from the repo root, from api/, or next to the binary.
 	serveWebApp(mux, "/client-menu/", "client-menu")
+	// Static customer order URLs: /order/{slug} serves the
+	// client-menu app, which resolves the slug to a Table.
+	serveWebApp(mux, "/order/", "client-menu")
 	serveWebApp(mux, "/staff/", "staff")
 	serveWebApp(mux, "/display/", "display")
 	(&catalog.Handler{Service: svc}).Register(mux)

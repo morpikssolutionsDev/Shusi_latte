@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 
 // Client Menu — Sushi Latte, Phase 2 API.
-// Flow: QR token (?table=<qr_token>) -> scan -> join (name, restriction,
+// Flow: static order URL (/order/{slug}, e.g. /order/table3) or
+// QR token (?table=<qr_token>) -> scan -> join (name, restriction,
 // consent) -> menu -> order -> bill. Guest token and customer id are
 // kept in localStorage so a returning device can rejoin.
 
@@ -18,6 +19,11 @@ async function api(path: string, opts: RequestInit = {}) {
 
 export default function App() {
   const [lang, setLang] = useState<'id' | 'en'>('id')
+  // Static order slug from /order/{slug}, else the old ?table= token.
+  const [slug] = useState(() => {
+    const m = location.pathname.match(/^\/order\/([^/]+)/)
+    return m ? decodeURIComponent(m[1]) : (new URLSearchParams(location.search).get('slug') || '')
+  })
   const [token, setToken] = useState(() => new URLSearchParams(location.search).get('table') || localStorage.getItem('sushi_table_token') || '')
   const [scan, setScan] = useState<Any>(null)
   const [guest, setGuest] = useState(() => localStorage.getItem('sushi_guest_token') || '')
@@ -45,7 +51,16 @@ export default function App() {
       if (s.status === 'occupied' && guest) setView('menu')
     } catch (e: any) { setError(e.message) }
   }
-  useEffect(() => { if (token) doScan(token) }, [])
+  useEffect(() => {
+    if (slug) {
+      // Resolve the static slug to the Table's internal token, then
+      // run the normal scan flow. Old printed QRs with a token
+      // still work via ?table=.
+      api(`/public/tables/by-slug/${encodeURIComponent(slug)}`)
+        .then((tbl: Any) => { setToken(tbl.qr_token); doScan(tbl.qr_token) })
+        .catch((e: Any) => setError(e.message))
+    } else if (token) doScan(token)
+  }, [])
   useEffect(() => { if (guest) { api('/public/catalog').then(setCatalog).catch(() => {}); loadBill() } }, [guest])
 
   async function loadBill() {

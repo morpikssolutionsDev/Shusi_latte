@@ -27,13 +27,24 @@ descriptions cite the `BR-*` / `TR-*` IDs they implement.
 6. **Cashier** — Takeaway Bills, Payment, Shift Closing
 7. **HRIS** — Employee records, shifts, attendance, leave
 
-## Phase 1 starting point
+## Phase 1 status: complete (API)
 
-This commit is a scaffold only, not a completed Admin Panel:
-- `api/go.mod` — Go module for the single API binary (TR-ARC-01)
-- `api/cmd/server/main.go` — stdlib HTTP server with a health endpoint only
+Phase 1 is complete on the API side, covering BR-ADM-01 to BR-ADM-13:
+catalog, pricing and tax, Tables and QR codes, crew records, Product
+Display content, reports, auth with role enforcement, ops settings,
+and the audit log view. The Staff PWA frontend has not been started;
+all Phase 1 work so far is the Go API, migrations and docs.
 
-Next step in Phase 1: catalog data model and migrations, then catalog
-configuration endpoints, following TRD §4 and the Admin Panel requirements
-above. Each phase ends with a PR for review; nothing is merged unless the
-owner asks for a merge.
+Migrations 0001 to 0006 cover catalog, pricing, Tables, crew and
+sessions, display slides and ops settings. Audit rows now record the
+authenticated Crew ID as actor, with the actor's full name resolved
+in the audit view. Reports query bill, payment, order_item and
+drawer_session tables that are created by the Waiter, Kitchen and
+Cashier phases, so they return empty rows until then; their query
+logic is tested against TRD-schema sample data.
+
+Gate met: catalog and config can be created, read, updated and
+audited; no ordering, payment or HRIS logic is claimed in this phase.
+
+Next phase: Client Menu (Phase 2). Each phase ends with a PR for
+review; nothing is merged unless the owner asks for a merge.

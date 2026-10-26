@@ -2,6 +2,7 @@ package tables
 
 import (
 	"encoding/json"
+	"github.com/morpikssolutionsDev/Shusi_latte/api/internal/actor"
 	"net/http"
 
 	qrcode "github.com/skip2/go-qrcode"
@@ -56,6 +57,7 @@ func (h *Handler) listTables(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) createTable(w http.ResponseWriter, r *http.Request) {
+	h = h.withActor(r)
 	var req struct {
 		Label string `json:"label"`
 	}
@@ -81,6 +83,7 @@ func (h *Handler) getTable(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) updateTable(w http.ResponseWriter, r *http.Request) {
+	h = h.withActor(r)
 	var req struct {
 		Label  string `json:"label"`
 		Active bool   `json:"active"`
@@ -98,6 +101,7 @@ func (h *Handler) updateTable(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) regenerateQR(w http.ResponseWriter, r *http.Request) {
+	h = h.withActor(r)
 	t, err := h.Store.RegenerateQRToken(r.PathValue("id"))
 	if err != nil {
 		writeProblem(w, http.StatusNotFound, "table_not_found", err.Error())
@@ -120,4 +124,12 @@ func (h *Handler) qrPNG(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "image/png")
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(png)
+}
+
+// withActor returns a handler copy whose store records the
+// authenticated crew as the audit actor.
+func (h *Handler) withActor(r *http.Request) *Handler {
+	copyStore := *h.Store
+	copyStore.Actor = actor.FromRequest(r.Context())
+	return &Handler{Store: &copyStore, PublicBase: h.PublicBase}
 }

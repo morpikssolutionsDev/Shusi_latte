@@ -1,20 +1,22 @@
 // Package main is the Sushi Latte API server.
 //
-// Phase 1i: the catalog, pricing settings, Tables, crew records,
-// display content, reports, auth and ops settings are stored in
-// SQLite (TR-ARC-02, TRD §4.1 to §4.5, §8). The database path
-// comes from SUSHILATTE_DB, defaulting to data/sushi-latte.db,
-// which is git-ignored. On startup the server applies migrations
-// 0001 to 0006 and seeds Kitchen, Bar, the BR-PC-06 Dietary Tags,
-// tax (PB1, 10%), the example refund cap and the ops timer
-// defaults if they are not already present. QR payloads use
+// Phase 1j: Phase 1 is complete. The catalog, pricing settings,
+// Tables, crew records, display content, reports, auth, ops
+// settings and audit view are stored in SQLite (TR-ARC-02, TRD
+// §4.1 to §4.5, §8, §13). The database path comes from
+// SUSHILATTE_DB, defaulting to data/sushi-latte.db, which is
+// git-ignored. On startup the server applies migrations 0001 to
+// 0006 and seeds Kitchen, Bar, the BR-PC-06 Dietary Tags, tax
+// (PB1, 10%), the example refund cap and the ops timer defaults
+// if they are not already present. QR payloads use
 // SUSHILATTE_PUBLIC_URL when set. Auth middleware wraps the whole
-// mux and enforces the BRD §5.1 permission matrix server-side;
-// the public display feed, health and /auth/login, /auth/logout
-// and /auth/override stay public. Report source tables (bill,
-// payment, order_item, drawer_session) are created by the Waiter,
-// Kitchen and Cashier phases; until then reports return empty
-// rows instead of errors.
+// mux and enforces the BRD §5.1 permission matrix server-side,
+// and sets the audit actor from the authenticated crew, so audit
+// rows record the person who acted; the public display feed,
+// health and /auth/login, /auth/logout and /auth/override stay
+// public. Report source tables (bill, payment, order_item,
+// drawer_session) are created by the Waiter, Kitchen and Cashier
+// phases; until then reports return empty rows instead of errors.
 package main
 
 import (
@@ -47,7 +49,7 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(map[string]string{
 		"status":  "ok",
 		"service": "sushi-latte-api",
-		"phase":   "phase-1i-ops",
+		"phase":   "phase-1-complete",
 	})
 }
 

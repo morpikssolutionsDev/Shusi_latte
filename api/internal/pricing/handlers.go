@@ -2,6 +2,7 @@ package pricing
 
 import (
 	"encoding/json"
+	"github.com/morpikssolutionsDev/Shusi_latte/api/internal/actor"
 	"net/http"
 )
 
@@ -43,6 +44,7 @@ func (h *Handler) getSettings(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) updateSettings(w http.ResponseWriter, r *http.Request) {
+	h = h.withActor(r)
 	var st Settings
 	if err := json.NewDecoder(r.Body).Decode(&st); err != nil {
 		writeProblem(w, http.StatusBadRequest, "invalid_json", "request body is not valid JSON")
@@ -61,6 +63,7 @@ func (h *Handler) listDiscounts(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) createDiscount(w http.ResponseWriter, r *http.Request) {
+	h = h.withActor(r)
 	var d Discount
 	if err := json.NewDecoder(r.Body).Decode(&d); err != nil {
 		writeProblem(w, http.StatusBadRequest, "invalid_json", "request body is not valid JSON")
@@ -118,4 +121,12 @@ func (h *Handler) calculate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, out)
+}
+
+// withActor returns a handler copy whose store records the
+// authenticated crew as the audit actor.
+func (h *Handler) withActor(r *http.Request) *Handler {
+	copyStore := *h.Store
+	copyStore.Actor = actor.FromRequest(r.Context())
+	return &Handler{Store: &copyStore}
 }

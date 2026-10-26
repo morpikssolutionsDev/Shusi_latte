@@ -2,6 +2,7 @@ package display
 
 import (
 	"encoding/json"
+	"github.com/morpikssolutionsDev/Shusi_latte/api/internal/actor"
 	"net/http"
 	"time"
 )
@@ -46,6 +47,7 @@ func (h *Handler) listSlides(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) createSlide(w http.ResponseWriter, r *http.Request) {
+	h = h.withActor(r)
 	sl, err := decodeSlide(r)
 	if err != nil {
 		writeProblem(w, http.StatusBadRequest, "invalid_json", "request body is not valid JSON")
@@ -69,6 +71,7 @@ func (h *Handler) getSlide(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) updateSlide(w http.ResponseWriter, r *http.Request) {
+	h = h.withActor(r)
 	sl, err := decodeSlide(r)
 	if err != nil {
 		writeProblem(w, http.StatusBadRequest, "invalid_json", "request body is not valid JSON")
@@ -83,6 +86,7 @@ func (h *Handler) updateSlide(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) deleteSlide(w http.ResponseWriter, r *http.Request) {
+	h = h.withActor(r)
 	if err := h.Store.DeleteSlide(r.PathValue("id")); err != nil {
 		writeProblem(w, http.StatusNotFound, "slide_not_found", err.Error())
 		return
@@ -92,4 +96,12 @@ func (h *Handler) deleteSlide(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) publicSlides(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, h.Store.PublicSlides(time.Now().UnixMilli()))
+}
+
+// withActor returns a handler copy whose store records the
+// authenticated crew as the audit actor.
+func (h *Handler) withActor(r *http.Request) *Handler {
+	copyStore := *h.Store
+	copyStore.Actor = actor.FromRequest(r.Context())
+	return &Handler{Store: &copyStore}
 }

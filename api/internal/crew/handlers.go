@@ -2,6 +2,7 @@ package crew
 
 import (
 	"encoding/json"
+	"github.com/morpikssolutionsDev/Shusi_latte/api/internal/actor"
 	"net/http"
 )
 
@@ -39,6 +40,7 @@ func (h *Handler) listCrew(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) createCrew(w http.ResponseWriter, r *http.Request) {
+	h = h.withActor(r)
 	var req struct {
 		CrewID   string   `json:"crew_id"`
 		FullName string   `json:"full_name"`
@@ -69,6 +71,7 @@ func (h *Handler) getCrew(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) updateCrew(w http.ResponseWriter, r *http.Request) {
+	h = h.withActor(r)
 	var req struct {
 		FullName string   `json:"full_name"`
 		Role     string   `json:"role"`
@@ -88,6 +91,7 @@ func (h *Handler) updateCrew(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) resetPIN(w http.ResponseWriter, r *http.Request) {
+	h = h.withActor(r)
 	var req struct {
 		NewPIN string `json:"new_pin"`
 	}
@@ -101,4 +105,12 @@ func (h *Handler) resetPIN(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, c)
+}
+
+// withActor returns a handler copy whose store records the
+// authenticated crew as the audit actor.
+func (h *Handler) withActor(r *http.Request) *Handler {
+	copyStore := *h.Store
+	copyStore.Actor = actor.FromRequest(r.Context())
+	return &Handler{Store: &copyStore}
 }

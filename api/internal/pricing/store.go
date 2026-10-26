@@ -14,7 +14,12 @@ import (
 // changes are audit-logged (TR-AUD-01), with actor "system" until the
 // auth phase supplies a Crew ID.
 type Store struct {
-	db *sql.DB
+	// Actor is the human-readable Crew ID of the authenticated
+	// user for this request, set per-request by handlers.
+	// Empty means unauthenticated or system-initiated, and audit
+	// rows record \"system\" in that case.
+	Actor string
+	db    *sql.DB
 }
 
 func NewStore(db *sql.DB) *Store {
@@ -87,7 +92,10 @@ func (s *Store) insertAudit(tx *sql.Tx, action, entity, entityID string, before,
 		v := string(b)
 		afterStr = &v
 	}
-	actor := "system"
+	actor := s.Actor
+	if actor == "" {
+		actor = "system"
+	}
 	_, err := tx.Exec(
 		`INSERT INTO audit_log (id, at, actor_crew_id, override_crew_id, action, entity, entity_id, before_json, after_json, reason)
 		 VALUES (?, ?, ?, NULL, ?, ?, ?, ?, ?, ?)`,

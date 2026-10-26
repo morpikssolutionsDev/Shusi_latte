@@ -11,12 +11,20 @@ import (
 // migration 0006. Ops changes are audit-logged, with actor
 // "system" until the audit actor is threaded through from auth.
 type Store struct {
-	db *sql.DB
+	Actor string
+	db    *sql.DB
 }
 
 func NewStore(db *sql.DB) *Store {
 	db.SetMaxOpenConns(1)
 	return &Store{db: db}
+}
+
+func (s *Store) actor() string {
+	if s.Actor != "" {
+		return s.Actor
+	}
+	return "system"
 }
 
 func (s *Store) GetSettings() (Settings, error) {
@@ -58,7 +66,7 @@ func (s *Store) UpdateSettings(next Settings) (Settings, error) {
 	if _, err := tx.Exec(
 		`INSERT INTO audit_log (id, at, actor_crew_id, override_crew_id, action, entity, entity_id, before_json, after_json, reason)
 		 VALUES (?, ?, ?, NULL, 'update', 'ops_setting', 'default', ?, ?, NULL)`,
-		NewID(), now, "system", beforeStr, afterStr,
+		NewID(), now, s.actor(), beforeStr, afterStr,
 	); err != nil {
 		return Settings{}, err
 	}

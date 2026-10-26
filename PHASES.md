@@ -39,9 +39,9 @@ Migrations 0001 to 0006 cover catalog, pricing, Tables, crew and
 sessions, display slides and ops settings. Audit rows now record the
 authenticated Crew ID as actor, with the actor's full name resolved
 in the audit view. Reports query bill, payment, order_item and
-drawer_session tables that are created by the Waiter, Kitchen and
-Cashier phases, so they return empty rows until then; their query
-logic is tested against TRD-schema sample data.
+drawer_session tables; those tables are now created by the
+Waiter, Kitchen and Cashier phases (migrations 0007 to 0010),
+so the reports read live data from Phase 6 onward.
 
 Gate met: catalog and config can be created, read, updated and
 audited; no ordering, payment or HRIS logic is claimed in this phase.
@@ -62,5 +62,83 @@ The Client Menu web app itself has not been built; this phase
 is the API it will use. Waiter Claim and confirmation, Kitchen
 queue, payment and HRIS are later phases.
 
-Next phase: Product Display (Phase 3). Each phase ends with a PR for
+Phase 3 status: complete (API)
+
+Phase 3 is complete on the API side, covering BR-PD-01 to BR-PD-03
+and TR-AUTH-08. Display content and the public feed already
+existed from Phase 1; this phase adds POST /auth/screen-login,
+which signs a display, kitchen or hris screen in once per day by
+an Outlet Admin or Management PIN, expiring at the end of the
+Jakarta day (screen_session table, migration 0009), and
+GET /public/display/version, which returns the feed version
+(latest slide change) and slide count so the TV app polls it
+and refetches the feed only when it changes, satisfying
+BR-PD-02 without manual reload. Sold Out featured Products
+remain marked in the feed (BR-PD-03). The TV slideshow web app
+itself has not been built; this phase is the API and screen
+session it will use.
+
+Phase 4 status: complete (API)
+
+Phase 4 is complete on the API side, covering BR-WT-01 to
+BR-WT-06, BR-WT-09, BR-WT-11 to BR-WT-13, BR-WT-15 and
+TR-SM-01 to TR-SM-05. Claim is first-writer-wins (409 on second
+claim), takeover by another Waiter and reassign by Outlet Admin
+or Management are audit-logged, confirm sends a Claimed Pending
+Order to Confirmed (with optional item adjustment), and staff
+direct Orders for a Table are created Confirmed with optional
+name and Waiter-ticked restriction stored on the Order. Cancel
+item (Pending/Confirmed, reason required, out_of_stock sets
+Variant Sold Out and flags other open items), serve item
+(Ready to Served), void item (Ready/Served, unpaid Bill, PIN
+Override) and remake item (Served, PIN Override, no-charge
+Confirmed copy) are included. Bill summary, settle (blocks
+Customer Orders with 409), unlock, move, merge and split by
+item or equally, plus receipt reprint recording, are included.
+Payment recording and Bill closing are Phase 6, shared by
+Waiter and Cashier (BR-CS-01).
+
+Phase 5 status: complete (API)
+
+Phase 5 is complete on the API side, covering BR-KT-01 to
+BR-KT-06 and TR-KT-01 to TR-KT-05. GET /api/v1/prep-areas/{id}/queue
+returns Confirmed and Preparing items for that Prep Area,
+Remakes first then by confirmation time, with elapsed time
+against Prep Time (amber at 80%, red at 100%), Dietary Warnings,
+item notes, Table labels and PlacedBy, plus Ready items waiting
+pickup past the pickup reminder time. Transition moves
+Confirmed to Preparing to Ready (ready_at recorded),
+kitchen-cancel handles Confirmed/Preparing with reason and
+out-of-stock Sold Out flagging, and GET /api/v1/orders/{id}/estimated-wait
+implements TR-KT-03 (items ahead / parallel capacity + longest
+own Prep Time, rounded up to minutes). Serving remains a
+Waiter action from Phase 4. The Kitchen display web app itself
+has not been built; this phase is the API it will use.
+
+Phase 6 status: complete (API)
+
+Phase 6 is complete on the API side, covering BR-CS-01 to
+BR-CS-08, BR-R-05, BR-R-29, BR-R-30, BR-R-31, BR-R-32 and
+TR-PR-05. Migration 0010 adds payment, refund, cash_drawer,
+drawer_session, cash_handover and applied_discount. Payments:
+cash (rounded to nearest Rp 100), QRIS (starts pending, verify
+or write off with reason) and card, with pay-now-serve-later
+gate for unfinished items, settling on first payment, and
+close only when fully paid with no pending QRIS. Refunds are
+cash from the Drawer with PIN Override and cap check (over-cap
+needs Management). Drawer sessions: one open at a time,
+opening float, expected cash = float + confirmed handovers +
+cash taken - refunds, counted cash and difference recorded at
+Shift Closing. Cash handovers are recorded as Held by Waiter
+and confirmed with difference. Takeaway Bills: open with
+customer name, Orders created Pending, confirmed to Kitchen
+only after full payment. Post-outage Bills are created closed
+with source post_outage, bypassing the Kitchen. Manual
+discounts require a Management override and are recorded in
+applied_discount, reducing BillPaymentSummary totals. The
+Cashier web app itself has not been built; this phase is the
+API it will use.
+
+Next phase: HRIS (Phase 7). Each phase ends with a PR for
 review; nothing is merged unless the owner asks for a merge.
+

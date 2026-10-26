@@ -106,6 +106,38 @@ func (s *Store) GetCrew(id string) (Crew, error) {
 	return c, err
 }
 
+// GetByCrewID looks a crew record up by its human-readable Crew ID,
+// which is what sign-in uses (TR-AUTH-01).
+func (s *Store) GetByCrewID(crewID string) (Crew, error) {
+	var internalID string
+	err := s.db.QueryRow(`SELECT id FROM crew WHERE crew_id = ?`, crewID).Scan(&internalID)
+	if err != nil {
+		return Crew{}, errors.New("crew not found")
+	}
+	return s.GetCrew(internalID)
+}
+
+// VerifyPINByCrewID verifies a PIN for the human-readable Crew ID,
+// applying the same lockout rule as VerifyPIN.
+func (s *Store) VerifyPINByCrewID(crewID, pin string) (Crew, bool, error) {
+	c, err := s.GetByCrewID(crewID)
+	if err != nil {
+		return Crew{}, false, err
+	}
+	ok, err := s.VerifyPIN(c.ID, pin)
+	return c, ok, err
+}
+
+// CrewCount returns the number of crew records, used for the
+// first-user bootstrap rule in the auth middleware.
+func (s *Store) CrewCount() int {
+	var count int
+	if err := s.db.QueryRow(`SELECT COUNT(*) FROM crew`).Scan(&count); err != nil {
+		return 0
+	}
+	return count
+}
+
 func (s *Store) ListCrew(includeInactive bool) []Crew {
 	query := `SELECT id FROM crew WHERE active = 1 ORDER BY full_name`
 	if includeInactive {

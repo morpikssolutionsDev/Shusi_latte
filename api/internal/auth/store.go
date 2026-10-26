@@ -111,7 +111,7 @@ func (s *Store) CreateOverride(crewID, pin, action string) (OverrideToken, error
 	_, _ = s.db.Exec(
 		`INSERT INTO audit_log (id, at, actor_crew_id, override_crew_id, action, entity, entity_id, before_json, after_json, reason)
 		 VALUES (?, ?, ?, ?, 'pin_override', 'override', ?, NULL, ?, NULL)`,
-		newToken(), time.Now().UnixMilli(), c.ID, c.ID, action, string(after),
+		newToken(), time.Now().UnixMilli(), c.CrewID, c.CrewID, action, string(after),
 	)
 	return token, nil
 }

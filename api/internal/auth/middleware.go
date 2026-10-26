@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/morpikssolutionsDev/Shusi_latte/api/internal/actor"
 	"github.com/morpikssolutionsDev/Shusi_latte/api/internal/crew"
 )
 
@@ -117,6 +118,7 @@ func (s *Store) Middleware(next http.Handler) http.Handler {
 			return
 		}
 		ctx := context.WithValue(r.Context(), crewContextKey, sess.Crew)
+		ctx = actor.WithActor(ctx, sess.Crew.CrewID)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

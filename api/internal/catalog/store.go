@@ -22,4 +22,5 @@ type Store interface {
 	CreateModifier(Modifier) (Modifier, error)
 	SetModifierDietaryTags(id string, tagIDs []string) (Modifier, error)
 	ListAudit() []AuditEntry
+	ListAuditFiltered(f AuditFilter) ([]AuditEntry, int)
 }

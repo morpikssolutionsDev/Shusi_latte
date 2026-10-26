@@ -15,6 +15,7 @@ import (
 // the SQLite wiring lands. Auth is not yet implemented, so audit entries
 // record actor "system" until Crew sessions arrive.
 type Service struct {
+	Actor          string
 	mu             sync.RWMutex
 	prepAreas      map[string]PrepArea
 	categories     map[string]Category
@@ -81,7 +82,10 @@ func (s *Service) auditLocked(action, entity, entityID string, before, after any
 		v := string(b)
 		afterStr = &v
 	}
-	actor := "system"
+	actor := s.Actor
+	if actor == "" {
+		actor = "system"
+	}
 	s.audit = append(s.audit, AuditEntry{
 		ID: NewID(), At: NowMillis(), ActorCrewID: &actor,
 		Action: action, Entity: entity, EntityID: entityID,
@@ -417,7 +421,47 @@ func (s *Service) SetModifierDietaryTags(id string, tagIDs []string) (Modifier, 
 }
 
 func (s *Service) ListAudit() []AuditEntry {
+	entries, _ := s.ListAuditFiltered(AuditFilter{})
+	return entries
+}
+
+func (s *Service) ListAuditFiltered(f AuditFilter) ([]AuditEntry, int) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	return append([]AuditEntry(nil), s.audit...)
+	filtered := []AuditEntry{}
+	for _, a := range s.audit {
+		if f.Action != "" && a.Action != f.Action {
+			continue
+		}
+		if f.Entity != "" && a.Entity != f.Entity {
+			continue
+		}
+		if f.EntityID != "" && a.EntityID != f.EntityID {
+			continue
+		}
+		if f.Actor != "" && (a.ActorCrewID == nil || *a.ActorCrewID != f.Actor) {
+			continue
+		}
+		if f.FromMS != nil && a.At < *f.FromMS {
+			continue
+		}
+		if f.ToMS != nil && a.At >= *f.ToMS {
+			continue
+		}
+		filtered = append(filtered, a)
+	}
+	// Newest first.
+	for i, j := 0, len(filtered)-1; i < j; i, j = i+1, j-1 {
+		filtered[i], filtered[j] = filtered[j], filtered[i]
+	}
+	total := len(filtered)
+	limit := f.effectiveLimit()
+	if f.Offset >= total {
+		return []AuditEntry{}, total
+	}
+	end := f.Offset + limit
+	if end > total {
+		end = total
+	}
+	return filtered[f.Offset:end], total
 }

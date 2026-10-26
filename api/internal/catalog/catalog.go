@@ -127,10 +127,14 @@ type DietaryTag struct {
 
 // AuditEntry records a catalog change, TR-AUD-01 and TR-AUD-02.
 // Before/After are JSON snapshots as strings, matching audit_log.
+// ActorName is the full name of the actor crew member, resolved
+// from the crew table when the actor is a Crew ID, and null for
+// system actions.
 type AuditEntry struct {
 	ID             string  `json:"id"`
 	At             int64   `json:"at"`
 	ActorCrewID    *string `json:"actor_crew_id"`
+	ActorName      *string `json:"actor_name"`
 	OverrideCrewID *string `json:"override_crew_id"`
 	Action         string  `json:"action"`
 	Entity         string  `json:"entity"`
@@ -138,6 +142,30 @@ type AuditEntry struct {
 	Before         *string `json:"before"`
 	After          *string `json:"after"`
 	Reason         *string `json:"reason"`
+}
+
+// AuditFilter selects audit rows for the audit view (BR-ADM-12).
+// FromMS and ToMS are UTC Unix milliseconds, exclusive at ToMS.
+// Limit defaults to 100 and is capped at 500; Offset paginates.
+type AuditFilter struct {
+	Action   string
+	Entity   string
+	EntityID string
+	Actor    string
+	FromMS   *int64
+	ToMS     *int64
+	Limit    int
+	Offset   int
+}
+
+func (f AuditFilter) effectiveLimit() int {
+	if f.Limit <= 0 {
+		return 100
+	}
+	if f.Limit > 500 {
+		return 500
+	}
+	return f.Limit
 }
 
 // Catalog is the full active catalog for TR-PC-05: Categories, Products,

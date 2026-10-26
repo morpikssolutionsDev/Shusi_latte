@@ -4,7 +4,9 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"github.com/morpikssolutionsDev/Shusi_latte/api/internal/actor"
 	"net/http"
+	"strconv"
 )
 
 // Handler wires the catalog Service to the TRD §6.1 catalog endpoints.
@@ -79,6 +81,7 @@ func (h *Handler) listPrepAreas(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) createPrepArea(w http.ResponseWriter, r *http.Request) {
+	h = h.withActor(r)
 	var p PrepArea
 	if !decodeJSON(w, r, &p) {
 		return
@@ -96,6 +99,7 @@ func (h *Handler) listCategories(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) createCategory(w http.ResponseWriter, r *http.Request) {
+	h = h.withActor(r)
 	var c Category
 	if !decodeJSON(w, r, &c) {
 		return
@@ -113,6 +117,7 @@ func (h *Handler) listProducts(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) createProduct(w http.ResponseWriter, r *http.Request) {
+	h = h.withActor(r)
 	var p Product
 	if !decodeJSON(w, r, &p) {
 		return
@@ -126,6 +131,7 @@ func (h *Handler) createProduct(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) updateProductStatus(w http.ResponseWriter, r *http.Request) {
+	h = h.withActor(r)
 	var req struct {
 		Status string  `json:"status"`
 		Reason *string `json:"reason"`
@@ -142,6 +148,7 @@ func (h *Handler) updateProductStatus(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) setProductDietaryTags(w http.ResponseWriter, r *http.Request) {
+	h = h.withActor(r)
 	var req struct {
 		DietaryTagIDs []string `json:"dietary_tag_ids"`
 	}
@@ -157,6 +164,7 @@ func (h *Handler) setProductDietaryTags(w http.ResponseWriter, r *http.Request) 
 }
 
 func (h *Handler) setVariantSoldOut(w http.ResponseWriter, r *http.Request) {
+	h = h.withActor(r)
 	var req struct {
 		By     *string `json:"by"`
 		Source string  `json:"source"`
@@ -171,6 +179,7 @@ func (h *Handler) setVariantSoldOut(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) clearVariantSoldOut(w http.ResponseWriter, r *http.Request) {
+	h = h.withActor(r)
 	out, err := h.Service.ClearVariantSoldOut(r.PathValue("id"))
 	if err != nil {
 		writeProblem(w, http.StatusNotFound, "variant_not_found", err.Error())
@@ -184,6 +193,7 @@ func (h *Handler) listDietaryTags(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) createDietaryTag(w http.ResponseWriter, r *http.Request) {
+	h = h.withActor(r)
 	var t DietaryTag
 	if !decodeJSON(w, r, &t) {
 		return
@@ -197,6 +207,7 @@ func (h *Handler) createDietaryTag(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) createModifierGroup(w http.ResponseWriter, r *http.Request) {
+	h = h.withActor(r)
 	var g ModifierGroup
 	if !decodeJSON(w, r, &g) {
 		return
@@ -210,6 +221,7 @@ func (h *Handler) createModifierGroup(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) createModifier(w http.ResponseWriter, r *http.Request) {
+	h = h.withActor(r)
 	var m Modifier
 	if !decodeJSON(w, r, &m) {
 		return
@@ -223,6 +235,7 @@ func (h *Handler) createModifier(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) setModifierDietaryTags(w http.ResponseWriter, r *http.Request) {
+	h = h.withActor(r)
 	var req struct {
 		DietaryTagIDs []string `json:"dietary_tag_ids"`
 	}
@@ -238,5 +251,48 @@ func (h *Handler) setModifierDietaryTags(w http.ResponseWriter, r *http.Request)
 }
 
 func (h *Handler) listAudit(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, h.Service.ListAudit())
+	q := r.URL.Query()
+	f := AuditFilter{
+		Action:   q.Get("action"),
+		Entity:   q.Get("entity"),
+		EntityID: q.Get("entity_id"),
+		Actor:    q.Get("actor"),
+	}
+	if v := q.Get("limit"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			f.Limit = n
+		}
+	}
+	if v := q.Get("offset"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			f.Offset = n
+		}
+	}
+	if v := q.Get("from_ms"); v != "" {
+		if n, err := strconv.ParseInt(v, 10, 64); err == nil {
+			f.FromMS = &n
+		}
+	}
+	if v := q.Get("to_ms"); v != "" {
+		if n, err := strconv.ParseInt(v, 10, 64); err == nil {
+			f.ToMS = &n
+		}
+	}
+	entries, total := h.Service.ListAuditFiltered(f)
+	writeJSON(w, http.StatusOK, map[string]any{
+		"data": entries, "total": total, "limit": f.effectiveLimit(), "offset": f.Offset,
+	})
+}
+
+// withActor returns a handler copy whose SQLite store records the
+// authenticated crew as the audit actor. For other store types it
+// returns the handler unchanged.
+func (h *Handler) withActor(r *http.Request) *Handler {
+	svc, ok := h.Service.(*SQLiteService)
+	if !ok {
+		return h
+	}
+	copySvc := *svc
+	copySvc.Actor = actor.FromRequest(r.Context())
+	return &Handler{Service: &copySvc}
 }

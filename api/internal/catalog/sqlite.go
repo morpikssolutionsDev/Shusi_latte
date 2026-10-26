@@ -12,7 +12,8 @@ import (
 // database with a single connection, matching TR-ARC-02: one process is
 // the only writer to the SQLite file.
 type SQLiteService struct {
-	db *sql.DB
+	Actor string
+	db    *sql.DB
 }
 
 func NewSQLiteService(db *sql.DB) *SQLiteService {
@@ -71,7 +72,10 @@ func (s *SQLiteService) insertAudit(tx *sql.Tx, action, entity, entityID string,
 		v := string(b)
 		afterStr = &v
 	}
-	actor := "system"
+	actor := s.Actor
+	if actor == "" {
+		actor = "system"
+	}
 	_, err := tx.Exec(
 		`INSERT INTO audit_log (id, at, actor_crew_id, override_crew_id, action, entity, entity_id, before_json, after_json, reason)
 		 VALUES (?, ?, ?, NULL, ?, ?, ?, ?, ?, ?)`,
@@ -693,17 +697,62 @@ func (s *SQLiteService) SetModifierDietaryTags(id string, tagIDs []string) (Modi
 }
 
 func (s *SQLiteService) ListAudit() []AuditEntry {
-	rows, err := s.db.Query(`SELECT id, at, actor_crew_id, override_crew_id, action, entity, entity_id, before_json, after_json, reason FROM audit_log ORDER BY at`)
+	entries, _ := s.ListAuditFiltered(AuditFilter{})
+	return entries
+}
+
+// ListAuditFiltered implements the audit view (BR-ADM-12): newest
+// first, filterable by action, entity, entity id and actor, with
+// pagination. ActorName is resolved from the crew table.
+func (s *SQLiteService) ListAuditFiltered(f AuditFilter) ([]AuditEntry, int) {
+	where := "WHERE 1 = 1"
+	args := []any{}
+	if f.Action != "" {
+		where += " AND a.action = ?"
+		args = append(args, f.Action)
+	}
+	if f.Entity != "" {
+		where += " AND a.entity = ?"
+		args = append(args, f.Entity)
+	}
+	if f.EntityID != "" {
+		where += " AND a.entity_id = ?"
+		args = append(args, f.EntityID)
+	}
+	if f.Actor != "" {
+		where += " AND a.actor_crew_id = ?"
+		args = append(args, f.Actor)
+	}
+	if f.FromMS != nil {
+		where += " AND a.at >= ?"
+		args = append(args, *f.FromMS)
+	}
+	if f.ToMS != nil {
+		where += " AND a.at < ?"
+		args = append(args, *f.ToMS)
+	}
+	var total int
+	if err := s.db.QueryRow(`SELECT COUNT(*) FROM audit_log a `+where, args...).Scan(&total); err != nil {
+		return []AuditEntry{}, 0
+	}
+	queryArgs := append(append([]any{}, args...), f.effectiveLimit(), f.Offset)
+	rows, err := s.db.Query(
+		`SELECT a.id, a.at, a.actor_crew_id, c.full_name, a.override_crew_id, a.action, a.entity, a.entity_id, a.before_json, a.after_json, a.reason
+		 FROM audit_log a LEFT JOIN crew c ON c.crew_id = a.actor_crew_id
+		 `+where+` ORDER BY a.at DESC, a.id DESC LIMIT ? OFFSET ?`,
+		queryArgs...,
+	)
 	if err != nil {
-		return []AuditEntry{}
+		return []AuditEntry{}, total
 	}
 	defer rows.Close()
 	out := []AuditEntry{}
 	for rows.Next() {
 		var a AuditEntry
-		var actor, override, before, after, reason sql.NullString
-		if err := rows.Scan(&a.ID, &a.At, &actor, &override, &a.Action, &a.Entity, &a.EntityID, &before, &after, &reason); err == nil {
+		var actor, actorName, override, before, after, reason sql.NullString
+		if err := rows.Scan(&a.ID, &a.At, &actor, &actorName, &override, &a.Action, &a.Entity, &a.EntityID, &before, &after, &reason); err == nil {
 			a.ActorCrewID = strPtr(actor)
+			a.ActorName = strPtr(actorName)
 			a.OverrideCrewID = strPtr(override)
 			a.Before = strPtr(before)
 			a.After = strPtr(after)
@@ -711,5 +760,5 @@ func (s *SQLiteService) ListAudit() []AuditEntry {
 			out = append(out, a)
 		}
 	}
-	return out
+	return out, total
 }

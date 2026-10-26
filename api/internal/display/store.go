@@ -160,6 +160,13 @@ func (s *Store) PublicSlides(nowMillis int64) []Slide {
 	return s.markSoldOut(slides)
 }
 
+// FeedVersion returns the display feed version for BR-PD-02.
+func (s *Store) FeedVersion() map[string]any {
+	var version, count int64
+	_ = s.db.QueryRow(`SELECT COALESCE(MAX(updated_at), 0), COUNT(*) FROM display_slide`).Scan(&version, &count)
+	return map[string]any{"version": version, "slide_count": count}
+}
+
 func (s *Store) GetSlide(id string) (Slide, error) {
 	sl, err := scanSlide(s.db.QueryRow(`SELECT `+slideColumns+` FROM display_slide WHERE id = ?`, id))
 	if err != nil {

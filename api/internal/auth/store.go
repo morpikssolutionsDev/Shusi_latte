@@ -54,6 +54,55 @@ func (s *Store) Login(crewID, pin, deviceLabel string) (Session, error) {
 	return Session{Token: token, Crew: c, CreatedAt: now.UnixMilli(), LastSeen: now.UnixMilli(), ExpiresAt: expires.UnixMilli()}, nil
 }
 
+// ScreenSession is a screen-mode session (TR-AUTH-08).
+type ScreenSession struct {
+	Token     string `json:"screen_token"`
+	Screen    string `json:"screen"`
+	CrewID    string `json:"crew_id"`
+	ExpiresAt int64  `json:"expires_at"`
+}
+
+// CreateScreenSession signs a screen in once per day. Only Outlet
+// Admin or Management may do it, and the session expires at the
+// end of the Jakarta day.
+func (s *Store) CreateScreenSession(crewID, pin, screen string) (ScreenSession, error) {
+	switch screen {
+	case "display", "kitchen", "hris":
+	default:
+		return ScreenSession{}, errors.New("screen must be display, kitchen or hris")
+	}
+	c, ok, err := s.crew.VerifyPINByCrewID(crewID, pin)
+	if err != nil || !ok || !c.Active {
+		return ScreenSession{}, errors.New("invalid crew id or pin")
+	}
+	if c.Role != crew.RoleOutletAdmin && c.Role != crew.RoleManagement {
+		return ScreenSession{}, errors.New("only outlet admin or management may sign in a screen")
+	}
+	jakarta, _ := time.LoadLocation("Asia/Jakarta")
+	now := time.Now()
+	endOfDay := time.Date(now.In(jakarta).Year(), now.In(jakarta).Month(), now.In(jakarta).Day(), 23, 59, 59, 0, jakarta)
+	token := newToken()
+	if _, err := s.db.Exec(`INSERT INTO screen_session (token, crew_id, screen, created_at, expires_at) VALUES (?, ?, ?, ?, ?)`, token, c.ID, screen, now.UnixMilli(), endOfDay.UnixMilli()); err != nil {
+		return ScreenSession{}, err
+	}
+	return ScreenSession{Token: token, Screen: screen, CrewID: c.CrewID, ExpiresAt: endOfDay.UnixMilli()}, nil
+}
+
+// ValidateScreenSession checks a screen token and its screen.
+func (s *Store) ValidateScreenSession(token, screen string) (ScreenSession, error) {
+	var crewInternalID, gotScreen string
+	var expiresAt int64
+	err := s.db.QueryRow(`SELECT crew_id, screen, expires_at FROM screen_session WHERE token = ?`, token).Scan(&crewInternalID, &gotScreen, &expiresAt)
+	if err != nil || gotScreen != screen || time.Now().UnixMilli() > expiresAt {
+		return ScreenSession{}, errors.New("screen session is invalid or expired")
+	}
+	c, err := s.crew.GetCrew(crewInternalID)
+	if err != nil {
+		return ScreenSession{}, err
+	}
+	return ScreenSession{Token: token, Screen: screen, CrewID: c.CrewID, ExpiresAt: expiresAt}, nil
+}
+
 // ValidateSession loads a session by token, checks expiry, and
 // updates last_seen. Management sessions slide their expiry by
 // 30 minutes of inactivity; other sessions keep their 12-hour cap.

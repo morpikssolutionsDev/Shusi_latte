@@ -32,6 +32,15 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("PUT /api/v1/display/slides/{id}", h.updateSlide)
 	mux.HandleFunc("DELETE /api/v1/display/slides/{id}", h.deleteSlide)
 	mux.HandleFunc("GET /public/display/slides", h.publicSlides)
+	mux.HandleFunc("GET /public/display/version", h.publicVersion)
+}
+
+// publicVersion returns the feed version for BR-PD-02: the TV
+// app polls this cheap endpoint and refetches the feed only
+// when the version changes, so content changes appear without
+// a manual reload. Version is the latest slide change time.
+func (h *Handler) publicVersion(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, h.Store.FeedVersion())
 }
 
 func decodeSlide(r *http.Request) (Slide, error) {

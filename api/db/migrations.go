@@ -18,7 +18,7 @@ var migrationsFS embed.FS
 // the migrations use CREATE TABLE IF NOT EXISTS, INSERT OR IGNORE and
 // IF NOT EXISTS triggers.
 func Apply(db *sql.DB) error {
-	for _, name := range []string{"migrations/0001_catalog.sql", "migrations/0002_pricing.sql", "migrations/0003_tables.sql", "migrations/0004_crew.sql", "migrations/0005_display.sql", "migrations/0006_ops.sql", "migrations/0007_ordering.sql", "migrations/0008_orders.sql"} {
+	for _, name := range []string{"migrations/0001_catalog.sql", "migrations/0002_pricing.sql", "migrations/0003_tables.sql", "migrations/0004_crew.sql", "migrations/0005_display.sql", "migrations/0006_ops.sql", "migrations/0007_ordering.sql", "migrations/0008_orders.sql", "migrations/0009_staff.sql"} {
 		data, err := migrationsFS.ReadFile(name)
 		if err != nil {
 			return err

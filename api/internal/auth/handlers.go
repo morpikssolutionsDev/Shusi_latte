@@ -61,6 +61,32 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("POST /auth/logout", h.logout)
 	mux.HandleFunc("GET /auth/me", h.me)
 	mux.HandleFunc("POST /auth/override", h.override)
+	mux.HandleFunc("POST /auth/screen-login", h.screenLogin)
+}
+
+// screenLogin signs a screen in once per day (TR-AUTH-08).
+// Only Outlet Admin or Management may sign a screen in, and
+// the session is limited to that screen and expires at the end
+// of the Jakarta day. It returns a screen token for the
+// X-Screen-Token header; it is not a staff session cookie.
+func (h *Handler) screenLogin(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		CrewID string `json:"crew_id"`
+		PIN    string `json:"pin"`
+		Screen string `json:"screen"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeProblemJSON(w, http.StatusBadRequest, "invalid_json", "request body is not valid JSON")
+		return
+	}
+	token, err := h.Store.CreateScreenSession(req.CrewID, req.PIN, req.Screen)
+	if err != nil {
+		writeProblemJSON(w, http.StatusForbidden, "screen_login_denied", err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"screen_token": token.Token, "screen": token.Screen, "expires_at": token.ExpiresAt,
+	})
 }
 
 func (h *Handler) login(w http.ResponseWriter, r *http.Request) {

@@ -1,0 +1,385 @@
+# Sushi Latte — Technical Requirements Document (TRD)
+
+| | |
+|---|---|
+| Product | Sushi Latte |
+| Document | Technical Requirements Document |
+| Version | 1.1 (draft) — gap resolutions 2026-10-26 |
+| Date | 2026-10-26 |
+| Implements | [BRD.md](BRD.md) |
+| Decisions | [ADRs](adr/) |
+
+Domain terms follow [GLOSSARY.md](../GLOSSARY.md). Requirement IDs `BR-*` refer to the BRD; `TR-*` are defined here.
+
+---
+
+## 1. Architecture overview
+
+A single cloud deployment in a Jakarta region serves three browser apps and one Go API. All live updates flow over WebSockets. Receipt printing is the only function performed locally, from the staff device to its paired Bluetooth printer.
+
+```
+                     ┌──────────────────────────── Cloud (Jakarta region) ───────────────────────────┐
+ Customer phone ───▶ │  Caddy (TLS, static files)                                                     │
+  (Client Menu)      │     ├── /            → Client Menu SPA                                         │
+                     │     ├── /staff       → Staff PWA (Admin, Waiter, Cashier, Kitchen, HRIS)       │
+ Staff tablet/PC ──▶ │     ├── /display     → Product Display SPA                                     │
+  (Staff PWA)        │     ├── /api/v1      → Go API ──┐                                              │
+        │            │     └── /ws          → Go API ──┤                                              │
+        │ Bluetooth  │                                 ▼                                              │
+        ▼            │                        PostgreSQL (LISTEN/NOTIFY)                              │
+  58 mm printer      │                                 │                                              │
+                     │                        Scheduled jobs (Anonymisation, promos, backups)          │
+ Kitchen / TV ─────▶ │                                                                                │
+                     └────────────────────────────────────────────────────────────────────────────────┘
+```
+
+- **TR-ARC-01** One deployable Go binary hosts the REST API, the WebSocket hub and scheduled jobs.
+- **TR-ARC-02** PostgreSQL is the single source of truth; no separate cache or message broker is needed at the BRD-NF-01 scale.
+- **TR-ARC-03** Every state change that other screens must see is committed, then published via Postgres `NOTIFY`; the WebSocket hub fans it out to subscribed clients.
+- **TR-ARC-04** The system requires internet for everything except printing ([ADR-0003](adr/0003-online-only-with-future-local-server.md)).
+
+## 2. Technology stack
+
+| Layer | Choice | Reason |
+|---|---|---|
+| Backend language | Go (current stable) | Fast, single static binary, strong concurrency for WebSockets |
+| HTTP router | `go-chi/chi` | Thin, idiomatic `net/http` |
+| DB access | `sqlc` + `pgx` | Type-safe SQL without an ORM |
+| Migrations | `goose` | Plain SQL migrations, embeddable |
+| WebSocket | `coder/websocket` | Maintained, context-aware |
+| Database | PostgreSQL (current stable) | Transactions, row locking, LISTEN/NOTIFY, partial unique indexes |
+| Frontend | React + Vite + TypeScript | Fast SPA builds; no server rendering needed for QR menu or kiosk screens |
+| Routing / data | TanStack Router, TanStack Query | Type-safe routes; server-state caching and WebSocket-driven invalidation |
+| UI | Tailwind CSS, shadcn/ui, Motion (formerly Framer Motion) | Modern, accessible components and animation |
+| PWA | `vite-plugin-pwa` | Installable Staff app, cached shell |
+| i18n | `i18next` | ID/EN Client Menu; ID staff |
+| Monorepo | pnpm workspaces + Turborepo | Shared UI, types and API client across apps |
+| API contract | OpenAPI 3 | Generated TypeScript client for all apps |
+| Edge | Caddy | Automatic TLS, static serving, reverse proxy |
+| Runtime | Docker Compose on a Jakarta-region VM | Simple ops for a single outlet |
+
+Next.js was considered and not chosen: none of the apps need server rendering or SEO, and an extra Node server adds an operational component without benefit.
+
+## 3. Repository structure
+
+```
+/
+├── GLOSSARY.md
+├── docs/ (BRD, TRD, adr/)
+├── api/                      Go module
+│   ├── cmd/server/           main
+│   ├── internal/
+│   │   ├── auth/             Crew ID + PIN, sessions, PIN Override, lockout
+│   │   ├── catalog/          Product catalog: Categories, Products, Variants, Modifiers, Dietary Tags, Sold Out, Prep Areas
+│   │   ├── ordering/         Tables, Bills, Sub-bills, Orders, Order Items, Claim
+│   │   ├── pricing/          discount, service, tax, rounding (pure functions)
+│   │   ├── payment/          Payments, Refunds, Shift Closing
+│   │   ├── kitchen/          queues, Estimated Wait
+│   │   ├── display/          Product Display content
+│   │   ├── hris/             employees, shifts, attendance, leave
+│   │   ├── audit/            audit log
+│   │   ├── realtime/         NOTIFY listener, WebSocket hub
+│   │   └── jobs/             Anonymisation, promo scheduling
+│   ├── db/migrations/
+│   └── db/queries/           sqlc
+├── web/
+│   ├── apps/
+│   │   ├── client-menu/
+│   │   ├── staff/            Admin Panel, Waiter, Cashier, Kitchen, HRIS (role-gated routes)
+│   │   └── display/
+│   └── packages/
+│       ├── ui/               shadcn/ui components, theme
+│       ├── api-client/       generated from OpenAPI
+│       └── printing/         ESC/POS encoder + Web Bluetooth transport
+└── deploy/                   docker-compose.yml, Caddyfile, backup scripts
+```
+
+## 4. Data model
+
+All monetary amounts are `BIGINT` whole Rupiah. All timestamps are `TIMESTAMPTZ`, displayed in Asia/Jakarta. Primary keys are UUIDv7. There is no tenant or outlet column ([ADR-0001](adr/0001-single-business-single-outlet.md)).
+
+### 4.1 People and access
+
+| Table | Key columns |
+|---|---|
+| `crew` | id, crew_id (unique, human-readable), full_name, role (`management`, `outlet_admin`, `crew`), pin_hash, failed_attempts, locked_until, active |
+| `crew_station` | crew_id, station (`waiter`, `cashier`, `kitchen`) |
+| `session` | id, crew_id, device_label, created_at, last_seen_at, expires_at |
+
+### 4.2 Product catalog (shared baseline)
+
+The Product catalog is the one source of Product data for every Module (BRD §6.0). Modules read it through the `catalog` package and never store their own copies; Order Items snapshot what they need at order time (TR-DM-02).
+
+```
+category ──1:N── product ──1:N── variant          (price, Sold Out)
+   │                │  └──1:N── modifier_group ──1:N── modifier ──N:M── dietary_tag (adds)
+   │                └──N:M── dietary_tag (contains)
+   └── prep_area
+```
+
+| Table | Key columns |
+|---|---|
+| `prep_area` | id, name (Kitchen, Bar), parallel_capacity |
+| `category` | id, name_id, name_en, sort, prep_area_id |
+| `product` | id, category_id, name_id, name_en, description_id, description_en, photo_url, prep_time_seconds, status (`active`, `hidden`, `archived`), sort, created_at, updated_at |
+| `variant` | id, product_id, name_id, name_en, price, is_default, sort, sold_out, sold_out_at, sold_out_by, sold_out_source (`manual`, `cancel_out_of_stock`) |
+| `modifier_group` | id, product_id, name_id, name_en, min_select, max_select, sort |
+| `modifier` | id, modifier_group_id, name_id, name_en, price, sort |
+| `dietary_tag` | id, code (e.g. `dairy`, `raw_fish`, `pork`), name_id, name_en, icon, sort, active |
+| `product_dietary_tag` | product_id, dietary_tag_id — what the Product contains |
+| `modifier_dietary_tag` | modifier_id, dietary_tag_id — tags a Modifier adds |
+
+Rules:
+- **TR-PC-01** Every Product has at least one Variant; a Product with no options has one `is_default` Variant. Price and Sold Out therefore always live on `variant`.
+- **TR-PC-02** A Product is orderable when `status = 'active'` and at least one Variant has `sold_out = false`. Derived, not stored: a Product's greyed-out state is computed from its Variants.
+- **TR-PC-03** A Product that has ever been ordered cannot be deleted, only Archived; Variants and Modifiers likewise are soft-retired (`archived_at`), never deleted.
+- **TR-PC-04** Dietary Tags are not removable by Variants or Modifiers in the MVP (BR-R-D4). The effective tags of an Order Item are `product tags ∪ chosen modifier tags`.
+- **TR-PC-05** Catalog reads used by the Client Menu, Waiter and Cashier are served from one endpoint returning the full active catalog (Categories, Products, Variants with Sold Out, Modifiers, Dietary Tags) with an `ETag`; any catalog change publishes on the `menu` topic and clients refetch.
+- **TR-PC-06** Catalog changes are audit-logged (TR-AUD-01).
+
+### 4.3 Ordering
+
+| Table | Key columns |
+|---|---|
+| `dining_table` | id, label, qr_token (random, regenerable), active |
+| `bill` | id, number (human-readable, daily sequence), type (`dine_in`, `takeaway`), source (`live`, `post_outage`), status (`open`, `settling`, `closed`, `unpaid`, `merged`), takeaway_name, pay_now_serve_later_by, unpaid_reason, unpaid_override_by, opened_at, closed_at, anonymised_at |
+| `bill_table` | bill_id, table_id (many tables per Bill after Merge) |
+| `customer_entry` | id, bill_id, key_id, name_enc, dietary_note_enc, restriction_tags_enc (Dietary Restriction tag ids), consent_at, active_device_id, rejoined_at — one per person at the Table, bound to the Bill not the device |
+| `order` | id, bill_id, customer_entry_id (nullable), source (`client_menu`, `waiter`, `cashier`), status, claimed_by, claimed_at, confirmed_at, key_id, restriction_tags_enc (Dietary Restriction ticked by a Waiter on a direct-entry Order) |
+| `order_item` | id, order_id, product_id, variant_id, product_name_snapshot, variant_name_snapshot, quantity, unit_price, note, status, cancel_reason, cancel_note, cancelled_by, void_reason, voided_by, voided_override_by, remake_of_id (nullable), remake_reason, remake_override_by, ready_at, sub_bill_id (nullable), sold_out_flag, unavailable_flag |
+| `claim_transfer` | id, order_id, from_crew_id, to_crew_id, kind (`takeover`, `reassign`), by_crew_id, at |
+| `order_item_modifier` | order_item_id, modifier_id, name_snapshot, price |
+| `order_item_dietary_warning` | order_item_id, dietary_tag_id, acknowledged_at — Product-side tag only, no link to the person |
+| `sub_bill` | id, bill_id, method (`by_item`, `equal`), share_index, share_count, status |
+
+Constraints:
+- **TR-DM-01** Partial unique index: one `open` Bill per Table via `bill_table` joined to `bill.status = 'open'`, enforced in the open/join transaction with `SELECT … FOR UPDATE` on `dining_table`.
+- **TR-DM-02** `order_item.unit_price`, modifier prices and Product/Variant/Modifier names are copied at order time; later catalog changes never alter existing Orders (BR-PC-08).
+- **TR-DM-05** Dietary Warnings are computed server-side when an Order Item is created: (Product tags ∪ chosen Modifier tags) ∩ applicable Dietary Restriction, where the applicable restriction is the ordering Customer's `restriction_tags_enc` or the Order's `restriction_tags_enc` (decrypted in memory). Each matching tag becomes an `order_item_dietary_warning` row. The Client Menu computes the same match locally for badges, but the server result is authoritative.
+- **TR-DM-03** Merge re-points `bill_table` and `order` rows to the surviving Bill and closes the absorbed Bill as `merged`; there is no unmerge operation.
+- **TR-DM-06** Move fails with `409 table_occupied` if the target Table has an open Bill (BR-R-28). Split fails with `409 bill_has_payments` if any Payment exists (BR-R-29).
+- **TR-DM-07** A Remake is a new `order_item` with `remake_of_id` set, `unit_price = 0`, status `confirmed`, sorted first in its Prep Area queue (BR-R-33).
+- **TR-DM-08** Closing a Bill with items not yet Ready requires `pay_now_serve_later_by` (the confirming staff member); those items keep flowing to the Kitchen after close (BR-R-31).
+
+### 4.4 Pricing and payment
+
+| Table | Key columns |
+|---|---|
+| `tax_setting` | service_rate_bp, tax_rate_bp, price_mode (`exclusive`, `inclusive`) — basis points |
+| `discount` | id, name, kind (`percent`, `nominal`), value, scope (`item`, `bill`), trigger (`auto`, `manual`), schedule (days, start_time, end_time, valid_from, valid_to), target (category/product/variant ids) |
+| `applied_discount` | id, order_item_id or bill_id or sub_bill_id, discount_id, amount, override_by |
+| `payment` | id, bill_id, sub_bill_id, method (`cash`, `qris`, `card`), status (`settled`, `held_by_waiter`, `pending_verification`, `written_off`), amount, tendered, change, rounding, taken_by, taken_at, cash_handover_id, verified_by, verified_at |
+| `refund` | id, bill_id, amount, reason, approved_by, drawer_session_id, created_at — always paid in cash |
+| `refund_setting` | cap_amount |
+| `cash_drawer` | id, label — exactly one row in the MVP |
+| `drawer_session` | id, cash_drawer_id, cashier_crew_id, opening_float, opened_at, expected_cash, counted_cash, difference, closed_at — one Shift Closing per session |
+| `cash_handover` | id, drawer_session_id, waiter_crew_id, expected_amount, received_amount, difference, received_by, received_at |
+| `receipt_print` | id, bill_id, sub_bill_id, copy (`customer`, `internal`), is_reprint, printed_by, printed_at |
+| `ops_setting` | claim_renotify_seconds (120), claim_escalate_seconds (300), pickup_reminder_seconds (180), empty_bill_close_seconds (1800), auto_clock_out_grace_seconds (7200) |
+
+- **TR-PAY-01** Expected cash for a `drawer_session` = opening_float + Σ received Cash Handovers + Σ counter cash Payments − Σ change − Σ cash Refunds; rounding is already inside Payment amounts.
+- **TR-PAY-02** A Waiter's cash Payment is `held_by_waiter`; receiving a Cash Handover sets the included Payments to `settled` and links them. Waiter clock-out is refused while any `held_by_waiter` Payment exists (BR-HR-07).
+- **TR-PAY-03** `pending_verification` QRIS Payments require an Outlet Admin override token and block closing their `drawer_session` until verified or `written_off` with reason.
+- **TR-PAY-04** Takeaway Orders are created `confirmed` only after their Bill is fully paid; until then they are held as a draft on the Bill (BR-CS-02).
+
+### 4.5 Display, HRIS, audit
+
+| Table | Key columns |
+|---|---|
+| `display_slide` | id, kind (`banner`, `featured_product`), image_url, product_id, sort, active_from, active_to, duration_seconds |
+| `shift` | id, crew_id, starts_at, ends_at |
+| `attendance` | id, crew_id, clock_in_at, clock_out_at, auto_clocked_out, corrected_by, correction_reason |
+| `leave_request` | id, crew_id, from_date, to_date, type, reason, status, decided_by, decided_at |
+| `audit_log` | id, at, actor_crew_id, override_crew_id, action, entity, entity_id, before (jsonb), after (jsonb), reason |
+
+- **TR-DM-04** `audit_log` is append-only; the application database role has no `UPDATE` or `DELETE` on it.
+
+## 5. State machines
+
+### 5.1 Order Item
+
+| From | To | Actor | Guard |
+|---|---|---|---|
+| — | Pending | Customer (Client Menu) | Product Active; Variant not Sold Out; Dietary Warnings acknowledged |
+| — | Confirmed | Waiter/Cashier direct entry | Product Active; Variant not Sold Out |
+| Pending | Confirmed | Claiming Waiter | Order Claimed by this Waiter |
+| Confirmed | Preparing | Kitchen | — |
+| Preparing | Ready | Kitchen | — |
+| Ready | Served | Waiter | — |
+| Pending | Cancelled | Customer (own Order) | Order not yet Claimed |
+| Pending, Confirmed | Cancelled | Waiter/Cashier | Cancel Reason required |
+| Confirmed, Preparing | Cancelled | Kitchen | Cancel Reason required |
+| Ready, Served | Voided | Any staff + PIN Override (Outlet Admin/Management) | Item's Bill or Sub-bill unpaid; reason required |
+| Served | (new item, Confirmed) | Waiter + PIN Override (Outlet Admin/Management) | Remake reason required |
+
+- **TR-SM-01** Transitions are enforced server-side in one function per transition; invalid transitions return `409 Conflict`.
+- **TR-SM-02** Status writes use optimistic concurrency (`WHERE status = $expected`) so two devices cannot double-advance or double-Claim.
+- **TR-SM-03** Claim is first-writer-wins: `UPDATE order SET claimed_by = $1 WHERE id = $2 AND claimed_by IS NULL`. The losing Waiter receives `409` and the notification is withdrawn from all devices.
+- **TR-SM-04** A Cancel with reason `out_of_stock` sets `variant.sold_out = true` in the same transaction, then flags (`sold_out_flag = true`) all Pending/Confirmed Order Items with that Variant and notifies their owning Waiter or all on-duty Waiters if unclaimed (BR-R-11, BR-R-13).
+
+- **TR-SM-05** Claim takeover (`POST /orders/{id}/takeover`) by another Waiter and reassignment by the Outlet Admin write `claim_transfer` and the audit log, and notify both Waiters.
+- **TR-SM-06** Hiding or archiving a Product sets `unavailable_flag` on its open Pending/Confirmed Order Items and notifies Waiters, exactly like TR-SM-04 (BR-R-35).
+
+### 5.2 Bill
+
+| From | To | Trigger |
+|---|---|---|
+| — | `open` | First QR scan or first direct Order |
+| `open` | `settling` | First Payment started or Bill summary requested for payment |
+| `settling` | `open` | Waiter/Cashier unlocks |
+| `open`, `settling` | `closed` | Fully paid (with `pay_now_serve_later_by` if items unfinished) |
+| `open`, `settling` | `unpaid` | Outlet Admin override + reason |
+| `open` | `merged` | Absorbed by Merge |
+| `open` | `closed` | No Orders and older than `empty_bill_close_seconds` (job) |
+
+A `closed` or `unpaid` Bill is immutable except for Refunds and reprints. `settling` blocks `POST /public/orders` with `409 bill_settling`.
+
+## 6. API
+
+REST, JSON, under `/api/v1`, described in an OpenAPI 3 spec from which the TypeScript client is generated.
+
+### 6.1 Representative endpoints
+
+| Area | Endpoint |
+|---|---|
+| Auth | `POST /auth/login` (crew_id, pin) · `POST /auth/logout` · `POST /auth/override` (pin, action) → short-lived override token |
+| Client Menu | `GET /public/tables/{qr_token}` → `free` or `occupied` with Customer names · `POST /public/tables/{qr_token}/join` (name, Dietary Restriction tag ids, Dietary Note, consent) → guest token for a new Customer · `POST /public/tables/{qr_token}/rejoin` (customer_entry_id) → guest token, previous device revoked · `POST /public/tables/{qr_token}/not-mine` → notify Waiters · `GET /public/catalog` · `POST /public/orders` · `PATCH`/`DELETE /public/orders/{id}` (before Claim) · `POST /public/waiter-calls` · `GET /public/bills/me` |
+| Catalog | `GET /catalog` (staff, includes Hidden) · CRUD `/categories`, `/products`, `/variants`, `/modifier-groups`, `/modifiers`, `/dietary-tags`, `/prep-areas` · `PUT /products/{id}/dietary-tags` · `PUT /modifiers/{id}/dietary-tags` · `POST /products/{id}/status` · `POST /variants/{id}/sold-out` · `DELETE /variants/{id}/sold-out` |
+| Ordering | `POST /orders/{id}/claim` · `POST /orders/{id}/takeover` · `POST /orders/{id}/reassign` · `POST /orders/{id}/confirm` · `POST /order-items/{id}/transition` · `POST /order-items/{id}/cancel` · `POST /order-items/{id}/void` · `POST /order-items/{id}/remake` |
+| Bills | `POST /bills` (takeaway) · `POST /bills/{id}/move` · `POST /bills/merge` · `POST /bills/{id}/split` · `GET /bills/{id}/summary` · `POST /bills/{id}/settle` · `POST /bills/{id}/unlock` · `POST /bills/{id}/close-unpaid` · `POST /post-outage/bills` |
+| Payment | `POST /bills/{id}/payments` · `POST /payments/{id}/verify` · `POST /bills/{id}/close` · `POST /bills/{id}/refunds` · `POST /bills/{id}/receipts/reprint` |
+| Cash | `POST /drawer-sessions` (opening float) · `POST /cash-handovers` · `GET /crew/{id}/held-cash` · `POST /drawer-sessions/{id}/close` (Shift Closing) |
+| Kitchen | `GET /prep-areas/{id}/queue` |
+| Display | `GET /public/display/slides` |
+| HRIS | `/employees`, `/shifts`, `POST /attendance/clock` (crew_id, pin; clock-in screen session only), `POST /attendance/{id}/correct`, `/leave-requests` |
+| Reports | `/reports/daily-sales`, `/reports/payment-methods`, `/reports/best-sellers`, `/reports/prep-time`, `/reports/shift-closings`, `/reports/unpaid-bills`, `/reports/remakes`, `/reports/post-outage` (CSV export on each) |
+| Settings | `GET`/`PUT /settings/ops` (escalation and auto-close timers) |
+
+### 6.2 Conventions
+
+- **TR-API-01** Mutating endpoints accept an `Idempotency-Key` header; repeat requests within 24 h return the original result. This protects against double-taps and retries on flaky tablet Wi-Fi.
+- **TR-API-02** Errors use RFC 9457 problem details with a stable `code`.
+- **TR-API-03** Restricted actions require an override token from `/auth/override` in an `X-Override-Token` header, valid for one action and 60 seconds.
+
+## 7. Realtime
+
+- **TR-RT-01** One WebSocket per client at `/ws`. Clients subscribe to topics after authenticating.
+- **TR-RT-02** Topics: `waiters` (new Orders, waiter calls, claims, takeovers, Sold Out and unavailable flags, Ready items, re-notifications, "not my table" alerts), `outlet-admin` (escalations), `prep-area:{id}`, `bill:{id}` (Customer view and staff Bill screens, Settling state), `customer:{id}` (device revoked on Rejoin), `menu` (Sold Out changes, price updates), `display`.
+- **TR-RT-03** Events carry the entity id and new version only; clients refetch through TanStack Query. This keeps one source of truth and survives missed events.
+- **TR-RT-04** On reconnect, clients refetch all active queries. Heartbeat every 20 s; reconnect with exponential backoff capped at 10 s.
+- **TR-RT-05** End-to-end latency from commit to screen update ≤ 1 s at p95 under peak load.
+
+## 8. Authentication and authorisation
+
+- **TR-AUTH-01** Sign-in is Crew ID + 6-digit PIN for every role (BR-R-24). PINs are hashed with Argon2id.
+- **TR-AUTH-02** After 5 consecutive failed attempts, the account is locked for 15 minutes. Failed attempts are also rate-limited per client IP.
+- **TR-AUTH-03** Sessions are opaque random tokens in `HttpOnly`, `Secure`, `SameSite=Strict` cookies, stored server-side.
+- **TR-AUTH-04** Management sessions expire after 30 minutes of inactivity (BR-R-25).
+- **TR-AUTH-05** Authorisation is checked server-side per endpoint against role and Stations, following the BRD §5.1 permission matrix. The UI hides what a user cannot do but is never the enforcement point.
+- **TR-AUTH-06** PIN Override: the authorising person enters their PIN on the requesting device; the server verifies their role permits the action (manual discount → Management; Void, Remake, Unpaid Bill, unverified QRIS, Refund ≤ cap → Outlet Admin or Management; Refund > cap → Management) and records both actor and approver in `audit_log`.
+- **TR-AUTH-07** Customers are bound to the Bill, not the device (BR-CM-13). `join` creates a `customer_entry` and issues a guest token for it; `rejoin` issues a new token for an existing `customer_entry`, stores the new device in `active_device_id`, revokes the previous token and pushes `customer:{id}` so the old device shows "You continued on another device". Tokens expire when the Bill closes. No verification is required to Rejoin (owner decision, BRD §11). Regenerating a Table's `qr_token` invalidates printed QR codes for that Table.
+- **TR-AUTH-08** The Kitchen, Product Display and shared HRIS clock-in screens are signed in once per day by an Outlet Admin (Crew ID + PIN) into a screen-mode session limited to that screen, so no one types a PIN on a wall-mounted display. `POST /attendance/clock` is accepted only from an HRIS screen-mode session (BR-HR-03).
+- **TR-AUTH-09** Waiter and Cashier sessions end at the scheduled shift end or after 12 hours, whichever comes first; switching user on a shared device is a PIN re-entry (BR-R-38).
+
+## 9. Pricing engine
+
+`internal/pricing` is a pure package with no I/O, fully unit-tested.
+
+- **TR-PR-01** Inputs: Order Items (unit price, modifiers, qty, status), applicable discounts at the time of calculation, tax setting. Output: line totals, item discounts, Bill discount, service, tax, grand total.
+- **TR-PR-02** Order of operations follows BR-R-14. Percentages are applied in basis points with integer arithmetic; each step rounds half-up to whole Rupiah.
+- **TR-PR-03** Best item-level discount selection: compute every eligible automatic discount for the item and pick the largest Rupiah amount; a manual item discount replaces the automatic one only if the Management override is present.
+- **TR-PR-04** Split equally: compute the full Bill total, divide by N; the remainder Rupiah goes to the last Sub-bill. Split by item: each Sub-bill is priced independently from its assigned items, with the Bill-level discount prorated by subtotal.
+- **TR-PR-05** Cash rounding to nearest Rp 100 is applied only at cash Payment and stored in `payment.rounding`; Bill totals stay exact.
+- **TR-PR-06** Tax-inclusive mode (future, BR-ADM-04) back-calculates the net price; the engine supports it behind `price_mode` from the start.
+
+## 10. Receipt printing
+
+See [ADR-0004](adr/0004-browser-bluetooth-printing.md).
+
+- **TR-PRN-01** The Staff PWA prints directly to a paired 58 mm thermal printer via the **Web Bluetooth API**, sending ESC/POS byte streams generated in `web/packages/printing`.
+- **TR-PRN-02** Printers must expose a **Bluetooth Low Energy (BLE)** GATT write characteristic; Web Bluetooth cannot reach Bluetooth Classic (SPP)-only printers. Printer models are validated in a hardware spike before purchase.
+- **TR-PRN-03** On Windows PCs, a fallback transport via the **Web Serial API** (printer paired as a Bluetooth COM port) is available for Classic-only printers.
+- **TR-PRN-04** Receipt data is fetched before printing and held on the device, so a print or reprint succeeds even if internet drops after the Bill closes (BR-NF-05).
+- **TR-PRN-05** Layout: 32 characters per line (58 mm, Font A). Customer copy: outlet header, Bill number, Table(s), date/time, Customer name(s), items with Variants/Modifiers, discounts, service, tax, total, Payments, change. Internal copy: same without Customer names, marked "INTERNAL".
+- **TR-PRN-06** Writes are chunked to the characteristic's maximum size with flow control; failures surface a retry button and never lose the Bill state.
+- **TR-PRN-07** Supported browsers: Chrome on Android and Windows. The Staff app detects missing Web Bluetooth and shows a clear unsupported-device message.
+- **TR-PRN-08** Every print writes a `receipt_print` row; reprints print "REPRINT" under the header and are audit-logged (BR-R-37).
+
+## 11. Kitchen queue and Estimated Wait
+
+- **TR-KT-01** Each Prep Area queue lists Confirmed and Preparing Order Items with Remakes first, then by `confirmed_at`, showing elapsed time since confirmation against `prep_time_seconds`; items turn amber at 80% and red at 100%. Ready items not Served within `pickup_reminder_seconds` show "waiting pickup".
+- **TR-KT-02** Each Prep Area has a configurable parallel capacity `c` (default Kitchen 2, Bar 1).
+- **TR-KT-03** Estimated Wait for an Order = max over its Prep Areas of: (Σ remaining prep time of items ahead in that Prep Area ÷ c) + the longest Prep Time among the Order's items in that Prep Area. Remaining time for a Preparing item is `max(prep_time − elapsed, 0)`.
+- **TR-KT-04** Estimated Wait is recalculated on every queue change and pushed on `bill:{id}`; it is shown rounded up to the next minute.
+- **TR-KT-05** Prep Time performance report: share of Order Items with (Ready − Confirmed) ≤ Prep Time, by item, Category and Prep Area.
+
+## 12. Customer data retention
+
+See [ADR-0002](adr/0002-two-day-customer-data-retention.md).
+
+- **TR-RET-01** A job runs every hour and Anonymises every Bill closed (or `unpaid`) more than 48 hours ago: `customer_entry.name_enc` → "Customer", `dietary_note_enc` and `restriction_tags_enc` → NULL on `customer_entry` and `order`, `bill.takeaway_name` → "Customer", `bill.anonymised_at` set. `order_item_dietary_warning` rows are kept; they hold only the Product-side tag.
+- **TR-RET-02** Application logs never contain Customer names or Dietary Notes; request logging redacts these fields.
+- **TR-RET-03** Dietary Note consent timestamp is stored with the entry; no entry is saved without it.
+- **TR-RET-04** Crypto-shredding (BR-P-06): `customer_entry.name`, `dietary_note`, `bill.takeaway_name` and the Dietary Restriction tag list are encrypted (AES-256-GCM) with a per-day data key identified by `key_id` on the row. Data keys live in a separate key table outside the database backup set (or a KMS), wrapped by a master key held in the environment. A daily job destroys data keys older than 3 days (48 h after the last Bill that could use them closes), so any backup older than that holds unreadable ciphertext. This is why Dietary Restrictions are stored as encrypted tag-id lists rather than join tables.
+
+## 13. Audit log
+
+- **TR-AUD-01** Logged actions: Void, Remake, Refund, Unpaid Bill, unverified QRIS and its resolution, Claim takeover and reassignment, Receipt reprint, Cash Handover differences, attendance corrections, Post-outage Entry, PIN Override, manual discount, Sold Out set and re-enable, Product Status changes, Product and Modifier Dietary Tag changes, price and tax changes, discount changes, Merge, Split, Bill move, Shift Closing, PIN reset, role changes.
+- **TR-AUD-02** Each entry records actor, approver (if override), timestamp, entity, before/after snapshot and reason.
+- **TR-AUD-03** Audit entries are retained 10 years with the sales records.
+
+## 14. Internationalisation
+
+- **TR-I18N-01** Menu content stores Indonesian and English fields; Client Menu language follows the phone language with a toggle, defaulting to Indonesian.
+- **TR-I18N-02** Staff app strings are in Indonesian, kept in i18next resource files so English can be added without code changes.
+- **TR-I18N-03** Currency formatted `Rp 25.000` (id-ID locale), no decimals.
+
+## 15. Non-functional requirements
+
+| ID | Requirement |
+|---|---|
+| TR-NF-01 | API p95 ≤ 300 ms for reads and ≤ 500 ms for writes at 150 Orders/hour plus 30 concurrent Client Menu sessions and 15 staff devices. |
+| TR-NF-02 | Client Menu first load ≤ 2.5 s LCP on a mid-range Android phone over 4G; menu photos served as responsive WebP. |
+| TR-NF-03 | Availability 99.5% during opening hours; deployments happen outside opening hours. |
+| TR-NF-04 | Database backups daily (pg_dump to object storage in the same region), retained 30 days, restore tested monthly; RPO 24 h, RTO 4 h. |
+| TR-NF-05 | TLS everywhere; HSTS; strict Content Security Policy; secrets via environment, never in the repo. |
+| TR-NF-06 | Observability: structured JSON logs, request metrics, uptime check on `/healthz`, alert on WebSocket error rate and job failures. |
+| TR-NF-07 | Staff app is installable as a PWA with a cached shell; when offline it shows a clear "no connection — use paper" banner and allows reprinting held Receipts only. |
+
+## 16. Deployment
+
+- **TR-DEP-01** One VM in a Jakarta region (e.g. GCP `asia-southeast2`, AWS `ap-southeast-3`, or Biznet Gio) running Docker Compose: `caddy`, `api`, `postgres`.
+- **TR-DEP-02** Environments: `local` (Compose), `staging` (same VM shape), `production`.
+- **TR-DEP-03** CI builds the Go binary and the three web apps, runs all tests, builds images, and deploys to staging on merge; production deploy is a manual promotion.
+- **TR-DEP-04** Migrations run automatically on API start, are forward-only, and must be backward compatible with the previous release.
+
+## 17. Testing
+
+- **TR-TST-01** Unit tests for `pricing`, Estimated Wait, Dietary Warning matching and state-transition guards, table-driven, covering every BRD pricing and dietary rule.
+- **TR-TST-02** Integration tests against a real PostgreSQL (testcontainers) for Claim races and takeovers, one-open-Bill-per-Table, Rejoin device revocation, Settling lock, Move onto occupied Table, Split after Payment, Merge, Sold Out on Out of Stock Cancel, Product Status visibility, Dietary Warnings carried onto Order Items, Remake, Unpaid Bill, Cash Handover and drawer expected cash, pending QRIS blocking Shift Closing, auto clock-out, Anonymisation and key destruction.
+- **TR-TST-03** Frontend component tests with Vitest; end-to-end flows with Playwright: QR scan → Order → Claim → Kitchen → Ready → Payment → Receipt.
+- **TR-TST-04** Printer spike with the shortlisted 58 mm printer models on an Android tablet and a Windows PC before procurement.
+- **TR-TST-05** Load test at 2× peak (300 Orders/hour) before the Waiter module goes live.
+
+## 18. Future architecture
+
+The local outlet server model, which would keep all staff Modules working during internet outages, is recorded in [ADR-0003](adr/0003-online-only-with-future-local-server.md). The current design keeps that door open by: keeping the Go API as one binary, using PostgreSQL only (no managed cloud-specific services), and using idempotent mutations that can later be replayed by a sync agent.
+
+## 19. Scheduled jobs
+
+| Job | Interval | Action |
+|---|---|---|
+| Claim escalation | 15 s | Re-notify `waiters` for Orders/calls unclaimed past `claim_renotify_seconds`; alert `outlet-admin` past `claim_escalate_seconds` (BR-WT-10) |
+| Pickup reminder | 15 s | Re-notify owning Waiter for Ready items past `pickup_reminder_seconds` (BR-WT-09) |
+| Empty Bill close | 1 min | Close open Bills with no Orders older than `empty_bill_close_seconds` (BR-R-26) |
+| Promo activation | 1 min | Activate/deactivate scheduled discounts |
+| Auto clock-out | 5 min | Clock out attendance open past shift end + `auto_clock_out_grace_seconds`, flag `auto_clocked_out` (BR-HR-06) |
+| Anonymisation | 1 h | TR-RET-01 |
+| Key destruction | 1 day | TR-RET-04 |
+| Backup | 1 day | TR-NF-04 |
+
+All jobs are idempotent, run in the API process under a Postgres advisory lock, and report failures to monitoring.
+
+## 20. Open items
+
+None. TRD open items and the gaps from [OVERVIEW-AND-FLOWS.md](OVERVIEW-AND-FLOWS.md) were resolved on 2026-10-26.

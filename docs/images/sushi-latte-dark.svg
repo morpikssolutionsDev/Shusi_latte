@@ -1,0 +1,133 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 850 220" width="100%" height="100%" id="sushi-latte-logo-dark" class="sushi-latte-vector">
+  <defs>
+    <linearGradient id="sld-crema-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F2DFCE"/>
+      <stop offset="50%" stop-color="#E2C29F"/>
+      <stop offset="100%" stop-color="#C59B73"/>
+    </linearGradient>
+
+    <linearGradient id="sld-salmon-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FF9E80"/>
+      <stop offset="60%" stop-color="#FF6E40"/>
+      <stop offset="100%" stop-color="#F4511E"/>
+    </linearGradient>
+
+    <linearGradient id="sld-nori-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3A3F44"/>
+      <stop offset="100%" stop-color="#1E2124"/>
+    </linearGradient>
+
+    <linearGradient id="sld-ceramic-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#2D3035"/>
+      <stop offset="100%" stop-color="#1B1D20"/>
+    </linearGradient>
+
+    <linearGradient id="sld-matcha-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#9BC378"/>
+      <stop offset="100%" stop-color="#608848"/>
+    </linearGradient>
+
+    <filter id="sld-glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="0" stdDeviation="8" flood-color="#FF6E40" flood-opacity="0.3"/>
+    </filter>
+
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&amp;family=Plus+Jakarta+Sans:wght@400;600;700&amp;display=swap');
+      .brand-title-dark {
+        font-family: 'Cinzel', 'Plus Jakarta Sans', -apple-system, sans-serif;
+        font-weight: 700;
+        letter-spacing: 0.18em;
+      }
+      .brand-subtitle-dark {
+        font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+        font-weight: 600;
+        letter-spacing: 0.28em;
+        font-size: 13px;
+        text-transform: uppercase;
+      }
+      .japanese-sub-dark {
+        font-family: 'Hiragino Kaku Gothic Pro', 'Meiryo', sans-serif;
+        font-size: 14px;
+        letter-spacing: 0.35em;
+      }
+    </style>
+  </defs>
+
+  <!-- LOGO EMBLEM ON LEFT (Centered at X: 110, Y: 110) -->
+  <g id="sld-mark-wrapper" transform="translate(10, 5)">
+    <!-- STEAM VAPOR WITH GLOW -->
+    <g id="sld-steam-group" opacity="0.9">
+      <path d="M 85,62 C 80,48 92,36 86,22 C 83,16 78,12 80,4" 
+            fill="none" stroke="url(#sld-crema-grad)" stroke-width="3" stroke-linecap="round"/>
+      <path d="M 105,56 C 100,40 114,28 106,12 C 102,4 106,-1 105,-8" 
+            fill="none" stroke="url(#sld-salmon-grad)" stroke-width="3.5" stroke-linecap="round" filter="url(#sld-glow)"/>
+      <path d="M 125,62 C 130,48 118,36 124,22 C 127,16 132,12 130,4" 
+            fill="none" stroke="url(#sld-crema-grad)" stroke-width="3" stroke-linecap="round"/>
+    </g>
+
+    <!-- Main Emblem Group -->
+    <g id="sld-emblem">
+      <!-- Outer Nori Enso Ring -->
+      <path d="M 105,42
+               A 78,78 0 1,1 42,168
+               C 34,158 32,144 33,129
+               C 34,90 61,50 105,42 Z" 
+            fill="url(#sld-nori-grad)" stroke="#4A5158" stroke-width="1.5"/>
+
+      <!-- Salmon Crown -->
+      <path d="M 88,44 C 100,40 115,41 127,45 C 117,50 98,49 88,44 Z"
+            fill="url(#sld-salmon-grad)"/>
+
+      <!-- Ceramic Cup Base (Dark slate ceramic) -->
+      <path d="M 52,110 C 52,170 85,204 105,204 C 125,204 158,170 158,110 C 138,118 72,118 52,110 Z" 
+            fill="url(#sld-ceramic-grad)" stroke="#3E4349" stroke-width="1.5"/>
+
+      <!-- Saucer Base Line -->
+      <path d="M 72,212 C 92,216 118,216 138,212" 
+            fill="none" stroke="#68717A" stroke-width="4" stroke-linecap="round"/>
+
+      <!-- Cup Handle -->
+      <path d="M 154,120 C 173,122 181,142 171,159 C 165,169 156,171 150,171" 
+            fill="none" stroke="url(#sld-ceramic-grad)" stroke-width="6.5" stroke-linecap="round"/>
+
+      <!-- Rim & Crema -->
+      <ellipse cx="105" cy="112" rx="52" ry="28" fill="#25282C" stroke="#3E4349" stroke-width="1"/>
+      <ellipse cx="105" cy="113" rx="47" ry="24" fill="url(#sld-crema-grad)" opacity="0.9"/>
+      <ellipse cx="105" cy="114" rx="41" ry="20" fill="#1A110D"/>
+
+      <!-- Salmon & Latte Core -->
+      <g id="sld-core-heart" transform-origin="105 135" filter="url(#sld-glow)">
+        <path d="M 105,101 C 122,101 132,116 123,130 C 115,142 105,150 105,150 C 105,150 95,142 87,130 C 78,116 88,101 105,101 Z" 
+              fill="url(#sld-salmon-grad)"/>
+        <path d="M 97,110 C 102,115 108,115 113,110" fill="none" stroke="#FFF" stroke-width="1.5" stroke-linecap="round" opacity="0.95"/>
+        <path d="M 93,118 C 101,125 109,125 117,118" fill="none" stroke="#FFF" stroke-width="1.5" stroke-linecap="round" opacity="0.95"/>
+        <path d="M 105,103 C 106.5,114 103.5,126 105,143" fill="none" stroke="#FFF" stroke-width="1.8" stroke-linecap="round"/>
+        <path d="M 105,99 C 107,93 114,91 116,93 C 117,97 112,101 105,103 Z" fill="url(#sld-matcha-grad)"/>
+      </g>
+    </g>
+  </g>
+
+  <!-- VERTICAL DIVIDER ACCENT -->
+  <line x1="225" y1="45" x2="225" y2="175" stroke="#373B41" stroke-width="1.5" stroke-dasharray="2 4"/>
+
+  <!-- TYPOGRAPHY LOCKUP ON RIGHT -->
+  <g id="sld-brand-typography" transform="translate(260, 0)">
+    <text x="0" y="58" class="japanese-sub-dark" fill="#E2C29F" opacity="0.95">鮨 × 珈琲・ラテ</text>
+
+    <!-- Main Wordmark: SUSHI LATTE -->
+    <g id="sld-wordmark" transform="translate(0, 115)">
+      <text x="0" y="0" class="brand-title-dark" font-size="52" fill="#F3F4F6">SUSHI</text>
+      <circle cx="218" cy="-14" r="6" fill="url(#sld-salmon-grad)"/>
+      <text x="245" y="0" class="brand-title-dark" font-size="52" fill="#E2C29F">LATTE</text>
+    </g>
+
+    <!-- Tagline -->
+    <text x="3" y="152" class="brand-subtitle-dark" fill="#9CA3AF">CRAFT SUSHI &amp; SPECIALTY COFFEE</text>
+
+    <!-- Badge -->
+    <g transform="translate(3, 172)">
+      <rect x="0" y="0" width="168" height="20" rx="4" fill="#25282E" stroke="#373B41" stroke-width="1"/>
+      <text x="10" y="14" font-family="'Plus Jakarta Sans', sans-serif" font-size="9.5" font-weight="700" fill="#D1D5DB" letter-spacing="0.12em">HORECA SERVICE SUITE</text>
+    </g>
+  </g>
+</svg>

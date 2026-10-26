@@ -139,6 +139,34 @@ applied_discount, reducing BillPaymentSummary totals. The
 Cashier web app itself has not been built; this phase is the
 API it will use.
 
-Next phase: HRIS (Phase 7). Each phase ends with a PR for
-review; nothing is merged unless the owner asks for a merge.
+Phase 7 status: complete (API)
+
+Phase 7 is complete on the API side, the last phase, covering
+BR-HR-01 to BR-HR-07 and TRD §4.5. Migration 0011 adds
+employee (extending Phase 1 crew records), shift, attendance
+and leave_request. Employees are Management-only for
+create/update. Shifts are Outlet Admin/Management, with an
+overlap check per crew. Attendance clock-in/out is only from
+an HRIS screen-mode session (X-Screen-Token for screen hris)
+plus Crew ID and PIN, so personal devices cannot clock in;
+approved leave today blocks clock-in, and clock-out is
+blocked while a Waiter holds cash, with the message Hand over
+Rp X to the Cashier first. Attendance correction is Outlet
+Admin/Management with a reason, audit-logged. Auto clock-out
+closes open attendance past shift end + ops grace (default
+7200 seconds), flagged auto, via an endpoint and a 5-minute
+server ticker. Leave can be requested and approved or
+rejected by Outlet Admin/Management. Attendance export is
+CSV for external payroll. The HRIS web app itself has not
+been built; this phase is the API it will use. Also fixed in
+this phase: re-running migrations on an existing database
+no longer fails on ALTER TABLE ADD COLUMN created_by, so a
+server restart works.
+
+All 7 phases are now complete on the API side. The web
+frontends (Staff PWA, Client Menu, Product Display TV app,
+Kitchen display, Cashier app, HRIS app) have not been built.
+Realtime WebSocket push has not been built. Nothing is
+merged unless the owner asks for a merge.
+
 

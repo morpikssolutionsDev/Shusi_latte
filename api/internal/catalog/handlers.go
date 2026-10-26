@@ -11,7 +11,7 @@ import (
 // Auth and role checks arrive with the auth phase; these handlers are
 // staff catalog endpoints and are not the public Client Menu endpoint.
 type Handler struct {
-	Service *Service
+	Service Store
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {

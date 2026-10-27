@@ -133,6 +133,10 @@ _Avoid_: Split check, child bill
 Combining the Bills of several Tables into one Bill covering all of them; irreversible except by splitting.
 _Avoid_: Join tables, combine
 
+**Waiter Call**:
+A Customer asking for a Waiter from the Client Menu, or a "This isn't my table" alert from a scan; all on-duty Waiters are notified, one answers it, and an unanswered call re-notifies and then escalates to the Outlet Admin.
+_Avoid_: Service request, bell
+
 **Claim**:
 A Waiter taking ownership of a Customer-placed Order; the Order reaches the kitchen only after the Waiter confirms it with the Customer.
 

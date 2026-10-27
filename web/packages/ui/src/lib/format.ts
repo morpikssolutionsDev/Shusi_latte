@@ -44,6 +44,11 @@ export function wideImageUrl(key: string, focus: { x: number; y: number }): stri
   return `/media/images/${key}/wide-${focus.x}-${focus.y}.webp`;
 }
 
+/** URL of an uploaded Product Display video; its key already carries the file name. */
+export function videoUrl(key: string): string {
+  return `/media/images/${key}`;
+}
+
 /** srcset for 1:1 images. */
 export function imageSrcSet(key: string): string {
   return `${imageUrl(key, 'sq320')} 320w, ${imageUrl(key, 'sq640')} 640w, ${imageUrl(key, 'sq1024')} 1024w`;

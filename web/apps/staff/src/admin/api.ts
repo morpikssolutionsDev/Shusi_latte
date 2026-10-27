@@ -62,6 +62,35 @@ export function useSave<TVars, TData>(
   });
 }
 
+export type Slide = Schemas['Slide'];
+
+export const slidesQuery = queryOptions({
+  queryKey: ['slides'],
+  queryFn: async () => unwrap(await api.GET('/display/slides')),
+});
+
+/** What the screen plays right now (skip rules applied server-side); keyed under ['slides'] so slide edits refresh it. */
+export const playlistQuery = queryOptions({
+  queryKey: ['slides', 'playlist'],
+  queryFn: async () => unwrap(await api.GET('/public/display/playlist')),
+});
+
+/** Uploads an image (multipart) and returns its content-addressed key (TR-DM-09). */
+export const uploadImage = (file: File) => upload('/api/v1/images', 'imageKey', file);
+
+/** Uploads a Product Display video (MP4/WebM) and returns its key. */
+export const uploadVideo = (file: File) => upload('/api/v1/videos', 'videoKey', file);
+
+async function upload(url: string, field: 'imageKey' | 'videoKey', file: File): Promise<string> {
+  const body = new FormData();
+  body.append('file', file);
+  const res = await fetch(url, { method: 'POST', body, credentials: 'include' });
+  const json = (await res.json()) as Record<string, string | undefined>;
+  const key = json[field];
+  if (!res.ok || !key) throw new Error(json.detail ?? json.title ?? res.statusText);
+  return key;
+}
+
 /** Bilingual name helper: staff screens read Indonesian. */
 export const nameOf = (x: { nameId: string }) => x.nameId;
 

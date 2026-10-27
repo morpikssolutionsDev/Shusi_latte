@@ -6,7 +6,7 @@ import { ArrowLeftIcon, ImagePlusIcon, PlusIcon, Trash2Icon } from 'lucide-react
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { catalogQuery, errorText, useSave, type DietaryTag, type ModifierGroup, type Product } from './api';
+import { catalogQuery, errorText, uploadImage, useSave, type DietaryTag, type ModifierGroup, type Product } from './api';
 
 const emptyProduct = (categoryId: string): Product => ({
   categoryId,
@@ -304,12 +304,7 @@ function PhotoSection({ draft, set, canEdit }: { draft: Product; set: (p: Partia
   const upload = async (file: File) => {
     setUploading(true);
     try {
-      const body = new FormData();
-      body.append('file', file);
-      const res = await fetch('/api/v1/images', { method: 'POST', body, credentials: 'include' });
-      const json = (await res.json()) as { imageKey?: string; detail?: string; title?: string };
-      if (!res.ok || !json.imageKey) throw new Error(json.detail ?? json.title ?? res.statusText);
-      set({ imageKey: json.imageKey, imageFocus: { x: 50, y: 50 } });
+      set({ imageKey: await uploadImage(file), imageFocus: { x: 50, y: 50 } });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : errorText(e));
     } finally {

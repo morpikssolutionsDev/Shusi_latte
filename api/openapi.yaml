@@ -278,6 +278,22 @@ paths:
             application/json:
               schema: { type: object, required: [imageKey], properties: { imageKey: { type: string } } }
         '415': { $ref: '#/components/responses/Problem' }
+  /videos:
+    post:
+      operationId: uploadVideo
+      summary: Upload an MP4 or WebM video (≤ 40 MB) for an uploaded Product Display slide; stored as-is, content-addressed
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema: { type: object, required: [file], properties: { file: { type: string, format: binary } } }
+      responses:
+        '201':
+          description: Stored
+          content:
+            application/json:
+              schema: { type: object, required: [videoKey], properties: { videoKey: { type: string, description: 'vid/<hash>.<ext>, served at /media/images/<videoKey>' } } }
+        '415': { $ref: '#/components/responses/Problem' }
   /audit:
     get:
       operationId: searchAudit
@@ -291,8 +307,567 @@ paths:
         - { name: limit, in: query, schema: { type: integer } }
       responses:
         '200': { description: Entries, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/AuditEntry' } } } } }
+  # ---------------------------------------------------------------- Phase 2: Product Display
+  /public/display/playlist:
+    get:
+      operationId: getPlaylist
+      summary: Resolved playlist for the TV (public; unavailable content skipped, BR-PD-03)
+      security: []
+      responses:
+        '200': { description: Playlist, content: { application/json: { schema: { $ref: '#/components/schemas/Playlist' } } } }
+  /display/slides:
+    get:
+      operationId: listSlides
+      responses:
+        '200': { description: Slides, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Slide' } } } } }
+    post:
+      operationId: createSlide
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/Slide' } } } }
+      responses:
+        '200': { description: Saved, content: { application/json: { schema: { $ref: '#/components/schemas/Slide' } } } }
+        '422': { $ref: '#/components/responses/Problem' }
+  /display/slides/{id}:
+    put:
+      operationId: updateSlide
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/Slide' } } } }
+      responses:
+        '200': { description: Saved, content: { application/json: { schema: { $ref: '#/components/schemas/Slide' } } } }
+        '422': { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: deleteSlide
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses:
+        '204': { description: Deleted }
+  /display/slide-order:
+    put:
+      operationId: reorderSlides
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [ids], properties: { ids: { type: array, items: { type: string } } } }
+      responses:
+        '204': { description: Reordered }
+  /demo/tables:
+    get:
+      operationId: listDemoTables
+      summary: Demo launcher cards — every Table with its QR token and scenario (Demo mode only)
+      security: []
+      responses:
+        '200':
+          description: Tables
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required: [number, label, qrToken, active, scenario]
+                  properties:
+                    number: { type: integer }
+                    label: { type: string }
+                    qrToken: { type: string }
+                    active: { type: boolean }
+                    scenario: { type: string }
+  # ---------------------------------------------------------------- Phase 3: Client Menu (public)
+  /public/tables/{qr}:
+    get:
+      operationId: lookupTable
+      summary: What a QR scan shows — free, occupied with full names, or unavailable (OP-01, BR-CM-12)
+      security: []
+      parameters: [{ $ref: '#/components/parameters/Qr' }]
+      responses:
+        '200': { description: Table state, content: { application/json: { schema: { $ref: '#/components/schemas/TableState' } } } }
+  /public/tables/{qr}/join:
+    post:
+      operationId: joinTable
+      summary: Open or join the Table's Bill as a new Customer (BR-CM-01, BR-CM-02, TR-DM-01)
+      security: []
+      parameters: [{ $ref: '#/components/parameters/Qr' }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/JoinRequest' } } } }
+      responses:
+        '201': { description: Guest session, content: { application/json: { schema: { $ref: '#/components/schemas/GuestSession' } } } }
+        '404': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+  /public/tables/{qr}/rejoin:
+    post:
+      operationId: rejoinTable
+      summary: Continue as an existing Customer on this device; the previous device is signed out (BR-CM-13)
+      security: []
+      parameters: [{ $ref: '#/components/parameters/Qr' }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [customerId], properties: { customerId: { type: string } } } } }
+      responses:
+        '200': { description: Guest session, content: { application/json: { schema: { $ref: '#/components/schemas/GuestSession' } } } }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+  /public/tables/{qr}/not-mine:
+    post:
+      operationId: notMyTable
+      summary: '"This isn''t my table" — notifies on-duty Waiters (BR-CM-12)'
+      security: []
+      parameters: [{ $ref: '#/components/parameters/Qr' }]
+      responses:
+        '204': { description: Waiters notified }
+        '404': { $ref: '#/components/responses/Problem' }
+  /public/catalog:
+    get:
+      operationId: getMenu
+      summary: Client Menu catalog — Active Products, Sold Out Variants kept for greying out, current promos (BR-CM-03, BR-CM-04, BR-CM-09)
+      security: []
+      responses:
+        '200': { description: Menu (ETag), content: { application/json: { schema: { $ref: '#/components/schemas/Menu' } } } }
+        '304': { description: Not modified }
+  /public/bills/me:
+    get:
+      operationId: getMyBill
+      summary: The Customer's Bill, profile and own Orders with status and Estimated Wait (BR-CM-08)
+      security: [{ guest: [] }]
+      responses:
+        '200': { description: View, content: { application/json: { schema: { $ref: '#/components/schemas/CustomerView' } } } }
+        '401': { $ref: '#/components/responses/Problem' }
+  /public/cart/quote:
+    post:
+      operationId: quoteCart
+      summary: Price a cart and report Dietary Warnings and unavailable lines, without saving
+      security: [{ guest: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/CartItems' } } } }
+      responses:
+        '200': { description: Quote, content: { application/json: { schema: { $ref: '#/components/schemas/Quote' } } } }
+        '401': { $ref: '#/components/responses/Problem' }
+  /public/orders:
+    post:
+      operationId: placeOrder
+      summary: Place a Pending Order (BR-CM-05, BR-CM-11, TR-DM-02, TR-DM-05). Send an Idempotency-Key.
+      security: [{ guest: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/CartItems' } } } }
+      responses:
+        '201': { description: Order placed, content: { application/json: { schema: { $ref: '#/components/schemas/OrderChange' } } } }
+        '401': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+  /public/orders/{id}:
+    patch:
+      operationId: editOrder
+      summary: Edit own Order before Claim — lines left out are Cancelled (Customer Request) (BR-CM-14)
+      security: [{ guest: [] }]
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/CartItems' } } } }
+      responses:
+        '200': { description: Updated, content: { application/json: { schema: { $ref: '#/components/schemas/OrderChange' } } } }
+        '409': { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: cancelOrder
+      summary: Cancel own Order before Claim (BR-CM-14)
+      security: [{ guest: [] }]
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses:
+        '200': { description: Cancelled, content: { application/json: { schema: { $ref: '#/components/schemas/OrderChange' } } } }
+        '409': { $ref: '#/components/responses/Problem' }
+  /public/waiter-calls:
+    post:
+      operationId: callWaiter
+      summary: Call a Waiter; an unanswered call is returned instead of a new one (BR-CM-07)
+      security: [{ guest: [] }]
+      responses:
+        '201': { description: Call, content: { application/json: { schema: { $ref: '#/components/schemas/WaiterCall' } } } }
+  # ---------------------------------------------------------------- Phase 4: Waiter
+  /waiter/feed:
+    get:
+      operationId: getWaiterFeed
+      summary: Notifications — unclaimed Orders and Waiter calls for everyone, plus the caller's own Orders (BR-WT-01, BR-WT-09)
+      responses:
+        '200': { description: Feed, content: { application/json: { schema: { $ref: '#/components/schemas/Feed' } } } }
+  /floor:
+    get:
+      operationId: getFloor
+      summary: TableMap — every Table with its open Bill
+      responses:
+        '200': { description: Tables, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/TableCard' } } } } }
+  /bills/{id}:
+    get:
+      operationId: getStaffBill
+      summary: BillSummary — every Order on the Bill and totals from pricing (BR-WT-07, BR-R-14)
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses:
+        '200': { description: Bill, content: { application/json: { schema: { $ref: '#/components/schemas/StaffBill' } } } }
+        '404': { $ref: '#/components/responses/Problem' }
+  /orders:
+    post:
+      operationId: directOrder
+      summary: Direct entry by a Waiter or Cashier — created Confirmed, opens the Table's Bill if needed (BR-WT-03, OP-04)
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/DirectOrderRequest' } } } }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { type: object, required: [orderId], properties: { orderId: { type: string } } } } } }
+        '409': { $ref: '#/components/responses/Problem' }
+  /orders/{id}/claim:
+    post:
+      operationId: claimOrder
+      summary: Claim a Customer Order; first writer wins, the loser gets 409 already_claimed (TR-SM-03)
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses:
+        '204': { description: Claimed }
+        '409': { $ref: '#/components/responses/Problem' }
+  /orders/{id}/takeover:
+    post:
+      operationId: takeoverClaim
+      summary: Take over another Waiter's Claim (BR-WT-11, audit-logged)
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses:
+        '204': { description: Taken over }
+        '409': { $ref: '#/components/responses/Problem' }
+  /orders/{id}/reassign:
+    post:
+      operationId: reassignClaim
+      summary: Outlet Admin or Management reassigns a Claim (BR-R-34, audit-logged)
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [toCrewId], properties: { toCrewId: { type: string, description: crew.id } } } } }
+      responses:
+        '204': { description: Reassigned }
+  /orders/{id}/items:
+    post:
+      operationId: addOrderItems
+      summary: Add lines to a Claimed Order before confirming it (OP-03 H3)
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/CartItems' } } } }
+      responses:
+        '204': { description: Added }
+        '409': { $ref: '#/components/responses/Problem' }
+  /orders/{id}/confirm:
+    post:
+      operationId: confirmOrder
+      summary: Confirm a Claimed Order — items go to their Prep Areas; flagged items must be Cancelled first (BR-WT-02, BR-WT-05)
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses:
+        '204': { description: Confirmed }
+        '409': { $ref: '#/components/responses/Problem' }
+  /order-items/{id}/cancel:
+    post:
+      operationId: cancelOrderItem
+      summary: Cancel a Pending or Confirmed item with a Cancel Reason; Out of Stock marks the Variant Sold Out (BR-WT-04, TR-SM-04)
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/CancelRequest' } } } }
+      responses:
+        '204': { description: Cancelled }
+        '409': { $ref: '#/components/responses/Problem' }
+  /order-items/serve:
+    post:
+      operationId: serveItems
+      summary: Mark Ready items Served (BR-WT-09)
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [itemIds], properties: { itemIds: { type: array, items: { type: string } } } } } }
+      responses:
+        '204': { description: Served }
+        '409': { $ref: '#/components/responses/Problem' }
+  /order-items/{id}/remake:
+    post:
+      operationId: remakeItem
+      summary: No-charge Remake of a Served item; needs X-Override-Token for action remake (BR-R-33)
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ReasonRequest' } } } }
+      responses:
+        '201': { description: Remake created, content: { application/json: { schema: { type: object, required: [itemId], properties: { itemId: { type: string } } } } } }
+        '403': { $ref: '#/components/responses/Problem' }
+  /order-items/{id}/void:
+    post:
+      operationId: voidItem
+      summary: Void a Ready or Served item on an unpaid Bill; needs X-Override-Token for action void (BR-R-08)
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ReasonRequest' } } } }
+      responses:
+        '204': { description: Voided }
+        '403': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+  /waiter-calls/{id}/answer:
+    post:
+      operationId: answerWaiterCall
+      summary: Mark a Waiter call handled
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses:
+        '204': { description: Answered }
+        '409': { $ref: '#/components/responses/Problem' }
+  # ---------------------------------------------------------------- Phase 4: Bills and payment
+  /bills/{id}/billing:
+    get:
+      operationId: getBilling
+      summary: Totals, Sub-bill shares, Payments and balance (TR-PR-01, TR-PR-04)
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses:
+        '200': { description: Billing, content: { application/json: { schema: { $ref: '#/components/schemas/Billing' } } } }
+  /bills/{id}/settle:
+    post:
+      operationId: settleBill
+      summary: Bill → Settling; Customer ordering blocked, price fixed (BR-R-27)
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses:
+        '204': { description: Settling }
+  /bills/{id}/unlock:
+    post:
+      operationId: unlockBill
+      summary: Settling → Open, accepting Customer Orders again (BR-WT-15)
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses:
+        '204': { description: Open }
+  /bills/{id}/discount:
+    post:
+      operationId: applyManualDiscount
+      summary: Manual Bill discount; needs X-Override-Token for action manual_discount (BR-R-17)
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [discountId], properties: { discountId: { type: string } } } } }
+      responses:
+        '204': { description: Applied }
+        '403': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+  /bills/{id}/payments:
+    post:
+      operationId: recordPayment
+      summary: Record a Payment; cash rounds to Rp 100 at the final payment; unverified QRIS needs X-Override-Token qris_unverified (BR-R-18, BR-R-19, BR-R-30)
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/PayRequest' } } } }
+      responses:
+        '201': { description: Recorded, content: { application/json: { schema: { $ref: '#/components/schemas/PayResult' } } } }
+        '409': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+  /bills/{id}/close:
+    post:
+      operationId: closeBill
+      summary: Close a fully paid Bill or Sub-bill; unfinished items need payNowServeLater (BR-R-31)
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, properties: { subBillId: { type: string }, payNowServeLater: { type: boolean } } }
+      responses:
+        '204': { description: Closed }
+        '409': { $ref: '#/components/responses/Problem' }
+  /bills/{id}/unpaid:
+    post:
+      operationId: closeUnpaid
+      summary: Close as Unpaid Bill; needs X-Override-Token for action unpaid_bill and a reason (BR-R-32)
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ReasonRequest' } } } }
+      responses:
+        '204': { description: Closed unpaid }
+        '403': { $ref: '#/components/responses/Problem' }
+  /bills/{id}/move:
+    post:
+      operationId: moveBill
+      summary: Move a Bill to a free Table; an occupied target returns 409 table_occupied (BR-R-28)
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [toTableId], properties: { fromTableId: { type: string }, toTableId: { type: string } } }
+      responses:
+        '204': { description: Moved }
+        '409': { $ref: '#/components/responses/Problem' }
+  /bills/merge:
+    post:
+      operationId: mergeBills
+      summary: Merge Bills into one; irreversible (BR-R-03, TR-DM-03)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [intoBillId, billIds], properties: { intoBillId: { type: string }, billIds: { type: array, items: { type: string } } } }
+      responses:
+        '204': { description: Merged }
+        '409': { $ref: '#/components/responses/Problem' }
+  /bills/{id}/split:
+    post:
+      operationId: splitBill
+      summary: Split into Sub-bills by item or equally, before any Payment (BR-R-04, BR-R-29)
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/SplitRequest' } } } }
+      responses:
+        '204': { description: Split }
+        '409': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+  /bills/{id}/receipts:
+    post:
+      operationId: printReceipt
+      summary: Receipt content for one copy; records the print, later prints are REPRINT and audited (TR-PRN-05, TR-PRN-08)
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [copy], properties: { copy: { type: string, enum: [customer, internal] }, subBillId: { type: string } } }
+      responses:
+        '201': { description: Receipt, content: { application/json: { schema: { $ref: '#/components/schemas/Receipt' } } } }
+  /reports/daily-sales:
+    get:
+      operationId: getDailySales
+      summary: Daily sales for one business day (04:00–04:00 WIB) from frozen Bill totals (BR-ADM-11)
+      parameters: [{ name: date, in: query, required: true, schema: { type: string, format: date } }]
+      responses:
+        '200': { description: Report, content: { application/json: { schema: { $ref: '#/components/schemas/DailySales' } } } }
+  # ---------------------------------------------------------------- Phase 5: Kitchen
+  /prep-areas/{id}/queue:
+    get:
+      operationId: getKitchenQueue
+      summary: Prep Area display — tickets of Confirmed and Preparing items (Remakes first) and Ready items waiting pickup (BR-KT-01, TR-KT-01)
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses:
+        '200': { description: Queue, content: { application/json: { schema: { $ref: '#/components/schemas/KitchenQueue' } } } }
+  /order-items/start:
+    post:
+      operationId: startItems
+      summary: Confirmed → Preparing (BR-KT-03)
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ItemIds' } } } }
+      responses:
+        '204': { description: Started }
+        '409': { $ref: '#/components/responses/Problem' }
+  /order-items/ready:
+    post:
+      operationId: readyItems
+      summary: Preparing → Ready; the owning Waiter is signalled (BR-KT-03, BR-WT-09)
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ItemIds' } } } }
+      responses:
+        '204': { description: Ready }
+        '409': { $ref: '#/components/responses/Problem' }
+  /order-items/{id}/kitchen-cancel:
+    post:
+      operationId: kitchenCancelItem
+      summary: Kitchen Cancel of a Confirmed or Preparing item; Out of Stock marks the Variant Sold Out (BR-KT-04, G-07)
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/CancelRequest' } } } }
+      responses:
+        '204': { description: Cancelled }
+        '409': { $ref: '#/components/responses/Problem' }
+  /reports/prep-time:
+    get:
+      operationId: getPrepTimeReport
+      summary: Share of items Ready within their Prep Time, by Prep Area and Product (TR-KT-05)
+      parameters: [{ name: date, in: query, required: true, schema: { type: string, format: date } }]
+      responses:
+        '200': { description: Report, content: { application/json: { schema: { $ref: '#/components/schemas/PrepReport' } } } }
+  # ---------------------------------------------------------------- Phase 6: Cashier
+  /cashier/bills:
+    get:
+      operationId: getCashierBills
+      summary: Open Bills (Tables and Takeaway) and those closed this business day
+      responses:
+        '200': { description: Bills, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/BillBrief' } } } } }
+  /drawer:
+    get:
+      operationId: getDrawer
+      summary: Cash Drawer — open session, expected cash (TR-PAY-01), Handovers, Refunds, held cash and pending QRIS
+      responses:
+        '200': { description: Drawer, content: { application/json: { schema: { $ref: '#/components/schemas/Drawer' } } } }
+  /drawer-sessions:
+    post:
+      operationId: openDrawer
+      summary: Open the drawer with the Opening Float (BR-CS-04)
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [openingFloat], properties: { openingFloat: { type: integer, format: int64 } } } } }
+      responses:
+        '204': { description: Opened }
+        '409': { $ref: '#/components/responses/Problem' }
+  /drawer-sessions/current/close:
+    post:
+      operationId: closeDrawer
+      summary: Shift Closing — refused while QRIS is pending (BR-CS-06, BR-CS-07, TR-PAY-03)
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [countedCash], properties: { countedCash: { type: integer, format: int64 } } } } }
+      responses:
+        '200': { description: Shift Closing, content: { application/json: { schema: { $ref: '#/components/schemas/ShiftClosing' } } } }
+        '409': { $ref: '#/components/responses/Problem' }
+  /cash-handovers:
+    post:
+      operationId: receiveHandover
+      summary: Cash Handover from a Waiter; the difference is recorded against them (BR-CS-05, TR-PAY-02)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [waiterId, receivedAmount], properties: { waiterId: { type: string, description: crew.id }, receivedAmount: { type: integer, format: int64 } } }
+      responses:
+        '201': { description: Received, content: { application/json: { schema: { $ref: '#/components/schemas/HandoverView' } } } }
+        '409': { $ref: '#/components/responses/Problem' }
+  /crew/{id}/held-cash:
+    get:
+      operationId: getHeldCash
+      summary: Cash a Waiter still holds (BR-WT-14)
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses:
+        '200': { description: Held cash, content: { application/json: { schema: { $ref: '#/components/schemas/HeldCash' } } } }
+  /payments/{id}/verify:
+    post:
+      operationId: verifyPayment
+      summary: Verify a pending QRIS (BR-R-30)
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses:
+        '204': { description: Verified }
+        '409': { $ref: '#/components/responses/Problem' }
+  /payments/{id}/write-off:
+    post:
+      operationId: writeOffPayment
+      summary: Write off a pending QRIS with a reason (BR-CS-07)
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ReasonRequest' } } } }
+      responses:
+        '204': { description: Written off }
+  /bills/{id}/refunds:
+    post:
+      operationId: refundBill
+      summary: Cash Refund on a closed Bill; X-Override-Token refund_within_cap or refund_above_cap (BR-R-20, BR-CS-03)
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [amount, reason], properties: { amount: { type: integer, format: int64 }, reason: { type: string } } }
+      responses:
+        '204': { description: Refunded }
+        '403': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+  /bills:
+    post:
+      operationId: openTakeaway
+      summary: Open a Takeaway Bill; its Order reaches the Kitchen only once paid in full (BR-CS-02, TR-PAY-04)
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/TakeawayRequest' } } } }
+      responses:
+        '201': { description: Opened, content: { application/json: { schema: { type: object, required: [billId], properties: { billId: { type: string } } } } } }
+  /post-outage/bills:
+    post:
+      operationId: postOutageEntry
+      summary: Re-enter a paper Bill after an outage; skips the Kitchen, marked post_outage (BR-CS-08)
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/OutageRequest' } } } }
+      responses:
+        '201': { description: Entered, content: { application/json: { schema: { type: object, required: [billId], properties: { billId: { type: string } } } } } }
+        '422': { $ref: '#/components/responses/Problem' }
+  /reports/operations:
+    get:
+      operationId: getOperationsReport
+      summary: Shift Closings, Unpaid Bills, Remakes, Refunds and Post-outage Entries for a business day (BR-ADM-11)
+      parameters: [{ name: date, in: query, required: true, schema: { type: string, format: date } }]
+      responses:
+        '200': { description: Report, content: { application/json: { schema: { $ref: '#/components/schemas/Operations' } } } }
 components:
+  securitySchemes:
+    guest:
+      type: apiKey
+      in: header
+      name: X-Guest-Token
+      description: Customer guest token from join/rejoin; WebSocket clients pass it as ?guest=
   parameters:
+    Qr:
+      name: qr
+      in: path
+      required: true
+      schema: { type: string }
     Id:
       name: id
       in: path
@@ -305,6 +880,738 @@ components:
         application/problem+json:
           schema: { $ref: '#/components/schemas/Problem' }
   schemas:
+    TableRef:
+      type: object
+      required: [number, label]
+      properties:
+        number: { type: integer }
+        label: { type: string }
+    CustomerRef:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: string }
+        name: { type: string }
+    TableState:
+      type: object
+      required: [state, settling, customers]
+      properties:
+        state: { type: string, enum: [free, occupied, unavailable] }
+        table: { $ref: '#/components/schemas/TableRef' }
+        settling: { type: boolean }
+        customers: { type: array, items: { $ref: '#/components/schemas/CustomerRef' } }
+    JoinRequest:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, maxLength: 40 }
+        restrictionTagIds: { type: array, items: { type: string } }
+        dietaryNote: { type: string, maxLength: 300 }
+        consent: { type: boolean, description: Without consent the restriction and note are discarded (BR-CM-02) }
+    GuestSession:
+      type: object
+      required: [token, customerId, billId, name, firstScan]
+      properties:
+        token: { type: string }
+        customerId: { type: string }
+        billId: { type: string }
+        name: { type: string }
+        firstScan: { type: boolean, description: This scan opened the Bill (plays the splash, MOTION M1) }
+    Promo:
+      type: object
+      required: [discountId, name, price]
+      properties:
+        discountId: { type: string }
+        name: { type: string }
+        price: { type: integer, format: int64 }
+    Menu:
+      type: object
+      required: [categories, dietaryTags, products, promos, priceMode, taxRateBp, serviceRateBp]
+      properties:
+        categories: { type: array, items: { $ref: '#/components/schemas/Category' } }
+        dietaryTags: { type: array, items: { $ref: '#/components/schemas/DietaryTag' } }
+        products: { type: array, items: { $ref: '#/components/schemas/Product' } }
+        promos: { type: object, additionalProperties: { $ref: '#/components/schemas/Promo' }, description: By Variant id }
+        priceMode: { type: string, enum: [exclusive, inclusive] }
+        taxRateBp: { type: integer }
+        serviceRateBp: { type: integer }
+    CartItem:
+      type: object
+      required: [variantId, quantity]
+      properties:
+        id: { type: string, description: Existing Order Item when editing }
+        variantId: { type: string }
+        modifierIds: { type: array, items: { type: string } }
+        quantity: { type: integer, minimum: 1, maximum: 20 }
+        note: { type: string, maxLength: 140 }
+        acknowledgedTagIds: { type: array, items: { type: string } }
+    CartItems:
+      type: object
+      required: [items]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/CartItem' } }
+    ItemProblem:
+      type: object
+      required: [index, code, message]
+      properties:
+        index: { type: integer }
+        code: { type: string, enum: [unknown, unavailable, sold_out, bad_quantity, modifier_rule, note_too_long, dietary_ack_required] }
+        tagIds: { type: array, items: { type: string } }
+        message: { type: string }
+    QuoteLine:
+      type: object
+      required: [index, gross, discount, net, warningTagIds]
+      properties:
+        index: { type: integer }
+        gross: { type: integer, format: int64 }
+        discount: { type: integer, format: int64 }
+        net: { type: integer, format: int64 }
+        warningTagIds: { type: array, items: { type: string } }
+        problem: { $ref: '#/components/schemas/ItemProblem' }
+    Quote:
+      type: object
+      required: [lines, subtotal, itemDiscount, total]
+      properties:
+        lines: { type: array, items: { $ref: '#/components/schemas/QuoteLine' } }
+        subtotal: { type: integer, format: int64 }
+        itemDiscount: { type: integer, format: int64 }
+        total: { type: integer, format: int64, description: Before tax and service charge, added at payment }
+    TagRef:
+      type: object
+      required: [id, code, nameId, nameEn]
+      properties:
+        id: { type: string }
+        code: { type: string }
+        nameId: { type: string }
+        nameEn: { type: string }
+    ModifierView:
+      type: object
+      required: [name, price]
+      properties:
+        name: { $ref: '#/components/schemas/Bilingual' }
+        price: { type: integer, format: int64 }
+    ItemStatus:
+      type: string
+      enum: [pending, confirmed, preparing, ready, served, cancelled, voided]
+    ItemView:
+      type: object
+      required: [id, productId, variantId, productName, variantName, quantity, note, modifiers, unitPrice, lineTotal, status, warnings, soldOutFlag, unavailableFlag]
+      properties:
+        id: { type: string }
+        productId: { type: string }
+        variantId: { type: string }
+        productName: { $ref: '#/components/schemas/Bilingual' }
+        variantName: { $ref: '#/components/schemas/Bilingual' }
+        quantity: { type: integer }
+        note: { type: string }
+        modifiers: { type: array, items: { $ref: '#/components/schemas/ModifierView' } }
+        unitPrice: { type: integer, format: int64 }
+        lineTotal: { type: integer, format: int64 }
+        status: { $ref: '#/components/schemas/ItemStatus' }
+        cancelReason: { type: string }
+        warnings: { type: array, items: { $ref: '#/components/schemas/TagRef' } }
+        soldOutFlag: { type: boolean }
+        unavailableFlag: { type: boolean }
+    Wait:
+      type: object
+      required: [seconds, minutes, asOf]
+      properties:
+        seconds: { type: integer, format: int64 }
+        minutes: { type: integer, format: int64 }
+        asOf: { type: integer, format: int64 }
+    OrderView:
+      type: object
+      required: [id, seq, status, editable, createdAt, subtotal, items]
+      properties:
+        id: { type: string }
+        seq: { type: integer }
+        status: { type: string, enum: [pending, claimed, confirmed, preparing, ready, served, cancelled] }
+        editable: { type: boolean }
+        createdAt: { type: integer, format: int64 }
+        confirmedAt: { type: integer, format: int64 }
+        estimatedWait: { $ref: '#/components/schemas/Wait' }
+        subtotal: { type: integer, format: int64 }
+        items: { type: array, items: { $ref: '#/components/schemas/ItemView' } }
+    WaiterCall:
+      type: object
+      required: [id, createdAt]
+      properties:
+        id: { type: string }
+        createdAt: { type: integer, format: int64 }
+    CustomerView:
+      type: object
+      required: [bill, customer, orders]
+      properties:
+        bill:
+          type: object
+          required: [id, number, status, tables, openedAt]
+          properties:
+            id: { type: string }
+            number: { type: string }
+            status: { type: string, enum: [open, settling, closed, unpaid, merged] }
+            tables: { type: array, items: { $ref: '#/components/schemas/TableRef' } }
+            openedAt: { type: integer, format: int64 }
+        customer:
+          type: object
+          required: [id, name, restrictionTagIds, dietaryNote]
+          properties:
+            id: { type: string }
+            name: { type: string }
+            restrictionTagIds: { type: array, items: { type: string } }
+            dietaryNote: { type: string }
+        orders: { type: array, items: { $ref: '#/components/schemas/OrderView' } }
+        waiterCall: { $ref: '#/components/schemas/WaiterCall' }
+    CrewRef:
+      type: object
+      required: [id, crewId, name]
+      properties:
+        id: { type: string }
+        crewId: { type: string }
+        name: { type: string }
+    StaffOrder:
+      allOf:
+        - $ref: '#/components/schemas/OrderView'
+        - type: object
+          required: [billId, billNumber, tables, source, flagged, hasWarnings]
+          properties:
+            billId: { type: string }
+            billNumber: { type: string }
+            tables: { type: array, items: { $ref: '#/components/schemas/TableRef' } }
+            source: { type: string, enum: [client_menu, waiter, cashier] }
+            customerName: { type: string }
+            claimedBy: { $ref: '#/components/schemas/CrewRef' }
+            flagged: { type: boolean }
+            hasWarnings: { type: boolean }
+            renotifiedAt: { type: integer, format: int64 }
+            escalatedAt: { type: integer, format: int64 }
+    CallView:
+      type: object
+      required: [id, kind, table, createdAt]
+      properties:
+        id: { type: string }
+        kind: { type: string, enum: [call, not_mine] }
+        table: { $ref: '#/components/schemas/TableRef' }
+        billId: { type: string }
+        customerName: { type: string }
+        createdAt: { type: integer, format: int64 }
+        renotifiedAt: { type: integer, format: int64 }
+        escalatedAt: { type: integer, format: int64 }
+    Feed:
+      type: object
+      required: [unclaimed, calls, mine]
+      properties:
+        unclaimed: { type: array, items: { $ref: '#/components/schemas/StaffOrder' } }
+        calls: { type: array, items: { $ref: '#/components/schemas/CallView' } }
+        mine: { type: array, items: { $ref: '#/components/schemas/StaffOrder' } }
+    BillBrief:
+      type: object
+      required: [id, number, status, openedAt, tables, customers, liveOrders, unclaimed, readyItems, flagged, claimedByMe, total]
+      properties:
+        id: { type: string }
+        number: { type: string }
+        status: { type: string, enum: [open, settling, closed, unpaid, merged] }
+        openedAt: { type: integer, format: int64 }
+        tables: { type: array, items: { $ref: '#/components/schemas/TableRef' } }
+        customers: { type: array, items: { type: string } }
+        liveOrders: { type: integer }
+        unclaimed: { type: integer }
+        readyItems: { type: integer }
+        flagged: { type: boolean }
+        claimedByMe: { type: boolean }
+        total: { type: integer, format: int64 }
+    TableCard:
+      type: object
+      required: [id, number, label, active]
+      properties:
+        id: { type: string }
+        number: { type: integer }
+        label: { type: string }
+        active: { type: boolean }
+        bill: { $ref: '#/components/schemas/BillBrief' }
+    Totals:
+      type: object
+      required: [subtotal, itemDiscount, billDiscount, service, tax, total]
+      properties:
+        subtotal: { type: integer, format: int64 }
+        itemDiscount: { type: integer, format: int64 }
+        billDiscount: { type: integer, format: int64 }
+        service: { type: integer, format: int64 }
+        tax: { type: integer, format: int64 }
+        total: { type: integer, format: int64 }
+    CustomerDetail:
+      type: object
+      required: [id, name, restrictionTagIds, dietaryNote]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        restrictionTagIds: { type: array, items: { type: string } }
+        dietaryNote: { type: string }
+    HeldCash:
+      type: object
+      required: [crewId, amount, payments]
+      properties:
+        crewId: { type: string }
+        code: { type: string }
+        name: { type: string }
+        amount: { type: integer, format: int64 }
+        payments: { type: integer }
+    HandoverView:
+      type: object
+      required: [id, waiter, expected, received, difference, receivedAt]
+      properties:
+        id: { type: string }
+        waiter: { type: string }
+        expected: { type: integer, format: int64 }
+        received: { type: integer, format: int64 }
+        difference: { type: integer, format: int64 }
+        receivedAt: { type: integer, format: int64 }
+    RefundView:
+      type: object
+      required: [id, billId, billNumber, amount, reason, approvedBy, createdAt]
+      properties:
+        id: { type: string }
+        billId: { type: string }
+        billNumber: { type: string }
+        amount: { type: integer, format: int64 }
+        reason: { type: string }
+        approvedBy: { type: string }
+        createdAt: { type: integer, format: int64 }
+    PendingQRIS:
+      allOf:
+        - $ref: '#/components/schemas/PaymentView'
+        - type: object
+          required: [billId, billNumber, takenByName]
+          properties:
+            billId: { type: string }
+            billNumber: { type: string }
+            takenByName: { type: string }
+    Expected:
+      type: object
+      required: [openingFloat, handovers, counterTendered, change, refunds, total]
+      properties:
+        openingFloat: { type: integer, format: int64 }
+        handovers: { type: integer, format: int64 }
+        counterTendered: { type: integer, format: int64 }
+        change: { type: integer, format: int64 }
+        refunds: { type: integer, format: int64 }
+        total: { type: integer, format: int64 }
+    DrawerView:
+      type: object
+      required: [id, openingFloat, openedAt]
+      properties:
+        id: { type: string }
+        cashier: { type: string }
+        openingFloat: { type: integer, format: int64 }
+        openedAt: { type: integer, format: int64 }
+        closedAt: { type: integer, format: int64 }
+        counted: { type: integer, format: int64 }
+        difference: { type: integer, format: int64 }
+    Drawer:
+      type: object
+      required: [expected, handovers, refunds, held, pending]
+      properties:
+        session: { $ref: '#/components/schemas/DrawerView' }
+        expected: { $ref: '#/components/schemas/Expected' }
+        handovers: { type: array, items: { $ref: '#/components/schemas/HandoverView' } }
+        refunds: { type: array, items: { $ref: '#/components/schemas/RefundView' } }
+        held: { type: array, items: { $ref: '#/components/schemas/HeldCash' } }
+        pending: { type: array, items: { $ref: '#/components/schemas/PendingQRIS' } }
+    ShiftClosing:
+      allOf:
+        - $ref: '#/components/schemas/DrawerView'
+        - type: object
+          required: [expected]
+          properties:
+            expected: { $ref: '#/components/schemas/Expected' }
+    TakeawayRequest:
+      type: object
+      required: [customerName, items]
+      properties:
+        customerName: { type: string }
+        restrictionTagIds: { type: array, items: { type: string } }
+        items: { type: array, items: { $ref: '#/components/schemas/CartItem' } }
+    OutageRequest:
+      type: object
+      required: [openedAt, closedAt, servedBy, items, payments]
+      properties:
+        tableId: { type: string }
+        takeawayName: { type: string }
+        openedAt: { type: integer, format: int64 }
+        closedAt: { type: integer, format: int64 }
+        servedBy: { type: string, description: crew.id or the Crew ID (W001) from the paper record }
+        items: { type: array, items: { $ref: '#/components/schemas/CartItem' } }
+        payments:
+          type: array
+          items:
+            type: object
+            required: [method, amount, takenAt]
+            properties:
+              method: { type: string, enum: [cash, qris, card] }
+              amount: { type: integer, format: int64 }
+              takenAt: { type: integer, format: int64 }
+    BillRow:
+      type: object
+      required: [id, number, tables, total, closedAt]
+      properties:
+        id: { type: string }
+        number: { type: string }
+        tables: { type: array, items: { type: string } }
+        total: { type: integer, format: int64 }
+        closedAt: { type: integer, format: int64 }
+        reason: { type: string }
+        by: { type: string }
+    Operations:
+      type: object
+      required: [date, shiftClosings, unpaid, remakes, refunds, postOutage]
+      properties:
+        date: { type: string }
+        shiftClosings:
+          type: array
+          items:
+            allOf:
+              - $ref: '#/components/schemas/DrawerView'
+              - type: object
+                properties:
+                  expected: { type: integer, format: int64 }
+        unpaid: { type: array, items: { $ref: '#/components/schemas/BillRow' } }
+        remakes:
+          type: array
+          items:
+            type: object
+            required: [billNumber, item, reason, approvedBy, at]
+            properties:
+              billNumber: { type: string }
+              item: { type: string }
+              reason: { type: string }
+              approvedBy: { type: string }
+              at: { type: integer, format: int64 }
+        refunds: { type: array, items: { $ref: '#/components/schemas/RefundView' } }
+        postOutage: { type: array, items: { $ref: '#/components/schemas/BillRow' } }
+    ItemIds:
+      type: object
+      required: [itemIds]
+      properties:
+        itemIds: { type: array, items: { type: string } }
+    KitchenItem:
+      type: object
+      required: [id, quantity, name, modifiers, status, prepTimeSeconds, warnings]
+      properties:
+        id: { type: string }
+        quantity: { type: integer }
+        name: { type: string }
+        variant: { type: string }
+        modifiers: { type: array, items: { type: string } }
+        note: { type: string }
+        status: { $ref: '#/components/schemas/ItemStatus' }
+        prepTimeSeconds: { type: integer }
+        preparingAt: { type: integer, format: int64 }
+        readyAt: { type: integer, format: int64 }
+        warnings: { type: array, items: { $ref: '#/components/schemas/TagRef' } }
+        remakeReason: { type: string }
+    KitchenTicket:
+      type: object
+      required: [key, orderId, billId, seq, tables, confirmedAt, prepTimeSeconds, remake, items]
+      properties:
+        key: { type: string }
+        orderId: { type: string }
+        billId: { type: string }
+        seq: { type: integer }
+        tables: { type: array, items: { type: string } }
+        waiter: { type: string }
+        customer: { type: string }
+        dietaryNote: { type: string }
+        confirmedAt: { type: integer, format: int64 }
+        prepTimeSeconds: { type: integer }
+        remake: { type: boolean }
+        items: { type: array, items: { $ref: '#/components/schemas/KitchenItem' } }
+    KitchenQueue:
+      type: object
+      required: [prepArea, tickets, ready, pickupReminderSeconds, now]
+      properties:
+        prepArea:
+          type: object
+          required: [id, code, nameId]
+          properties:
+            id: { type: string }
+            code: { type: string }
+            nameId: { type: string }
+        tickets: { type: array, items: { $ref: '#/components/schemas/KitchenTicket' } }
+        ready: { type: array, items: { $ref: '#/components/schemas/KitchenTicket' } }
+        pickupReminderSeconds: { type: integer }
+        now: { type: integer, format: int64, description: Server time, to align ticket timers }
+    PrepRow:
+      type: object
+      required: [key, name, items, onTime, share]
+      properties:
+        key: { type: string }
+        name: { type: string }
+        items: { type: integer }
+        onTime: { type: integer }
+        share: { type: number }
+    PrepReport:
+      type: object
+      required: [date, items, onTime, share, prepAreas, products]
+      properties:
+        date: { type: string }
+        items: { type: integer }
+        onTime: { type: integer }
+        share: { type: number }
+        prepAreas: { type: array, items: { $ref: '#/components/schemas/PrepRow' } }
+        products: { type: array, items: { $ref: '#/components/schemas/PrepRow' } }
+    PaymentView:
+      type: object
+      required: [id, method, status, amount, change, rounding, takenBy, takenAt]
+      properties:
+        id: { type: string }
+        subBillId: { type: string }
+        method: { type: string, enum: [cash, qris, card] }
+        status: { type: string, enum: [settled, held_by_waiter, pending_verification, written_off] }
+        amount: { type: integer, format: int64 }
+        tendered: { type: integer, format: int64 }
+        change: { type: integer, format: int64 }
+        rounding: { type: integer, format: int64 }
+        takenBy: { type: string }
+        takenAt: { type: integer, format: int64 }
+        verifiedAt: { type: integer, format: int64 }
+    SubBill:
+      type: object
+      required: [id, index, count, method, status, totals, paid, balance, cashDue, itemIds]
+      properties:
+        id: { type: string }
+        index: { type: integer }
+        count: { type: integer }
+        method: { type: string, enum: [by_item, equal] }
+        status: { type: string, enum: [open, closed] }
+        totals: { $ref: '#/components/schemas/Totals' }
+        paid: { type: integer, format: int64 }
+        balance: { type: integer, format: int64 }
+        cashDue: { type: integer, format: int64, description: Balance rounded to Rp 100 for cash (BR-R-18) }
+        itemIds: { type: array, items: { type: string } }
+    Billing:
+      type: object
+      required: [totals, paid, balance, cashDue, pricedAt, subBills, payments, unassigned]
+      properties:
+        totals: { $ref: '#/components/schemas/Totals' }
+        paid: { type: integer, format: int64 }
+        balance: { type: integer, format: int64 }
+        cashDue: { type: integer, format: int64, description: Balance rounded to Rp 100 for cash (BR-R-18) }
+        pricedAt: { type: integer, format: int64 }
+        manualDiscount: { type: string }
+        subBills: { type: array, items: { $ref: '#/components/schemas/SubBill' } }
+        payments: { type: array, items: { $ref: '#/components/schemas/PaymentView' } }
+        unassigned: { type: array, items: { type: string } }
+    PayRequest:
+      type: object
+      required: [method, amount]
+      properties:
+        subBillId: { type: string }
+        method: { type: string, enum: [cash, qris, card] }
+        amount: { type: integer, format: int64, description: Cash — tendered; QRIS and card — amount paid }
+        verified: { type: boolean, description: QRIS seen on the merchant app }
+    PayResult:
+      type: object
+      required: [payment, billing]
+      properties:
+        payment: { $ref: '#/components/schemas/PaymentView' }
+        billing: { $ref: '#/components/schemas/Billing' }
+    SplitRequest:
+      type: object
+      required: [method, count]
+      properties:
+        method: { type: string, enum: [by_item, equal] }
+        count: { type: integer, minimum: 2, maximum: 20, description: Number of Sub-bills }
+        assign: { type: object, additionalProperties: { type: integer }, description: By item — Order Item id → Sub-bill number }
+    ReceiptLine:
+      type: object
+      required: [quantity, name, modifiers, amount, remake]
+      properties:
+        quantity: { type: integer }
+        name: { type: string }
+        variant: { type: string }
+        modifiers: { type: array, items: { type: string } }
+        amount: { type: integer, format: int64 }
+        remake: { type: boolean }
+    Receipt:
+      type: object
+      required: [outlet, copy, reprint, billNumber, tables, openedAt, printedAt, printedBy, customers, lines, totals, payments, balance]
+      properties:
+        outlet: { type: string }
+        copy: { type: string, enum: [customer, internal] }
+        reprint: { type: boolean }
+        billNumber: { type: string }
+        subBill: { type: string, description: "1/2 for a Sub-bill" }
+        tables: { type: array, items: { type: string } }
+        openedAt: { type: integer, format: int64 }
+        closedAt: { type: integer, format: int64 }
+        printedAt: { type: integer, format: int64 }
+        printedBy: { type: string }
+        customers: { type: array, items: { type: string } }
+        lines: { type: array, items: { $ref: '#/components/schemas/ReceiptLine' } }
+        totals: { $ref: '#/components/schemas/Totals' }
+        manualDiscount: { type: string }
+        payments: { type: array, items: { $ref: '#/components/schemas/PaymentView' } }
+        balance: { type: integer, format: int64 }
+    DailySales:
+      type: object
+      required: [date, bills, totals, rounding, unpaidBills, unpaidTotal, methods, products]
+      properties:
+        date: { type: string }
+        bills: { type: integer }
+        totals: { $ref: '#/components/schemas/Totals' }
+        rounding: { type: integer, format: int64 }
+        unpaidBills: { type: integer }
+        unpaidTotal: { type: integer, format: int64 }
+        methods:
+          type: array
+          items:
+            type: object
+            required: [method, count, amount, pending]
+            properties:
+              method: { type: string, enum: [cash, qris, card] }
+              count: { type: integer }
+              amount: { type: integer, format: int64 }
+              pending: { type: integer, format: int64 }
+        products:
+          type: array
+          items:
+            type: object
+            required: [productId, name, quantity, gross]
+            properties:
+              productId: { type: string }
+              name: { type: string }
+              quantity: { type: integer }
+              gross: { type: integer, format: int64 }
+    StaffBill:
+      type: object
+      required: [id, number, status, type, source, refunded, tables, openedAt, customers, orders, totals, billing]
+      properties:
+        id: { type: string }
+        number: { type: string }
+        status: { type: string, enum: [open, settling, closed, unpaid, merged] }
+        type: { type: string, enum: [table, takeaway] }
+        source: { type: string, enum: [live, post_outage] }
+        refunded: { type: integer, format: int64, description: cash Refunds paid on this Bill so far }
+        tables: { type: array, items: { $ref: '#/components/schemas/TableRef' } }
+        openedAt: { type: integer, format: int64 }
+        customers: { type: array, items: { $ref: '#/components/schemas/CustomerDetail' } }
+        orders: { type: array, items: { $ref: '#/components/schemas/StaffOrder' } }
+        totals: { $ref: '#/components/schemas/Totals' }
+        billing: { $ref: '#/components/schemas/Billing' }
+    DirectOrderRequest:
+      type: object
+      required: [items]
+      properties:
+        tableId: { type: string }
+        billId: { type: string }
+        customerName: { type: string }
+        restrictionTagIds: { type: array, items: { type: string } }
+        items: { type: array, items: { $ref: '#/components/schemas/CartItem' } }
+    CancelReason:
+      type: string
+      enum: [out_of_stock, customer_request, wrong_order, other]
+    CancelRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason: { $ref: '#/components/schemas/CancelReason' }
+        note: { type: string, description: Required for other }
+    ReasonRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason: { type: string }
+    OrderChange:
+      allOf:
+        - $ref: '#/components/schemas/CustomerView'
+        - type: object
+          required: [orderId]
+          properties:
+            orderId: { type: string }
+    Bilingual:
+      type: object
+      required: [id, en]
+      properties:
+        id: { type: string }
+        en: { type: string }
+    SlideTemplate:
+      type: string
+      enum: [hero_promo, featured_product, happy_hour, category_spotlight, brand_idle, uploaded]
+    Slide:
+      type: object
+      required: [template, active, headline, subline, imageFocus, categoryIds, steam, durationSeconds]
+      properties:
+        id: { type: string }
+        template: { $ref: '#/components/schemas/SlideTemplate' }
+        sort: { type: integer }
+        active: { type: boolean }
+        headline: { $ref: '#/components/schemas/Bilingual' }
+        subline: { $ref: '#/components/schemas/Bilingual' }
+        imageKey: { type: string }
+        videoKey: { type: string, description: Uploaded template only; imageKey is then the poster }
+        imageFocus: { $ref: '#/components/schemas/Focus' }
+        productId: { type: string }
+        discountId: { type: string }
+        categoryIds: { type: array, items: { type: string } }
+        steam: { type: boolean }
+        durationSeconds: { type: integer }
+        activeFrom: { type: integer, format: int64 }
+        activeTo: { type: integer, format: int64 }
+    DisplayTag:
+      type: object
+      required: [code, nameId, nameEn]
+      properties:
+        code: { type: string }
+        nameId: { type: string }
+        nameEn: { type: string }
+    DisplayProduct:
+      type: object
+      required: [id, nameId, nameEn, descriptionId, descriptionEn, imageFocus, price, priceFrom, soldOut, soldOutVariants, dietaryTags]
+      properties:
+        id: { type: string }
+        nameId: { type: string }
+        nameEn: { type: string }
+        descriptionId: { type: string }
+        descriptionEn: { type: string }
+        imageKey: { type: string }
+        imageFocus: { $ref: '#/components/schemas/Focus' }
+        price: { type: integer, format: int64 }
+        priceFrom: { type: boolean }
+        soldOut: { type: boolean }
+        soldOutVariants: { type: array, items: { $ref: '#/components/schemas/Bilingual' } }
+        dietaryTags: { type: array, items: { $ref: '#/components/schemas/DisplayTag' } }
+    DisplayDiscount:
+      type: object
+      required: [name, kind, value, activeNow, startsAt, endsAt, discountedPrice]
+      properties:
+        name: { type: string }
+        kind: { type: string, enum: [percent, nominal] }
+        value: { type: integer, format: int64 }
+        activeNow: { type: boolean }
+        startsAt: { type: integer, format: int64 }
+        endsAt: { type: integer, format: int64 }
+        discountedPrice: { type: integer, format: int64 }
+    PlaylistSlide:
+      type: object
+      required: [id, template, durationSeconds, headline, subline, imageFocus, steam]
+      properties:
+        id: { type: string }
+        template: { $ref: '#/components/schemas/SlideTemplate' }
+        durationSeconds: { type: integer }
+        headline: { $ref: '#/components/schemas/Bilingual' }
+        subline: { $ref: '#/components/schemas/Bilingual' }
+        imageKey: { type: string }
+        videoKey: { type: string }
+        imageFocus: { $ref: '#/components/schemas/Focus' }
+        steam: { type: boolean }
+        product: { $ref: '#/components/schemas/DisplayProduct' }
+        products: { type: array, items: { $ref: '#/components/schemas/DisplayProduct' } }
+        discount: { $ref: '#/components/schemas/DisplayDiscount' }
+    Playlist:
+      type: object
+      required: [generatedAt, slides]
+      properties:
+        generatedAt: { type: integer, format: int64 }
+        slides: { type: array, items: { $ref: '#/components/schemas/PlaylistSlide' } }
     PrepArea:
       type: object
       required: [id, code, nameId, nameEn, parallelCapacity]

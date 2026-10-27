@@ -222,6 +222,11 @@ func (s *Service) SaveProduct(ctx context.Context, actor string, in Product) (Pr
 			action = "product.updated"
 			if before.Status != in.Status {
 				action = "product.status." + in.Status
+				if in.Status != StatusActive {
+					if err := flagUnavailable(ctx, tx, platform.Millis(now), in.ID); err != nil {
+						return err
+					}
+				}
 			}
 		}
 		changed(tx, "product.changed", in.ID)
@@ -454,13 +459,9 @@ func (s *Service) SetSoldOut(ctx context.Context, actor, variantID string, soldO
 		if err != nil {
 			return err
 		}
-		now := platform.Millis(s.clock.Now())
-		if soldOut && v.SoldOut == 0 {
-			if err := tx.SetVariantSoldOut(ctx, store.SetVariantSoldOutParams{SoldOutAt: nullInt(now), SoldOutBy: nullString(actor),
-				SoldOutSource: nullString(SoldOutManual), ID: variantID}); err != nil {
-				return err
-			}
-			if err := s.audit(ctx, tx, actor, "variant.sold_out.set", "variant", variantID, nil, map[string]string{"source": SoldOutManual}); err != nil {
+		marked := soldOut && v.SoldOut == 0
+		if marked {
+			if err := MarkSoldOut(ctx, tx, s.clock.Now(), actor, variantID, SoldOutManual); err != nil {
 				return err
 			}
 		}
@@ -473,7 +474,9 @@ func (s *Service) SetSoldOut(ctx context.Context, actor, variantID string, soldO
 				return err
 			}
 		}
-		changed(tx, "variant.sold_out", variantID)
+		if !marked { // MarkSoldOut already told the menus
+			changed(tx, "variant.sold_out", variantID)
+		}
 		nv, err := tx.GetVariant(ctx, variantID)
 		if err != nil {
 			return err
@@ -483,6 +486,52 @@ func (s *Service) SetSoldOut(ctx context.Context, actor, variantID string, soldO
 		return nil
 	})
 	return out, err
+}
+
+// WaitersTopic carries Sold Out and unavailable flags to Waiters (TR-RT-02).
+const WaitersTopic = "waiters"
+
+// MarkSoldOut sets a Variant Sold Out inside the caller's transaction — manually, or from a
+// Cancel with reason Out of Stock — audits it, and flags its open Pending and Confirmed Order
+// Items for their Waiters. Nothing is cancelled automatically (BR-R-11, BR-R-13, TR-SM-04).
+func MarkSoldOut(ctx context.Context, tx *dbx.Tx, now time.Time, actor, variantID, source string) error {
+	ms := platform.Millis(now)
+	if err := tx.SetVariantSoldOut(ctx, store.SetVariantSoldOutParams{SoldOutAt: nullInt(ms), SoldOutBy: nullString(actor),
+		SoldOutSource: nullString(source), ID: variantID}); err != nil {
+		return err
+	}
+	if err := audit.Write(ctx, tx, now, audit.Entry{Actor: actor, Action: "variant.sold_out.set", Entity: "variant", EntityID: variantID,
+		After: map[string]string{"source": source}}); err != nil {
+		return err
+	}
+	orders, err := tx.ListOpenItemOrdersByVariant(ctx, variantID)
+	if err != nil {
+		return err
+	}
+	if err := tx.FlagSoldOutItems(ctx, store.FlagSoldOutItemsParams{UpdatedAt: ms, VariantID: variantID}); err != nil {
+		return err
+	}
+	for _, id := range orders {
+		tx.Publish(realtime.Event{Topic: WaitersTopic, Type: "item.flagged", ID: id})
+	}
+	changed(tx, "variant.sold_out", variantID)
+	return nil
+}
+
+// flagUnavailable marks open Order Items of a Product that became Hidden or Archived, exactly like
+// Sold Out (BR-R-35, TR-SM-06).
+func flagUnavailable(ctx context.Context, tx *dbx.Tx, now int64, productID string) error {
+	orders, err := tx.ListOpenItemOrdersByProduct(ctx, productID)
+	if err != nil {
+		return err
+	}
+	if err := tx.FlagUnavailableItems(ctx, store.FlagUnavailableItemsParams{UpdatedAt: now, ProductID: productID}); err != nil {
+		return err
+	}
+	for _, id := range orders {
+		tx.Publish(realtime.Event{Topic: WaitersTopic, Type: "item.flagged", ID: id})
+	}
+	return nil
 }
 
 // ---------------------------------------------------------------- helpers

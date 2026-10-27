@@ -4,7 +4,7 @@
 
 A HORECA web platform for a sushi-and-coffee outlet: Customers order from a QR code at their Table, Waiters claim and confirm Orders, the Kitchen and Bar work from live displays, and Cashiers settle Bills and close the drawer. Management configures the menu, prices and discounts; HRIS handles shifts, attendance and leave.
 
-**Status:** Phase 0 (foundation) and Phase 1 (Admin Panel) complete; progress in [todolist.md](todolist.md). This build is a **prototype and showcase** that runs on one local machine with fictional demo data.
+**Status:** Phases 0–5 (foundation, Admin Panel, Product Display, Client Menu, Waiter, Kitchen) complete; progress in [todolist.md](todolist.md). This build is a **prototype and showcase** that runs on one local machine with fictional demo data.
 
 ## Modules
 

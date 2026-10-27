@@ -8,10 +8,10 @@ Phase-by-phase tracking for the prototype. Each task cites the spec ID it implem
 |---|---|---|
 | 0 | Foundation | Done |
 | 1 | Admin Panel | Done (2 checks deferred) |
-| 2 | Product Display Showcase | Not started |
-| 3 | Client Menu | Not started |
-| 4 | Waiter / Server | Not started |
-| 5 | Kitchen | Not started |
+| 2 | Product Display Showcase | Done |
+| 3 | Client Menu | Done (TalkBack pass needs a device) |
+| 4 | Waiter / Server | Done (no printer hardware) |
+| 5 | Kitchen | Done (3 m test needs the venue) |
 | 6 | Cashier | Not started |
 | 7 | HRIS | Not started |
 | 8 | Demo polish | Not started |
@@ -121,7 +121,7 @@ Shared base that every module needs. **Done 2026-10-26.**
 - [x] Unagi 4 pcs manually Sold Out by A001
 
 **Done when**
-- [ ] Management edits a price; the change applies to new Orders only (BR-PC-08) — **moves to Phase 3**, where Orders snapshot prices (TR-DM-02). Phase 1 verifies the price change and its audit entry
+- [x] Management edits a price; the change applies to new Orders only (BR-PC-08) — **verified in Phase 3** (`TestPriceSnapshot`), where Orders snapshot prices (TR-DM-02). Phase 1 verifies the price change and its audit entry
 - [x] Outlet Admin can toggle Sold Out but cannot edit prices (`server` permission test + browser check)
 - [x] Pricing tests pass, including "best discount wins" and cash rounding
 - [ ] Admin Panel passes the accessibility checklist — partially: labelled fields, focus rings, keyboard-reachable controls, colour + label on every status. The automated axe run and the keyboard-only pass happen with the Playwright suite in Phase 8
@@ -130,117 +130,130 @@ Shared base that every module needs. **Done 2026-10-26.**
 
 ## Phase 2 — Product Display Showcase
 
-- [ ] Migration: `display_slide` (template, image, focus, refs, schedule)
-- [ ] Admin: playlist editor with the 5 templates + uploaded image/video (BR-ADM-10, MOTION.md §6)
-- [ ] Display app (TV, dark, display surface): screen-mode login, 8 s dwell, 1 s transitions, preloads the next slide
-- [ ] Templates: Hero Promo, Featured Product (Ken Burns, steam overlay), Happy Hour Countdown, Category Spotlight, Brand Idle
-- [ ] Live updates on `display` and `menu` topics without reload (BR-PD-02)
-- [ ] Skip Hidden Products; mark/skip Sold Out between slides, never mid-slide (BR-PD-03)
-- [ ] Reduced-motion fallback: cross-fades only
-- [ ] Seed: playlist of 7 slides (DEMO-AND-SEED §5)
+**Done 2026-10-27.**
+
+- [x] Migration 00003: `display_slide` (template, headlines/sublines ID+EN, image + focus, video, Product / discount / category refs, steam, duration, schedule)
+- [x] Admin: playlist editor with the 5 templates + uploaded image or MP4/WebM video; reorder, active switch, "skipped now" marker from the live playlist; Outlet Admin read-only (BR-ADM-10, MOTION.md §6)
+- [x] Display app (TV, dark, display surface): per-slide dwell (default 8 s), 1 s transitions, preloads the next slide's images 1 s ahead, scales a 1920×1080 stage to any screen. Runs **without a session**: the playlist is public (TR-AUTH-08 updated, TR-RT-01)
+- [x] Templates: Hero Promo, Featured Product (Ken Burns, steam overlay), Happy Hour Countdown, Category Spotlight, Brand Idle
+- [x] Live updates on `display` and `menu` topics without reload; new playlist applied at the next transition (BR-PD-02, TR-DM-10)
+- [x] Skip Hidden / Archived / fully Sold Out featured Products; partly Sold Out Variants marked; never mid-slide (BR-PD-03)
+- [x] Reduced-motion fallback: cross-fades only, videos paused on their first frame
+- [x] Seed: playlist of 7 slides, Sakura Latte slide skipped while Hidden (DEMO-AND-SEED §5)
 
 **Done when**
-- [ ] Display runs 30 min at 1920×1080 without frame drops or memory growth
-- [ ] Hiding a Product in Admin removes it from rotation at the next transition
-- [ ] Happy Hour slide counts down correctly inside and outside the window
+- [x] Display runs 30 min at 1920×1080 without frame drops or memory growth (`.tools/soak-display.mjs` on the production build: heap 2.9 → 4.7 MB, 60 fps at every 5-minute sample, worst frame 19 ms). A first run against the Vite dev server crashed when `pnpm gen` hot-reloaded the entry module twice; the built app has no hot reload
+- [x] Hiding a Product in Admin removes it from rotation at the next transition (`.tools/flow-display.mjs`)
+- [x] Happy Hour slide counts down correctly inside and outside the window (`display` tests: active window, next window, overnight, weekend skip)
 
 ---
 
 ## Phase 3 — Client Menu
 
+**Done 2026-10-27**, except the TalkBack pass (needs a real Android device; noted below).
+
 **Joining a Table** (OP-01)
-- [ ] Migrations: `bill`, `bill_table` (open-Bill partial unique index), `customer_entry`, `orders`, `order_item`, `order_item_modifier`, `order_item_dietary_warning`
-- [ ] QR scan → Table state; open or join Bill inside `BEGIN IMMEDIATE` (BR-CM-01, TR-DM-01)
-- [ ] Occupied prompt with full names: Rejoin / join as new / "not my table" (BR-CM-12, G-02)
-- [ ] Customer bound to Bill; latest device wins; old device shows "continued on another device" (BR-CM-13, TR-AUTH-07)
-- [ ] Name + Dietary Restriction + Dietary Note with explicit consent (BR-CM-02, BR-P-02)
-- [ ] Encrypted customer fields with daily keys in `data/keys.json` (TR-RET-04)
-- [ ] Empty Bill auto-close job (BR-R-26, G-01)
+- [x] Migration 00004: `bill`, `bill_table` (open-Bill partial unique index), `customer_entry`, `guest_token`, `orders`, `order_item`, `order_item_modifier`, `order_item_dietary_warning`, `waiter_call`
+- [x] QR scan → Table state; open or join Bill inside `BEGIN IMMEDIATE` (BR-CM-01, TR-DM-01)
+- [x] Occupied prompt with full names: Rejoin / join as new / "not my table" (BR-CM-12, G-02)
+- [x] Customer bound to Bill; latest device wins; old device shows "continued on another device" (BR-CM-13, TR-AUTH-07). Guest token per browser tab (`X-Guest-Token`), so one laptop can play several Customers
+- [x] Name + Dietary Restriction + Dietary Note with explicit consent; without consent the dietary data is discarded (BR-CM-02, BR-P-02)
+- [x] Encrypted customer fields with daily keys in `data/keys.json` (`internal/vault`, AES-256-GCM, master key `SL_MASTER_KEY`); key destruction and Anonymisation jobs (TR-RET-01, TR-RET-04)
+- [x] Empty Bill auto-close job (BR-R-26, G-01)
 
 **Ordering** (OP-02)
-- [ ] Menu: Active Products only, Sold Out greyed, ID/EN toggle (BR-CM-03, BR-CM-04)
-- [ ] ProductCard, ProductDetailSheet, VariantPicker, ModifierGroup (COMPONENTS.md §2)
-- [ ] Dietary Warning badge + acknowledgement; never blocks (BR-CM-10, BR-CM-11, BR-R-D1..D4)
-- [ ] Cart and submit; server re-check of Active / Sold Out; snapshots; warnings computed on the server (TR-DM-02, TR-DM-05)
-- [ ] Edit or Cancel own Order before Claim (BR-CM-14, G-03)
-- [ ] Settling lock message (BR-CM-15) — wired now, triggered from Phase 4
-- [ ] Call Waiter button (BR-CM-07); `waiters` event emitted
-- [ ] Order status + cup-fill Estimated Wait screen (BR-CM-08, MOTION M8–M10); Estimated Wait formula (TR-KT-03)
+- [x] Menu: Active Products only, Sold Out greyed, ID/EN toggle following the phone language (BR-CM-03, BR-CM-04, TR-I18N-01); current promo prices from `pricing`
+- [x] ProductCard, ProductDetailSheet, VariantPicker, ModifierGroup, RestrictionPicker, CartSheet, OccupiedTablePrompt, OrderStatusTracker (COMPONENTS.md §2); Dietary Tag icons in `ui`
+- [x] Dietary Warning badge + acknowledgement; never blocks; the server rejects unacknowledged warnings (BR-CM-10, BR-CM-11, BR-R-D1..D4)
+- [x] Cart priced by a server quote; submit with Idempotency-Key; server re-check of Active / Sold Out / Modifier rules with per-line reasons; snapshots; warnings computed on the server (TR-DM-02, TR-DM-05)
+- [x] Edit or Cancel own Order before Claim; dropped lines become Cancelled (Customer Request) (BR-CM-14, G-03)
+- [x] Settling lock message and disabled "Kirim pesanan" (BR-CM-15) — wired now, triggered from Phase 4
+- [x] Call Waiter button, one open call per Customer (BR-CM-07); `waiters` event emitted
+- [x] Order status + cup-fill Estimated Wait screen (BR-CM-08, MOTION M8–M10); Estimated Wait formula in `internal/kitchen` with tests (TR-KT-03). The wait appears once Orders are confirmed (Phase 4)
+- [x] Promo edge job publishes `menu` when scheduled discounts start or stop
 
 **Motion and polish**
-- [ ] Signature moments M1–M7, M11, M12 (MOTION.md §5); reduced-motion fallbacks
-- [ ] Performance budget: LCP ≤ 2.5 s on a mid-range phone, 60 fps animations (TR-NF-02, MOTION.md §3)
+- [x] Signature moments M1–M12 (MOTION.md §5); reduced-motion fallbacks (fades, no steam, still cup)
+- [x] Performance budget: LCP on the production build with 4× CPU and ~9 Mbps/170 ms — join screen 1.5 s, menu 2.3 s (`.tools/perf-client.mjs`) (TR-NF-02). The demo launcher is lazy-loaded
 
 **Seed**
-- [ ] Meja 1–3 and Meja 11 customer-side states; Customers with restrictions (DEMO-AND-SEED §6.1)
-- [ ] Demo launcher `/demo` with Table QR codes and "Open as Customer" links
+- [x] Meja 2 (empty Bill −25m), Meja 3 (Raka avoids Dairy, Laras), Meja 4 (Bima, Pending Order, Waiter call −6m), Meja 11 (Ayu's own Cancel) customer-side states (DEMO-AND-SEED §6.1). Meja 5–10 Customers arrive with the phases that drive their states
+- [x] Demo launcher `/demo` with Table QR codes, scenario labels and "Open as Customer" links (`GET /demo/tables`)
+- [x] BR-PC-08 price snapshot test (moved from Phase 1)
 
 **Done when**
-- [ ] Two phones scanning the same QR at the same moment produce one Bill (integration test)
-- [ ] Rejoin on a second tab signs out the first tab
-- [ ] A Dietary Warning Order is created with the warning stored on the Order Item
-- [ ] Client Menu passes the accessibility checklist with TalkBack
+- [x] Two phones scanning the same QR at the same moment produce one Bill (`ordering` test: 8 concurrent joins → one Bill, one first scan)
+- [x] Rejoin on a second tab signs out the first tab (`.tools/flow-client.mjs`)
+- [x] A Dietary Warning Order is created with the warning stored on the Order Item (`ordering` test + browser flow)
+- [ ] Client Menu passes the accessibility checklist with TalkBack — partially: every control is a labelled button/input, cards are single buttons with name and price, progress is a `progressbar` with text, status changes are `aria-live`. The TalkBack pass needs an Android phone; the automated axe run is in Phase 8
 
 ---
 
 ## Phase 4 — Waiter / Server
 
+**Done 2026-10-27**, except the BLE hardware spike (no printer on hand); today's closed Bills are seeded in Phase 6.
+
 **Claim** (OP-03)
-- [ ] ClaimNotification with sound and vibration; first-writer-wins Claim (BR-WT-01, TR-SM-03)
-- [ ] Re-notify after 2 min, escalate to Outlet Admin after 5 min (BR-WT-10, G-05)
-- [ ] Takeover and reassign with `claim_transfer` + audit (BR-WT-11, BR-R-34, G-06)
-- [ ] Review and confirm Order; Dietary Warnings and Sold Out/unavailable flags highlighted (BR-WT-02, BR-WT-05, BR-R-35, G-23)
-- [ ] Direct entry with optional name and restriction (BR-WT-03)
-- [ ] Cancel with Cancel Reasons; Out of Stock → Sold Out cascade and flags (BR-WT-04, BR-R-10..13, TR-SM-04)
+- [x] ClaimNotification with sound and vibration; first-writer-wins Claim (BR-WT-01, TR-SM-03) — chime after a tap enables sound (browser autoplay rule)
+- [x] Re-notify after 2 min, escalate to Outlet Admin after 5 min, for Orders and Waiter Calls (BR-WT-10, G-05)
+- [x] Takeover and reassign with `claim_transfer` + audit (BR-WT-11, BR-R-34, G-06)
+- [x] Review and confirm Order; Dietary Warnings and Sold Out/unavailable flags highlighted; flagged items must be Cancelled before confirm (BR-WT-02, BR-WT-05, BR-R-35, G-23)
+- [x] Add lines while reviewing; direct entry with optional name and restriction, opening the Bill if needed (BR-WT-03)
+- [x] Cancel with Cancel Reasons; Out of Stock → Sold Out cascade and flags; manual Sold Out flags too (BR-WT-04, BR-R-10..13, TR-SM-04)
 
 **Serving**
-- [ ] Ready notifications, Served, pickup reminder after 3 min (BR-WT-09, G-09)
-- [ ] Remake with Outlet Admin PIN (BR-WT-12, BR-R-33, G-08)
-- [ ] Void with PIN Override on unpaid Bill or Sub-bill (BR-R-08, G-10)
+- [x] Ready notifications, Served, pickup reminder after 3 min (BR-WT-09, G-09) — Ready comes from the Kitchen in Phase 5
+- [x] Remake with Outlet Admin PIN (BR-WT-12, BR-R-33, G-08)
+- [x] Void with PIN Override on unpaid Bill or Sub-bill; a closed Sub-bill's items need a Refund (BR-R-08, G-10)
 
 **Bills and payment** (OP-09, OP-10)
-- [ ] TableMap and BillSummary
-- [ ] Move (blocked onto an occupied Table), Merge, Split by item / equally (blocked after Payment) (BR-WT-06, BR-R-03, BR-R-04, BR-R-28, BR-R-29)
-- [ ] Settling lock and unlock (BR-R-27, BR-WT-15, G-04)
-- [ ] PaymentPad: cash with rounding and change, QRIS verify / pending with PIN, card (BR-R-18, BR-R-19, BR-R-30)
-- [ ] Waiter cash recorded as Held by Waiter (BR-WT-14)
-- [ ] Pay now, serve later confirmation (BR-R-31, G-13)
-- [ ] Unpaid Bill with Outlet Admin PIN (BR-R-32, G-14)
-- [ ] Close Bill / Sub-bill
+- [x] TableMap and BillSummary (totals from `pricing`)
+- [x] Move (blocked onto an occupied Table), Merge, Split by item / equally (blocked after Payment) (BR-WT-06, BR-R-03, BR-R-04, BR-R-28, BR-R-29)
+- [x] Settling lock and unlock, price fixed while Settling (BR-R-27, BR-WT-15, G-04, TR-DM-11)
+- [x] PaymentPad: cash with rounding and change, QRIS verify / pending with PIN, card (BR-R-18, BR-R-19, BR-R-30, TR-PAY-05)
+- [x] Waiter cash recorded as Held by Waiter (BR-WT-14)
+- [x] Pay now, serve later confirmation (BR-R-31, G-13)
+- [x] Unpaid Bill with Outlet Admin PIN (BR-R-32, G-14)
+- [x] Manual Bill discount with Management PIN (BR-R-17) — manual item-level discounts are not offered yet
+- [x] Close Bill / Sub-bill; totals frozen
+- [x] Daily sales report (moved from Phase 1, BR-ADM-11)
 
 **Receipts** (TRD §10)
-- [ ] ESC/POS encoder, 58 mm layout; Customer and Internal copies (BR-R-21, TR-PRN-05)
-- [ ] Web Bluetooth transport, chunked writes, retry; Web Serial fallback on Windows (TR-PRN-01..07)
-- [ ] ReceiptPreview when no printer is paired (demo)
-- [ ] Reprint marked REPRINT + audit (BR-WT-13, BR-R-37, G-15)
-- [ ] BLE printer hardware spike (TR-TST-04) — only if real printing is shown
+- [x] `web/packages/printing`: 32-column layout shared by printer and preview; ESC/POS encoder; tests (BR-R-21, TR-PRN-05)
+- [x] Web Bluetooth transport, chunked writes, retry; Web Serial fallback on Windows (TR-PRN-01..07) — untested on hardware
+- [x] ReceiptPreview when no printer is paired (demo)
+- [x] Reprint marked REPRINT + audit (BR-WT-13, BR-R-37, G-15)
+- [-] BLE printer hardware spike (TR-TST-04) — no printer on hand; the demo uses the preview
 
 **Seed**
-- [ ] Meja 3–10 waiter-side states, merged/Settling Bill, split Bill with Void, today's closed Bills (DEMO-AND-SEED §6.1, §6.3)
+- [x] Meja 3–11 waiter- and kitchen-side states: Claim with flags (Meja 5), merged Settling Bill with Held by Waiter cash (Meja 8+9), split Bill with paid Sub-bill and Void (Meja 10) — `seed_test.go` checks every Table at T0 (DEMO-AND-SEED §6.1)
+- [-] Today's closed Bills (§6.3) — moved to Phase 6: they include Refunds, Cash Handovers and the Shift Closing figures
 
 **Done when**
-- [ ] Claim race integration test: exactly one winner
-- [ ] Out of Stock Cancel greys the Variant on every open menu within 1 s
-- [ ] Split by item and equally match `pricing` totals to the Rupiah
-- [ ] Waiter flow is fully usable one-handed on an 8″ portrait tablet
+- [x] Claim race integration test: exactly one winner (`TestClaimRaceHasOneWinner` + browser race)
+- [x] Out of Stock Cancel greys the Variant on every open menu within 1 s (141 ms in `.tools/flow-waiter.mjs`)
+- [x] Split by item and equally match `pricing` totals to the Rupiah (`TestSplitMatchesPricing`)
+- [x] Waiter flow is fully usable one-handed on an 8″ portrait tablet — bottom tab bar, 56–64 px primary buttons in the lower half (screenshots at 800×1280)
 
 ---
 
 ## Phase 5 — Kitchen
 
-- [ ] Kitchen and Bar displays (screen mode, dark, kitchen surface) (BR-KT-01)
-- [ ] KitchenTicket + PrepTimer: on time / amber ≥ 80 % / late (BR-KT-02, TR-KT-01)
-- [ ] Start → Preparing → Ready with 64 px targets (BR-KT-03)
-- [ ] Cancel from Confirmed or Preparing with reason; Out of Stock cascade (BR-KT-04, G-07)
-- [ ] Dietary Warning strip and notes prominent (BR-KT-05)
-- [ ] REMAKE tickets first; "waiting pickup" marker (BR-KT-06)
-- [ ] Estimated Wait recalculated and pushed on every queue change (TR-KT-03, TR-KT-04)
-- [ ] Prep Time performance report (TR-KT-05)
-- [ ] Seed: Meja 6 timers, Meja 7 Remake and waiting pickup, Meja 11 kitchen cancels
+**Done 2026-10-27**, except the physical 3 m readability test.
+
+- [x] Kitchen and Bar displays (screen mode, dark, kitchen surface) at `/staff/kitchen/kitchen` and `/staff/kitchen/bar`; a Kitchen/Bar screen session opens its display directly (BR-KT-01, TR-AUTH-08)
+- [x] KitchenTicket + PrepTimer: on time / amber ≥ 80 % / TERLAMBAT, timed on the server clock (BR-KT-02, TR-KT-01)
+- [x] Start → Preparing → Ready with 64 px targets (BR-KT-03)
+- [x] Cancel from Confirmed or Preparing with reason; Out of Stock cascade (BR-KT-04, G-07)
+- [x] Dietary Warning strip (solid Plum), Dietary Note and item notes prominent (BR-KT-05)
+- [x] REMAKE tickets first; Ready column with "Menunggu diambil" after the pickup reminder time; "+N lagi" when tickets overflow (BR-KT-06, LAYOUT.md §3)
+- [x] Estimated Wait recalculated and pushed on `bill:{id}` to every Bill waiting on the Prep Area on every queue change (TR-KT-03, TR-KT-04)
+- [x] Prep Time performance report on the Reports page (TR-KT-05)
+- [x] Seed: Meja 6 timers (on time / amber / late, Bar), Meja 7 Remake and waiting pickup, Meja 11 Kitchen cancels
 
 **Done when**
-- [ ] Ticket readable from 3 m in a kitchen-lighting test (ACCESSIBILITY.md §4)
-- [ ] Customer cup-fill progress moves when the Kitchen marks items Ready
+- [ ] Ticket readable from 3 m in a kitchen-lighting test (ACCESSIBILITY.md §4) — partially: item text 24 px, timers 48 px, status in colour **and** words (TERLAMBAT, REMAKE); the physical test needs the venue screen
+- [x] Customer cup-fill progress moves when the Kitchen marks items Ready (`.tools/flow-kitchen.mjs`: 95 → 100 %, "Siap!"; `TestEstimatedWaitMovesWithKitchen`)
 
 ---
 

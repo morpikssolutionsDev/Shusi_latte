@@ -1,0 +1,14 @@
+/* Client Menu ambient loops (MOTION.md §1): steam rises with the logo's keyframes. */
+@keyframes cm-steam {
+  0% { transform: translateY(6%); opacity: 0; }
+  30% { opacity: 0.85; }
+  100% { transform: translateY(-14%); opacity: 0; }
+}
+.cm-steam { animation: cm-steam 2.8s ease-in-out infinite; }
+
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .cm-steam { animation: none; opacity: 0; }
+}

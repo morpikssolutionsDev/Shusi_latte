@@ -16,6 +16,7 @@ import (
 	"sushilatte/api/internal/media"
 	"sushilatte/api/internal/platform"
 	"sushilatte/api/internal/store"
+	"sushilatte/api/internal/vault"
 )
 
 // Rand is the fixed seed for generated history, so reports look the same after every reset.
@@ -62,6 +63,9 @@ type Options struct {
 	ImagesDir string    // served images (data/images); processed variants are cached here
 	AssetsDir string    // demo photos (docs/images)
 	T0        time.Time // anchor for every live timestamp
+	// Vault encrypts seeded Customer data. Its key file is built next to the database and
+	// installed with it, so a reset also rotates the data keys (DEMO-AND-SEED §9).
+	Vault *vault.Vault
 }
 
 // Build creates a fresh demo database, anchored at opts.T0.
@@ -84,6 +88,12 @@ func Build(ctx context.Context, opts Options) error {
 		return err
 	}
 	if err := seedOutlet(ctx, db, opts, crewIDs["M001"], ids); err != nil {
+		return err
+	}
+	if err := seedDisplay(ctx, db, opts, crewIDs["M001"], ids); err != nil {
+		return err
+	}
+	if err := seedCustomers(ctx, db, opts, ids, crewIDs); err != nil {
 		return err
 	}
 	return db.Checkpoint(ctx)
@@ -128,16 +138,22 @@ func seedCrew(ctx context.Context, db *dbx.DB, opts Options) (map[string]string,
 	return ids, err
 }
 
-// Install replaces the live database with a freshly built one. The API must not hold the
-// live file open (stop the server, or use the in-app reset once it exists).
-func Install(next, live string) error {
+// Install replaces the live database and key file with freshly built ones. The API must not
+// hold the live file open (stop the server, or use the in-app reset once it exists).
+func Install(next, live, nextKeys, liveKeys string) error {
 	if err := removeDatabase(live); err != nil {
 		return fmt.Errorf("remove live database (is the API still running?): %w", err)
 	}
 	for _, suffix := range []string{"-wal", "-shm"} {
 		_ = os.Remove(next + suffix)
 	}
-	return os.Rename(next, live)
+	if err := os.Rename(next, live); err != nil {
+		return err
+	}
+	if _, err := os.Stat(nextKeys); errors.Is(err, os.ErrNotExist) {
+		return os.Remove(liveKeys) // nothing was encrypted; old keys are useless anyway
+	}
+	return os.Rename(nextKeys, liveKeys)
 }
 
 func removeDatabase(path string) error {

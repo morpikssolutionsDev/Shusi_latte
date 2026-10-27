@@ -1,7 +1,6 @@
 import { api, unwrap } from '@sushi-latte/api-client';
 import { Button, Card, Input, formatDateTime } from '@sushi-latte/ui';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
-import { BarChart3Icon } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { crewQuery } from './api';
@@ -66,15 +65,3 @@ export function AuditPage({ canListCrew }: { canListCrew: boolean }) {
   );
 }
 
-export function ReportsPage() {
-  const { t } = useTranslation();
-  return (
-    <>
-      <PageHeader title={t('admin.reports.title')} />
-      <Card className="flex max-w-xl items-start gap-4 p-6">
-        <BarChart3Icon aria-hidden className="size-8 shrink-0 text-muted-foreground" />
-        <p className="text-text-secondary">{t('admin.reports.pending')}</p>
-      </Card>
-    </>
-  );
-}

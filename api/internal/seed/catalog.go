@@ -98,7 +98,7 @@ var products = []productDef{
 	{"ebi-tempura", "rolls", "Ebi Tempura Roll", "Ebi Tempura Roll",
 		"Udang tempura renyah dalam roll nori.", "Crispy prawn tempura rolled in nori.",
 		[]variantDef{{"8 pcs", "8 pcs", 72000}}, 10, []string{"shellfish", "gluten", "egg", "soy"},
-		"", catalog.StatusArchived, nil},
+		"", "", nil}, // Archived by the history seed once its older Bills exist (DEMO-AND-SEED §7)
 	{"sashimi", "sashimi", "Sashimi Tuna & Salmon", "Tuna & Salmon Sashimi Platter",
 		"Irisan tuna akami dan salmon segar dengan wasabi dan daun shiso.", "Thick-cut tuna akami and salmon with fresh wasabi and shiso.",
 		[]variantDef{{"Reguler, 9 iris", "Regular, 9 slices", 125000}, {"Premium, 15 iris", "Premium, 15 slices", 195000}}, 8,
@@ -137,7 +137,7 @@ var products = []productDef{
 		[]variantDef{{"Satu ukuran", "One size", 45000}}, 3, nil, "", "", []groupDef{gCoffeeExtras}},
 	{"sakura", "coffee", "Sakura Latte", "Sakura Latte",
 		"Latte musiman dengan sirup sakura.", "Seasonal latte with sakura syrup.",
-		hotIced(42000, 45000), 4, []string{"dairy"}, "", catalog.StatusHidden, []groupDef{gMilk}},
+		hotIced(42000, 45000), 4, []string{"dairy"}, "", "", []groupDef{gMilk}}, // Hidden by the live seed after Meja 5 orders it
 	{"matcha", "tea", "Uji Matcha Latte", "Uji Matcha Latte",
 		"Matcha seremonial dari Uji dengan susu, berlapis cantik.", "Ceremonial Uji matcha layered with milk.",
 		hotIced(42000, 45000), 4, []string{"dairy"}, "products/beverages/iced-matcha-latte.jpg", "", []groupDef{gMilk}},
@@ -152,6 +152,13 @@ var products = []productDef{
 		"Cheesecake lembut dengan yuzu segar dan dasar biskuit mentega.", "Silky cheesecake with bright yuzu on a buttery base.",
 		[]variantDef{{"Satu potong", "One slice", 52000}}, 3, []string{"dairy", "gluten", "egg"},
 		"products/desserts/yuzu-rare-cheesecake.jpg", "", []groupDef{gDessert}},
+}
+
+// photoFocus is the focal point (%) of photos whose subject is off-centre: the cup of hot drinks,
+// where steam rises on the Client Menu and the Product Display keeps it in a 16:9 crop.
+var photoFocus = map[string]catalog.Focus{
+	"latte":   {X: 57, Y: 64},
+	"hojicha": {X: 50, Y: 46},
 }
 
 // fixedClock anchors every seeded timestamp at T0.
@@ -205,16 +212,20 @@ func seedCatalog(ctx context.Context, db *dbx.DB, opts Options, managementID, ou
 	}
 
 	for i, p := range products {
+		focus, ok := photoFocus[p.key]
+		if !ok {
+			focus = catalog.Focus{X: 50, Y: 50}
+		}
 		in := catalog.Product{CategoryID: ids.categories[p.category], NameID: p.nameID, NameEN: p.nameEN,
 			DescriptionID: p.descID, DescriptionEN: p.descEN, PrepTimeSeconds: p.prepMinutes * 60, Status: p.status,
-			Sort: int64(i * 10), ImageFocus: catalog.Focus{X: 50, Y: 50}, DietaryTagIDs: tagIDs(ids.tags, p.tags)}
+			Sort: int64(i * 10), ImageFocus: focus, DietaryTagIDs: tagIDs(ids.tags, p.tags)}
 		if p.photo != "" {
 			key, err := saveImage(images, filepath.Join(opts.AssetsDir, filepath.FromSlash(p.photo)))
 			if err != nil {
 				return ids, fmt.Errorf("%s photo: %w", p.key, err)
 			}
 			in.ImageKey = key
-			if err := images.EnsureWide(key, 50, 50); err != nil {
+			if err := images.EnsureWide(key, focus.X, focus.Y); err != nil {
 				return ids, err
 			}
 		}

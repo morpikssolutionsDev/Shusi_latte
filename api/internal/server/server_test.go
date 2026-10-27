@@ -38,7 +38,7 @@ func newServer(t *testing.T) (*httptest.Server, *dbx.DB) {
 		t.Fatal(err)
 	}
 	cfg := config.Config{DemoMode: true, SecureCookie: false, OriginPatterns: []string{"*"}}
-	h := server.New(server.Deps{Config: cfg, DB: db, Auth: auth.NewService(db, clock), Clock: clock,
+	h := server.New(server.Deps{Config: cfg, DB: db, Auth: auth.NewService(db, clock), Vault: testutil.NewVault(t), Clock: clock,
 		Log: slog.New(slog.NewTextHandler(io.Discard, nil))})
 	srv := httptest.NewServer(h)
 	t.Cleanup(srv.Close)

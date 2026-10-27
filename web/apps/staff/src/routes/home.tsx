@@ -1,7 +1,7 @@
 import { api, unwrap, type Principal } from '@sushi-latte/api-client';
 import { Button, Card, Logo, cn } from '@sushi-latte/ui';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Link, useNavigate } from '@tanstack/react-router';
+import { Link, Navigate, useNavigate, useRouter } from '@tanstack/react-router';
 import { ChefHat, ClipboardList, CoffeeIcon, LogOut, MonitorPlay, ReceiptText, Settings2, Users } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useRealtime } from '../realtime';
@@ -21,6 +21,12 @@ const MODULES = [
   { key: 'hris', icon: Users },
 ] as const;
 
+/** Where each built module opens. */
+function moduleLink(key: 'admin' | 'waiter' | 'kitchen' | 'cashier') {
+  if (key === 'kitchen') return { to: '/kitchen/$area', params: { area: 'kitchen' } } as const;
+  return { to: key === 'admin' ? '/admin/products' : key === 'cashier' ? '/cashier' : '/waiter' } as const;
+}
+
 function canUse(me: Principal, m: (typeof MODULES)[number]) {
   const admin = me.role === 'management' || me.role === 'outlet_admin';
   if ('roles' in m) return (m.roles as readonly string[]).includes(me.role);
@@ -32,6 +38,7 @@ export function HomePage({ me }: { me: Principal }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const router = useRouter();
   const status = useRealtime(['menu']);
 
   const logout = useMutation({
@@ -44,9 +51,17 @@ export function HomePage({ me }: { me: Principal }) {
   const screenMode = useMutation({
     mutationFn: async (screen: (typeof SCREENS)[number]['screen']) =>
       unwrap(await api.POST('/auth/screen-mode', { body: { screen } })),
-    onSuccess: (p) => queryClient.setQueryData(['me'], p),
+    onSuccess: (p) => {
+      queryClient.setQueryData(['me'], p);
+      if (p.screen === 'kitchen' || p.screen === 'bar') void navigate({ to: '/kitchen/$area', params: { area: p.screen } });
+      else void router.invalidate(); // the home route re-reads the principal from its context
+    },
   });
 
+  // A Kitchen or Bar screen goes straight to its display (TR-AUTH-08).
+  if (me.kind === 'screen' && (me.screen === 'kitchen' || me.screen === 'bar')) {
+    return <Navigate to="/kitchen/$area" params={{ area: me.screen }} />;
+  }
   if (me.kind === 'screen') {
     return (
       <main className="grid min-h-[calc(100dvh-28px)] place-items-center p-6 text-center">
@@ -83,8 +98,8 @@ export function HomePage({ me }: { me: Principal }) {
         <h2 id="modules" className="text-sm font-bold uppercase tracking-[0.12em] text-muted-foreground">{t('home.modules')}</h2>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           {MODULES.filter((m) => canUse(me, m)).map(({ key, icon: Icon }) =>
-            key === 'admin' ? (
-              <Link key={key} to="/admin/products" className="rounded-card focus-visible:outline-2">
+            key !== 'hris' ? (
+              <Link key={key} {...moduleLink(key)} className="rounded-card focus-visible:outline-2">
                 <Card className="flex h-full flex-col items-start gap-3 shadow-md transition-transform hover:-translate-y-0.5">
                   <Icon aria-hidden className="size-6" />
                   <span className="font-semibold">{t(`modules.${key}`)}</span>

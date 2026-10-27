@@ -15,6 +15,7 @@ type Config struct {
 	SecureCookie   bool     // SL_SECURE_COOKIE, default true (browsers allow Secure cookies on localhost)
 	OriginPatterns []string // SL_WS_ORIGINS, comma-separated host patterns accepted for WebSockets
 	LogLevel       string   // SL_LOG_LEVEL: debug|info|warn|error
+	MasterKey      string   // SL_MASTER_KEY: base64 32-byte key wrapping the daily data keys (TR-RET-04)
 }
 
 func Load() Config {
@@ -26,6 +27,7 @@ func Load() Config {
 		SecureCookie:   envBool("SL_SECURE_COOKIE", true),
 		OriginPatterns: strings.Split(env("SL_WS_ORIGINS", "localhost:*,127.0.0.1:*"), ","),
 		LogLevel:       env("SL_LOG_LEVEL", "info"),
+		MasterKey:      os.Getenv("SL_MASTER_KEY"),
 	}
 }
 
@@ -51,3 +53,9 @@ func envBool(key string, def bool) bool {
 	}
 	return def
 }
+
+// KeysPath is the crypto-shredding key file, kept outside the database and its backups (TR-RET-04).
+func (c Config) KeysPath() string { return filepath.Join(c.DataDir, "keys.json") }
+
+// MasterKeyPath is the prototype fallback when SL_MASTER_KEY is not set.
+func (c Config) MasterKeyPath() string { return filepath.Join(c.DataDir, "master.key") }

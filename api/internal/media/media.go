@@ -16,6 +16,7 @@ import (
 	_ "image/jpeg"
 	_ "image/png"
 	"io"
+	"mime"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -25,16 +26,26 @@ import (
 )
 
 const (
-	MaxUpload  = 10 << 20
-	quality    = 82
-	wideWidth  = 1920
-	wideHeight = 1080
+	MaxUpload      = 10 << 20
+	MaxVideoUpload = 40 << 20
+	quality        = 82
+	wideWidth      = 1920
+	wideHeight     = 1080
 )
 
 // SquareSizes are the 1:1 variants used by cards, detail sheets and avatars.
 var SquareSizes = []int{320, 640, 1024}
 
-var ErrUnsupported = errors.New("unsupported image type (use JPEG, PNG or WebP)")
+var (
+	ErrUnsupported      = errors.New("unsupported image type (use JPEG, PNG or WebP)")
+	ErrUnsupportedVideo = errors.New("unsupported video type (use MP4 or WebM)")
+)
+
+func init() {
+	// Not every OS mime table knows these; the file server needs them for <video>.
+	_ = mime.AddExtensionType(".mp4", "video/mp4")
+	_ = mime.AddExtensionType(".webm", "video/webm")
+}
 
 type Store struct{ dir string }
 
@@ -76,6 +87,32 @@ func (s *Store) Save(r io.Reader) (string, error) {
 		}
 	}
 	return key, nil
+}
+
+// SaveVideo stores an uploaded Product Display video as-is (no transcoding) and returns its
+// key, "vid/<sha256 prefix>.<ext>", which is also its path under the images directory.
+func (s *Store) SaveVideo(r io.Reader) (string, error) {
+	data, err := io.ReadAll(io.LimitReader(r, MaxVideoUpload+1))
+	if err != nil {
+		return "", err
+	}
+	if len(data) > MaxVideoUpload {
+		return "", fmt.Errorf("video larger than %d MB", MaxVideoUpload>>20)
+	}
+	ext, ok := map[string]string{"video/mp4": ".mp4", "video/webm": ".webm"}[http.DetectContentType(data)]
+	if !ok {
+		return "", ErrUnsupportedVideo
+	}
+	sum := sha256.Sum256(data)
+	key := "vid/" + hex.EncodeToString(sum[:12]) + ext
+	path := filepath.Join(s.dir, filepath.FromSlash(key))
+	if _, err := os.Stat(path); err == nil {
+		return key, nil
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return "", err
+	}
+	return key, os.WriteFile(path, data, 0o644)
 }
 
 // EnsureWide generates the 16:9 Product Display crop for a focal point, if missing.

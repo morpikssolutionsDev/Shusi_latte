@@ -1,4 +1,5 @@
 export { cn } from './lib/cn';
+export { mountApp } from './lib/mount';
 export {
   formatRupiah,
   formatPercentBp,
@@ -8,6 +9,7 @@ export {
   imageUrl,
   wideImageUrl,
   imageSrcSet,
+  videoUrl,
   type ImageVariant,
 } from './lib/format';
 export { Button, buttonVariants, type ButtonProps } from './components/button';
@@ -19,4 +21,4 @@ export { Switch, Textarea, Select, Tabs, TabsList, TabsTrigger, TabsContent, Fie
 export { Dialog, type DialogProps } from './components/dialog';
 export { Chip, DietaryBadge, TagChip, SoldOutBadge, type Tone, type Feedback } from './components/badges';
 export * as motion from './tokens/motion.js';
-export { statusIcons, domainIcons, type OrderItemStatus } from './icons';
+export { statusIcons, domainIcons, dietaryIcons, type OrderItemStatus } from './icons';

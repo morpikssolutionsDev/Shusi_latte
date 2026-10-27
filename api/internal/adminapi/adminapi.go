@@ -14,6 +14,7 @@ import (
 	"sushilatte/api/internal/catalog"
 	"sushilatte/api/internal/crew"
 	"sushilatte/api/internal/dbx"
+	"sushilatte/api/internal/display"
 	"sushilatte/api/internal/httpx"
 	"sushilatte/api/internal/media"
 	"sushilatte/api/internal/outlet"
@@ -26,6 +27,7 @@ type Handlers struct {
 	Outlet  *outlet.Service
 	Crew    *crew.Service
 	Media   *media.Store
+	Display *display.Service
 }
 
 var (
@@ -64,7 +66,75 @@ func (h *Handlers) Routes(r chi.Router) {
 	r.With(management).Post("/crew/{id}/reset-pin", httpx.Handler(h.resetPIN))
 
 	r.With(management).Post("/images", httpx.Handler(h.uploadImage))
+	r.With(management).Post("/videos", httpx.Handler(h.uploadVideo))
 	r.With(admins).Get("/audit", httpx.Handler(h.searchAudit))
+
+	// Product Display: the resolved playlist is public, like the menu (BR-PD-01).
+	r.Get("/public/display/playlist", httpx.Handler(h.playlist))
+	r.With(admins).Get("/display/slides", httpx.Handler(h.listSlides))
+	r.With(management).Post("/display/slides", httpx.Handler(h.saveSlide))
+	r.With(management).Put("/display/slides/{id}", httpx.Handler(h.saveSlide))
+	r.With(management).Delete("/display/slides/{id}", httpx.Handler(h.deleteSlide))
+	r.With(management).Put("/display/slide-order", httpx.Handler(h.reorderSlides))
+}
+
+func (h *Handlers) playlist(w http.ResponseWriter, r *http.Request) error {
+	p, err := h.Display.Playlist(r.Context())
+	if err != nil {
+		return err
+	}
+	httpx.WriteJSON(w, http.StatusOK, p)
+	return nil
+}
+
+func (h *Handlers) listSlides(w http.ResponseWriter, r *http.Request) error {
+	s, err := h.Display.Slides(r.Context())
+	if err != nil {
+		return err
+	}
+	httpx.WriteJSON(w, http.StatusOK, s)
+	return nil
+}
+
+func (h *Handlers) saveSlide(w http.ResponseWriter, r *http.Request) error {
+	var in display.Slide
+	if err := httpx.DecodeJSON(r, &in); err != nil {
+		return err
+	}
+	in.ID = chi.URLParam(r, "id")
+	out, err := h.Display.Save(r.Context(), actor(r), in)
+	if err != nil {
+		return err
+	}
+	if out.ImageKey != "" {
+		if err := h.Media.EnsureWide(out.ImageKey, out.ImageFocus.X, out.ImageFocus.Y); err != nil {
+			return err
+		}
+	}
+	httpx.WriteJSON(w, http.StatusOK, out)
+	return nil
+}
+
+func (h *Handlers) deleteSlide(w http.ResponseWriter, r *http.Request) error {
+	if err := h.Display.Delete(r.Context(), actor(r), chi.URLParam(r, "id")); err != nil {
+		return err
+	}
+	w.WriteHeader(http.StatusNoContent)
+	return nil
+}
+
+func (h *Handlers) reorderSlides(w http.ResponseWriter, r *http.Request) error {
+	var in struct {
+		IDs []string `json:"ids"`
+	}
+	if err := httpx.DecodeJSON(r, &in); err != nil {
+		return err
+	}
+	if err := h.Display.Reorder(r.Context(), actor(r), in.IDs); err != nil {
+		return err
+	}
+	w.WriteHeader(http.StatusNoContent)
+	return nil
 }
 
 func actor(r *http.Request) string { return auth.FromContext(r.Context()).ID }
@@ -323,6 +393,24 @@ func (h *Handlers) uploadImage(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	httpx.WriteJSON(w, http.StatusCreated, map[string]string{"imageKey": key})
+	return nil
+}
+
+func (h *Handlers) uploadVideo(w http.ResponseWriter, r *http.Request) error {
+	r.Body = http.MaxBytesReader(w, r.Body, media.MaxVideoUpload+1<<20)
+	file, _, err := r.FormFile("file")
+	if err != nil {
+		return httpx.NewProblem(http.StatusBadRequest, "file_required", "Pilih file video (maks. 40 MB)")
+	}
+	defer file.Close()
+	key, err := h.Media.SaveVideo(file)
+	if errors.Is(err, media.ErrUnsupportedVideo) {
+		return httpx.NewProblem(http.StatusUnsupportedMediaType, "unsupported_video", "Gunakan video MP4 atau WebM")
+	}
+	if err != nil {
+		return err
+	}
+	httpx.WriteJSON(w, http.StatusCreated, map[string]string{"videoKey": key})
 	return nil
 }
 

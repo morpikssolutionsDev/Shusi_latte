@@ -115,3 +115,14 @@
     transition-duration: 1ms !important;
   }
 }
+
+/* Staff attention pulse: border glow ×2 over 1.2 s, once (MOTION.md §7); a static border under
+   reduced motion (MOTION.md §4). */
+@keyframes sl-attention {
+  0%, 50%, 100% { box-shadow: 0 0 0 0 transparent; }
+  25%, 75% { box-shadow: 0 0 0 4px var(--sl-color-status-pending-solid); }
+}
+.sl-attention { animation: sl-attention 1.2s ease-in-out 1; }
+@media (prefers-reduced-motion: reduce) {
+  .sl-attention { animation: none; border-color: var(--sl-color-status-pending-solid); }
+}

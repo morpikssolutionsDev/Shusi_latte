@@ -57,7 +57,7 @@ func adminServer(t *testing.T) (*httptest.Server, catalog.Product) {
 		t.Fatal(err)
 	}
 	cfg := config.Config{SecureCookie: false, OriginPatterns: []string{"*"}, DataDir: t.TempDir()}
-	srv := httptest.NewServer(server.New(server.Deps{Config: cfg, DB: db, Auth: auth.NewService(db, clock), Clock: clock,
+	srv := httptest.NewServer(server.New(server.Deps{Config: cfg, DB: db, Auth: auth.NewService(db, clock), Vault: testutil.NewVault(t), Clock: clock,
 		Log: slog.New(slog.NewTextHandler(io.Discard, nil))}))
 	t.Cleanup(srv.Close)
 	return srv, p

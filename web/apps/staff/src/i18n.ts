@@ -1,6 +1,9 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import { adminId } from './admin/i18n-admin';
+import { cashierId } from './cashier/i18n-cashier';
+import { kitchenId } from './kitchen/i18n-kitchen';
+import { waiterId } from './waiter/i18n-waiter';
 
 // Staff surfaces are Indonesian (TR-I18N-02). Terms follow docs/design/CONTENT.md §2.
 const id = {
@@ -43,7 +46,7 @@ const id = {
 void i18n.use(initReactI18next).init({
   lng: 'id',
   fallbackLng: 'id',
-  resources: { id: { translation: { ...id, admin: adminId } } },
+  resources: { id: { translation: { ...id, admin: adminId, waiter: waiterId, kitchen: kitchenId, cashier: cashierId } } },
   interpolation: { escapeValue: false },
 });
 

@@ -11,13 +11,15 @@ import {
   createRouter,
   redirect,
 } from '@tanstack/react-router';
+import { mountApp } from '@sushi-latte/ui';
 import { StrictMode } from 'react';
-import { createRoot } from 'react-dom/client';
 import { Toaster } from 'sonner';
-import { AuditPage, ReportsPage } from './admin/audit';
+import { AuditPage } from './admin/audit';
+import { ReportsPage } from './admin/reports';
 import { CategoriesPage } from './admin/categories';
 import { CrewPage } from './admin/crew';
 import { DiscountsPage } from './admin/discounts';
+import { DisplayPage } from './admin/display';
 import { AdminLayout } from './admin/layout';
 import { ProductEditorPage } from './admin/product-editor';
 import { ProductsPage } from './admin/products';
@@ -26,6 +28,17 @@ import { SoldOutPage } from './admin/sold-out';
 import { TablesPage } from './admin/tables';
 import { DemoBanner } from './components/demo-banner';
 import { HomePage } from './routes/home';
+import { CashierBillsPage } from './cashier/bills';
+import { DrawerPage } from './cashier/drawer';
+import { CashierLayout } from './cashier/layout';
+import { OutagePage } from './cashier/outage';
+import { KitchenDisplay } from './kitchen/display';
+import { BillPage } from './waiter/bill';
+import { EntryPage } from './waiter/entry';
+import { FloorPage, MyOrdersPage } from './waiter/floor';
+import { WaiterLayout } from './waiter/layout';
+import { NotificationsPage } from './waiter/notifications';
+import { useTranslation } from 'react-i18next';
 import { LoginPage } from './routes/login';
 import { meQuery } from './session';
 
@@ -113,10 +126,166 @@ const productEditorRoute = createRoute({
   },
 });
 
+// ---------------------------------------------------------------- Waiter (Phase 4)
+
+const isFloorStaff = (me: Principal) =>
+  me.kind === 'crew' && (isAdmin(me) || me.stations.includes('waiter') || me.stations.includes('cashier'));
+
+const waiterRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/waiter',
+  beforeLoad: ({ context }) => requireMe(context.queryClient, isFloorStaff),
+  component: function Waiter() {
+    const { me } = waiterRoute.useRouteContext();
+    return <WaiterLayout me={me} />;
+  },
+});
+const waiterIndex = createRoute({ getParentRoute: () => waiterRoute, path: '/', component: NotificationsPage });
+const waiterTables = createRoute({ getParentRoute: () => waiterRoute, path: 'tables', component: FloorPage });
+const waiterOrders = createRoute({ getParentRoute: () => waiterRoute, path: 'orders', component: MyOrdersPage });
+const waiterBill = createRoute({
+  getParentRoute: () => waiterRoute,
+  path: 'bills/$billId',
+  component: function Bill() {
+    const { me } = waiterBill.useRouteContext() as { me: Principal };
+    const { billId } = waiterBill.useParams();
+    return <BillPage key={billId} me={me} billId={billId} />;
+  },
+});
+const waiterBillNew = createRoute({
+  getParentRoute: () => waiterRoute,
+  path: 'bills/$billId/new',
+  component: function BillNew() {
+    const { billId } = waiterBillNew.useParams();
+    const navigate = waiterBillNew.useNavigate();
+    const { t } = useTranslation();
+    return <EntryPage target={{ billId }} title={t('waiter.floor.newOrder')} back={() => void navigate({ to: '/waiter/bills/$billId', params: { billId } })} />;
+  },
+});
+const waiterTableNew = createRoute({
+  getParentRoute: () => waiterRoute,
+  path: 'tables/$tableId/new',
+  component: function TableNew() {
+    const { tableId } = waiterTableNew.useParams();
+    const navigate = waiterTableNew.useNavigate();
+    const { t } = useTranslation();
+    return <EntryPage target={{ tableId }} title={t('waiter.floor.newOrder')} back={() => void navigate({ to: '/waiter/tables' })} />;
+  },
+});
+const waiterOrderAdd = createRoute({
+  getParentRoute: () => waiterRoute,
+  path: 'orders/$orderId/add',
+  validateSearch: (s: Record<string, unknown>) => ({ billId: String(s.billId ?? '') }),
+  component: function OrderAdd() {
+    const { orderId } = waiterOrderAdd.useParams();
+    const { billId } = waiterOrderAdd.useSearch();
+    const navigate = waiterOrderAdd.useNavigate();
+    const { t } = useTranslation();
+    return <EntryPage target={{ orderId }} title={t('waiter.bill.addItems')} back={() => void navigate({ to: '/waiter/bills/$billId', params: { billId } })} />;
+  },
+});
+
+// ---------------------------------------------------------------- Cashier (Phase 6)
+
+const isCashier = (me: Principal) => me.kind === 'crew' && (isAdmin(me) || me.stations.includes('cashier'));
+
+const cashierRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/cashier',
+  beforeLoad: ({ context }) => requireMe(context.queryClient, isCashier),
+  component: function Cashier() {
+    const { me } = cashierRoute.useRouteContext();
+    return <CashierLayout me={me} />;
+  },
+});
+const cashierIndex = createRoute({
+  getParentRoute: () => cashierRoute,
+  path: '/',
+  validateSearch: (s: Record<string, unknown>): { bill?: string } => (typeof s.bill === 'string' && s.bill ? { bill: s.bill } : {}),
+  component: function CashierBills() {
+    const { me } = cashierIndex.useRouteContext() as { me: Principal };
+    const { bill } = cashierIndex.useSearch();
+    return <CashierBillsPage me={me} billId={bill} />;
+  },
+});
+const cashierDrawer = createRoute({ getParentRoute: () => cashierRoute, path: 'drawer', component: DrawerPage });
+const cashierOutage = createRoute({ getParentRoute: () => cashierRoute, path: 'outage', component: OutagePage });
+const cashierTakeaway = createRoute({
+  getParentRoute: () => cashierRoute,
+  path: 'takeaway',
+  component: function Takeaway() {
+    const navigate = cashierTakeaway.useNavigate();
+    const { t } = useTranslation();
+    return (
+      <CashierEntry>
+        <EntryPage target={{ takeaway: true }} title={t('cashier.takeaway.title')} back={() => void navigate({ to: '/cashier' })}
+          onCreated={(bill) => void navigate({ to: '/cashier', search: { bill } })} />
+      </CashierEntry>
+    );
+  },
+});
+const cashierBillNew = createRoute({
+  getParentRoute: () => cashierRoute,
+  path: 'bills/$billId/new',
+  component: function CashierBillNew() {
+    const { billId } = cashierBillNew.useParams();
+    const navigate = cashierBillNew.useNavigate();
+    const { t } = useTranslation();
+    return (
+      <CashierEntry>
+        <EntryPage target={{ billId }} title={t('waiter.floor.newOrder')} back={() => void navigate({ to: '/cashier', search: { bill: billId } })} />
+      </CashierEntry>
+    );
+  },
+});
+const cashierOrderAdd = createRoute({
+  getParentRoute: () => cashierRoute,
+  path: 'orders/$orderId/add',
+  validateSearch: (s: Record<string, unknown>) => ({ billId: String(s.billId ?? '') }),
+  component: function CashierOrderAdd() {
+    const { orderId } = cashierOrderAdd.useParams();
+    const { billId } = cashierOrderAdd.useSearch();
+    const navigate = cashierOrderAdd.useNavigate();
+    const { t } = useTranslation();
+    return (
+      <CashierEntry>
+        <EntryPage target={{ orderId }} title={t('waiter.bill.addItems')} back={() => void navigate({ to: '/cashier', search: { bill: billId } })} />
+      </CashierEntry>
+    );
+  },
+});
+
+/** Entry screens scroll inside the Cashier's fixed-height shell. */
+function CashierEntry({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="h-full overflow-y-auto">
+      <div className="mx-auto max-w-5xl p-6">{children}</div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------- Kitchen (Phase 5)
+
+const isKitchen = (me: Principal) =>
+  me.kind === 'screen' ? me.screen === 'kitchen' || me.screen === 'bar' : isAdmin(me) || me.stations.includes('kitchen');
+
+const kitchenRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/kitchen/$area',
+  beforeLoad: ({ context }) => requireMe(context.queryClient, isKitchen),
+  component: function Kitchen() {
+    const { area } = kitchenRoute.useParams();
+    return <KitchenDisplay key={area} area={area} />;
+  },
+});
+
 const router = createRouter({
   routeTree: rootRoute.addChildren([
     loginRoute,
     homeRoute,
+    kitchenRoute,
+    waiterRoute.addChildren([waiterIndex, waiterTables, waiterOrders, waiterBill, waiterBillNew, waiterTableNew, waiterOrderAdd]),
+    cashierRoute.addChildren([cashierIndex, cashierDrawer, cashierOutage, cashierTakeaway, cashierBillNew, cashierOrderAdd]),
     adminRoute.addChildren([
       adminIndex,
       adminPage('products', (me) => <ProductsPage me={me} />),
@@ -124,6 +293,7 @@ const router = createRouter({
       adminPage('sold-out', () => <SoldOutPage />),
       adminPage('categories', () => <CategoriesPage />, true),
       adminPage('discounts', (me) => <DiscountsPage me={me} />),
+      adminPage('display', (me) => <DisplayPage me={me} />),
       adminPage('tables', () => <TablesPage />),
       adminPage('crew', () => <CrewPage />, true),
       adminPage('settings', (me) => <SettingsPage me={me} />),
@@ -142,7 +312,7 @@ declare module '@tanstack/react-router' {
   }
 }
 
-createRoot(document.getElementById('root')!).render(
+mountApp(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <RouterProvider router={router} />

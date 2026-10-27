@@ -1,0 +1,25 @@
+/* Product Display ambient loops (MOTION.md §6). Pure CSS so they cost no JS per frame. */
+@keyframes sl-steam {
+  0% { transform: translateY(24px); opacity: 0; }
+  35% { opacity: 0.85; }
+  100% { transform: translateY(-36px); opacity: 0; }
+}
+@keyframes sl-twinkle {
+  0%, 100% { transform: scale(0) rotate(0deg); opacity: 0; }
+  50% { transform: scale(1) rotate(45deg); opacity: 1; }
+}
+@keyframes sl-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+.sl-steam path { animation: sl-steam 2.8s ease-in-out infinite both; transform-box: fill-box; }
+.sl-steam path:nth-child(2) { animation-delay: 0.6s; }
+.sl-steam path:nth-child(3) { animation-delay: 1.2s; }
+.sl-sparkle { animation: sl-twinkle 2.4s ease-in-out infinite both; transform-box: fill-box; transform-origin: center; }
+.sl-float { animation: sl-float 4s ease-in-out infinite; }
+
+html, body, #root { height: 100%; overflow: hidden; background: #12221B; }
+
+@media (prefers-reduced-motion: reduce) {
+  .sl-steam path, .sl-sparkle, .sl-float { animation: none; opacity: 0.8; transform: none; }
+}

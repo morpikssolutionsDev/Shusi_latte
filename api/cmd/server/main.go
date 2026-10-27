@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 	_ "time/tzdata" // Asia/Jakarta on Windows hosts without a zoneinfo database
@@ -16,9 +17,12 @@ import (
 	"sushilatte/api/internal/config"
 	"sushilatte/api/internal/dbx"
 	"sushilatte/api/internal/jobs"
+	"sushilatte/api/internal/ordering"
+	"sushilatte/api/internal/outlet"
 	"sushilatte/api/internal/platform"
 	"sushilatte/api/internal/realtime"
 	"sushilatte/api/internal/server"
+	"sushilatte/api/internal/vault"
 )
 
 func main() {
@@ -46,13 +50,24 @@ func run(cfg config.Config, log *slog.Logger) error {
 
 	clock := platform.SystemClock{}
 	authSvc := auth.NewService(db, clock)
+	if cfg.MasterKey == "" {
+		log.Warn("SL_MASTER_KEY not set; using the prototype key file", "path", cfg.MasterKeyPath())
+	}
+	masterKey, err := vault.LoadMasterKey(cfg.MasterKey, cfg.MasterKeyPath())
+	if err != nil {
+		return err
+	}
+	keys, err := vault.Open(cfg.KeysPath(), masterKey)
+	if err != nil {
+		return err
+	}
 
-	sched := jobs.NewScheduler(log, maintenanceJobs(db, clock)...)
+	sched := jobs.NewScheduler(log, append(maintenanceJobs(db, clock), customerJobs(db, clock, keys, log)...)...)
 	sched.Start(ctx)
 
 	srv := &http.Server{
 		Addr:              cfg.Addr,
-		Handler:           server.New(server.Deps{Config: cfg, DB: db, Auth: authSvc, Clock: clock, Log: log}),
+		Handler:           server.New(server.Deps{Config: cfg, DB: db, Auth: authSvc, Vault: keys, Clock: clock, Log: log}),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 	errc := make(chan error, 1)
@@ -92,6 +107,54 @@ func maintenanceJobs(db *dbx.DB, clock platform.Clock) []jobs.Job {
 				_, err := tx.DeleteExpiredIdempotencyKeys(ctx, platform.Millis(clock.Now().Add(-24*time.Hour)))
 				return err
 			})
+		}),
+	}
+}
+
+// customerJobs are the TRD §19 jobs for Bills and Customer data.
+func customerJobs(db *dbx.DB, clock platform.Clock, keys *vault.Vault, log *slog.Logger) []jobs.Job {
+	orders := ordering.NewService(db, clock, keys)
+	discounts := outlet.NewService(db, clock)
+	lastPromos := ""
+	return []jobs.Job{
+		jobs.Every("orders.escalate", 15*time.Second, orders.Escalate),
+		jobs.Every("bills.close_empty", time.Minute, func(ctx context.Context) error {
+			closed, err := orders.CloseEmptyBills(ctx)
+			if len(closed) > 0 {
+				log.Info("closed empty bills", "count", len(closed))
+			}
+			return err
+		}),
+		// Scheduled discounts start and stop without a write, so menus are told at each edge.
+		jobs.Every("promos.edges", time.Minute, func(ctx context.Context) error {
+			all, err := discounts.Discounts(ctx)
+			if err != nil {
+				return err
+			}
+			var ids []string
+			for _, d := range outlet.ActiveDiscounts(all, clock.Now()) {
+				ids = append(ids, d.ID)
+			}
+			now := strings.Join(ids, ",")
+			if now != lastPromos {
+				lastPromos = now
+				db.Bus().Publish(realtime.Event{Topic: "menu", Type: "promo.changed"})
+			}
+			return nil
+		}),
+		jobs.Every("customers.anonymise", time.Hour, func(ctx context.Context) error {
+			n, err := orders.Anonymise(ctx)
+			if n > 0 {
+				log.Info("anonymised bills", "count", n)
+			}
+			return err
+		}),
+		jobs.DailyAt("keys.destroy", 4, 30, func(context.Context) error {
+			gone, err := keys.DestroyBefore(clock.Now())
+			if len(gone) > 0 {
+				log.Info("destroyed data keys", "keys", gone)
+			}
+			return err
 		}),
 	}
 }

@@ -21,6 +21,56 @@ type AuditLog struct {
 	Reason         sql.NullString
 }
 
+type Bill struct {
+	ID                 string
+	BusinessDate       string
+	Number             int64
+	Type               string
+	Source             string
+	Status             string
+	KeyID              sql.NullString
+	TakeawayNameEnc    []byte
+	PayNowServeLaterBy sql.NullString
+	UnpaidReason       sql.NullString
+	UnpaidOverrideBy   sql.NullString
+	MergedIntoID       sql.NullString
+	OpenedAt           int64
+	ClosedAt           sql.NullInt64
+	AnonymisedAt       sql.NullInt64
+	UpdatedAt          int64
+	PricedAt           sql.NullInt64
+	ManualDiscountID   sql.NullString
+	ManualDiscountBy   sql.NullString
+	Subtotal           sql.NullInt64
+	ItemDiscount       sql.NullInt64
+	BillDiscount       sql.NullInt64
+	Service            sql.NullInt64
+	Tax                sql.NullInt64
+	Total              sql.NullInt64
+}
+
+type BillTable struct {
+	BillID  string
+	TableID string
+	IsOpen  int64
+}
+
+type CashDrawer struct {
+	ID    string
+	Label string
+}
+
+type CashHandover struct {
+	ID              string
+	DrawerSessionID string
+	WaiterCrewID    string
+	ExpectedAmount  int64
+	ReceivedAmount  int64
+	Difference      int64
+	ReceivedBy      string
+	ReceivedAt      int64
+}
+
 type Category struct {
 	ID         string
 	NameID     string
@@ -30,6 +80,16 @@ type Category struct {
 	Active     int64
 	CreatedAt  int64
 	UpdatedAt  int64
+}
+
+type ClaimTransfer struct {
+	ID         string
+	OrderID    string
+	FromCrewID string
+	ToCrewID   string
+	Kind       string
+	ByCrewID   string
+	At         int64
 }
 
 type Crew struct {
@@ -49,6 +109,19 @@ type Crew struct {
 type CrewStation struct {
 	CrewID  string
 	Station string
+}
+
+type CustomerEntry struct {
+	ID                 string
+	BillID             string
+	KeyID              string
+	NameEnc            []byte
+	DietaryNoteEnc     []byte
+	RestrictionTagsEnc []byte
+	ConsentAt          sql.NullInt64
+	ActiveDeviceID     sql.NullString
+	JoinedAt           int64
+	RejoinedAt         sql.NullInt64
 }
 
 type DietaryTag struct {
@@ -94,6 +167,51 @@ type DiscountTarget struct {
 	DiscountID string
 	TargetType string
 	TargetID   string
+}
+
+type DisplaySlide struct {
+	ID              string
+	Template        string
+	Sort            int64
+	Active          int64
+	HeadlineID      string
+	HeadlineEn      string
+	SublineID       string
+	SublineEn       string
+	ImageKey        sql.NullString
+	VideoKey        sql.NullString
+	ImageFocusX     int64
+	ImageFocusY     int64
+	ProductID       sql.NullString
+	DiscountID      sql.NullString
+	CategoryIds     string
+	Steam           int64
+	DurationSeconds int64
+	ActiveFrom      sql.NullInt64
+	ActiveTo        sql.NullInt64
+	CreatedAt       int64
+	UpdatedAt       int64
+}
+
+type DrawerSession struct {
+	ID            string
+	CashDrawerID  string
+	CashierCrewID string
+	OpeningFloat  int64
+	OpenedAt      int64
+	ExpectedCash  sql.NullInt64
+	CountedCash   sql.NullInt64
+	Difference    sql.NullInt64
+	ClosedAt      sql.NullInt64
+	ClosedBy      sql.NullString
+}
+
+type GuestToken struct {
+	ID              string
+	CustomerEntryID string
+	TokenHash       string
+	CreatedAt       int64
+	RevokedAt       sql.NullInt64
 }
 
 type IdempotencyKey struct {
@@ -142,6 +260,80 @@ type OpsSetting struct {
 	AutoClockOutGraceSeconds int64
 }
 
+type Order struct {
+	ID                 string
+	BillID             string
+	Seq                int64
+	CustomerEntryID    sql.NullString
+	Source             string
+	Status             string
+	PlacedBy           sql.NullString
+	ClaimedBy          sql.NullString
+	ClaimedAt          sql.NullInt64
+	ConfirmedBy        sql.NullString
+	ConfirmedAt        sql.NullInt64
+	KeyID              sql.NullString
+	RestrictionTagsEnc []byte
+	RenotifiedAt       sql.NullInt64
+	EscalatedAt        sql.NullInt64
+	CreatedAt          int64
+	UpdatedAt          int64
+}
+
+type OrderItem struct {
+	ID               string
+	OrderID          string
+	Sort             int64
+	ProductID        string
+	VariantID        string
+	CategoryID       string
+	PrepAreaID       string
+	ProductNameID    string
+	ProductNameEn    string
+	VariantNameID    string
+	VariantNameEn    string
+	UnitPrice        int64
+	PrepTimeSeconds  int64
+	Quantity         int64
+	Note             string
+	Status           string
+	CancelReason     sql.NullString
+	CancelNote       sql.NullString
+	CancelledBy      sql.NullString
+	CancelledAt      sql.NullInt64
+	VoidReason       sql.NullString
+	VoidedBy         sql.NullString
+	VoidedOverrideBy sql.NullString
+	VoidedAt         sql.NullInt64
+	RemakeOfID       sql.NullString
+	RemakeReason     sql.NullString
+	RemakeOverrideBy sql.NullString
+	PreparingAt      sql.NullInt64
+	ReadyAt          sql.NullInt64
+	ServedAt         sql.NullInt64
+	ServedBy         sql.NullString
+	SoldOutFlag      int64
+	UnavailableFlag  int64
+	CreatedAt        int64
+	UpdatedAt        int64
+	PickupRemindedAt sql.NullInt64
+	SubBillID        sql.NullString
+}
+
+type OrderItemDietaryWarning struct {
+	OrderItemID    string
+	DietaryTagID   string
+	AcknowledgedAt sql.NullInt64
+}
+
+type OrderItemModifier struct {
+	OrderItemID string
+	ModifierID  string
+	NameID      string
+	NameEn      string
+	Price       int64
+}
+
 type OverrideToken struct {
 	ID          string
 	ApproverID  string
@@ -150,6 +342,27 @@ type OverrideToken struct {
 	CreatedAt   int64
 	ExpiresAt   int64
 	UsedAt      sql.NullInt64
+}
+
+type Payment struct {
+	ID               string
+	BillID           string
+	SubBillID        sql.NullString
+	Method           string
+	Status           string
+	Amount           int64
+	Tendered         sql.NullInt64
+	ChangeGiven      int64
+	Rounding         int64
+	TakenBy          string
+	TakenAt          int64
+	CashHandoverID   sql.NullString
+	OverrideBy       sql.NullString
+	VerifiedBy       sql.NullString
+	VerifiedAt       sql.NullInt64
+	DrawerSessionID  sql.NullString
+	WrittenOffReason sql.NullString
+	WrittenOffBy     sql.NullString
 }
 
 type PrepArea struct {
@@ -191,6 +404,27 @@ type ProductDietaryTag struct {
 	DietaryTagID string
 }
 
+type ReceiptPrint struct {
+	ID        string
+	BillID    string
+	SubBillID sql.NullString
+	Copy      string
+	IsReprint int64
+	PrintedBy string
+	PrintedAt int64
+}
+
+type Refund struct {
+	ID              string
+	BillID          string
+	Amount          int64
+	Reason          string
+	RefundedBy      string
+	ApprovedBy      string
+	DrawerSessionID string
+	CreatedAt       int64
+}
+
 type Session struct {
 	ID            string
 	CrewID        string
@@ -201,6 +435,23 @@ type Session struct {
 	LastSeenAt    int64
 	ExpiresAt     int64
 	IdleTimeoutMs sql.NullInt64
+}
+
+type SubBill struct {
+	ID           string
+	BillID       string
+	Method       string
+	ShareIndex   int64
+	ShareCount   int64
+	Status       string
+	Subtotal     sql.NullInt64
+	ItemDiscount sql.NullInt64
+	BillDiscount sql.NullInt64
+	Service      sql.NullInt64
+	Tax          sql.NullInt64
+	Total        sql.NullInt64
+	CreatedAt    int64
+	ClosedAt     sql.NullInt64
 }
 
 type Variant struct {
@@ -216,4 +467,17 @@ type Variant struct {
 	SoldOutBy     sql.NullString
 	SoldOutSource sql.NullString
 	ArchivedAt    sql.NullInt64
+}
+
+type WaiterCall struct {
+	ID              string
+	Kind            string
+	TableID         string
+	BillID          sql.NullString
+	CustomerEntryID sql.NullString
+	CreatedAt       int64
+	RenotifiedAt    sql.NullInt64
+	EscalatedAt     sql.NullInt64
+	AnsweredBy      sql.NullString
+	AnsweredAt      sql.NullInt64
 }

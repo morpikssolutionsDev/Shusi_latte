@@ -17,23 +17,28 @@ import (
 	"sushilatte/api/internal/crew"
 	"sushilatte/api/internal/dbx"
 	"sushilatte/api/internal/demo"
+	"sushilatte/api/internal/display"
 	"sushilatte/api/internal/httpx"
 	"sushilatte/api/internal/media"
+	"sushilatte/api/internal/ordering"
 	"sushilatte/api/internal/outlet"
 	"sushilatte/api/internal/platform"
 	"sushilatte/api/internal/realtime"
 	"sushilatte/api/internal/store"
+	"sushilatte/api/internal/vault"
 )
 
 type Deps struct {
 	Config config.Config
 	DB     *dbx.DB
 	Auth   *auth.Service
+	Vault  *vault.Vault
 	Clock  platform.Clock
 	Log    *slog.Logger
 }
 
 func New(d Deps) http.Handler {
+	orders := ordering.NewService(d.DB, d.Clock, d.Vault)
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, middleware.RealIP, middleware.Recoverer)
 
@@ -42,15 +47,22 @@ func New(d Deps) http.Handler {
 	})
 
 	hub := realtime.NewHub(d.DB.Bus(), func(req *http.Request) (*realtime.Subscriber, error) {
+		// Anonymous clients (Product Display, Client Menu before join) may follow the public
+		// menu and playlist; everything else needs a session (TRD §7).
+		if token := req.URL.Query().Get("guest"); token != "" {
+			if g, err := orders.Authenticate(req.Context(), token); err == nil {
+				return &realtime.Subscriber{ID: "customer:" + g.CustomerID, Allowed: guestTopics(orders, token, g.CustomerID)}, nil
+			}
+		}
 		c, err := req.Cookie(auth.CookieName)
 		if err != nil {
-			return nil, httpx.ErrUnauthorised
+			return &realtime.Subscriber{ID: "public", Allowed: realtime.TopicMatcher(publicTopics...)}, nil
 		}
 		p, err := d.Auth.Authenticate(req.Context(), c.Value)
 		if err != nil {
-			return nil, err
+			return &realtime.Subscriber{ID: "public", Allowed: realtime.TopicMatcher(publicTopics...)}, nil
 		}
-		return &realtime.Subscriber{ID: p.CrewID, Allowed: realtime.TopicMatcher(topicsFor(p)...)}, nil
+		return &realtime.Subscriber{ID: p.CrewID, Allowed: realtime.TopicMatcher(append(topicsFor(p), publicTopics...)...)}, nil
 	}, d.Config.OriginPatterns, d.Log)
 	r.Handle("/ws", hub)
 
@@ -66,8 +78,10 @@ func New(d Deps) http.Handler {
 	})
 
 	r.Route("/api/v1", func(r chi.Router) {
-		r.Use(d.Auth.Middleware)
+		r.Use(d.Auth.Middleware, orders.Middleware)
 		r.Use(httpx.Idempotency(idempotencyStore{d.DB}, idempotencyScope, d.Clock.Now))
+		ordering.Handlers{Svc: orders}.Routes(r)
+		ordering.Handlers{Svc: orders}.StaffRoutes(r)
 		r.Route("/auth", auth.NewHandlers(d.Auth, d.Config.SecureCookie, d.Clock).Routes)
 		admin := &adminapi.Handlers{
 			DB:      d.DB,
@@ -75,6 +89,7 @@ func New(d Deps) http.Handler {
 			Outlet:  outlet.NewService(d.DB, d.Clock),
 			Crew:    crew.NewService(d.DB, d.Clock),
 			Media:   media.NewStore(d.Config.ImagesDir()),
+			Display: display.NewService(d.DB, d.Clock),
 		}
 		admin.Routes(r)
 		if d.Config.DemoMode {
@@ -83,6 +98,9 @@ func New(d Deps) http.Handler {
 	})
 	return r
 }
+
+// publicTopics carry only public catalog and playlist changes.
+var publicTopics = []string{"menu", "display"}
 
 // topicsFor decides which realtime topics a principal may subscribe to (TR-RT-02).
 func topicsFor(p *auth.Principal) []string {
@@ -110,9 +128,26 @@ func topicsFor(p *auth.Principal) []string {
 	return topics
 }
 
+// guestTopics lets a Customer follow the public topics, their own customer:{id} (to hear
+// "continued on another device") and their current Bill, re-checked on every subscribe so a
+// Merge or Rejoin takes effect (BR-CM-13).
+func guestTopics(orders *ordering.Service, token, customerID string) func(string) bool {
+	public := realtime.TopicMatcher(append(publicTopics, ordering.CustomerTopic(customerID))...)
+	return func(topic string) bool {
+		if public(topic) {
+			return true
+		}
+		g, err := orders.Authenticate(context.Background(), token)
+		return err == nil && topic == ordering.BillTopic(g.BillID)
+	}
+}
+
 func idempotencyScope(r *http.Request) string {
 	if p := auth.FromContext(r.Context()); p != nil {
 		return "session:" + p.SessionID
+	}
+	if g, _ := ordering.GuestFrom(r.Context()); g != nil {
+		return "customer:" + g.CustomerID
 	}
 	return "ip:" + r.RemoteAddr
 }

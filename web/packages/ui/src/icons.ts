@@ -3,6 +3,16 @@
 import {
   ArmchairIcon,
   ArrowRightLeftIcon,
+  BeanIcon,
+  EggIcon,
+  FishIcon,
+  MilkIcon,
+  NutIcon,
+  PiggyBankIcon,
+  ShrimpIcon,
+  SproutIcon,
+  WheatIcon,
+  WineIcon,
   BanIcon,
   BanknoteIcon,
   BellRingIcon,
@@ -73,3 +83,23 @@ export const domainIcons = {
 } satisfies Record<string, LucideIcon>;
 
 export type OrderItemStatus = keyof typeof statusIcons;
+
+/**
+ * Dietary Tag icons by tag code (ICONOGRAPHY.md §1). Lucide stand-ins until the custom set in
+ * ICONOGRAPHY.md §2 is drawn; raw fish shares the fish icon and its label tells them apart.
+ */
+export const dietaryIcons: Record<string, LucideIcon> = {
+  dairy: MilkIcon,
+  gluten: WheatIcon,
+  egg: EggIcon,
+  fish: FishIcon,
+  raw_fish: FishIcon,
+  shellfish: ShrimpIcon,
+  nuts: NutIcon,
+  peanut: NutIcon,
+  soy: BeanIcon,
+  sesame: SproutIcon,
+  pork: PiggyBankIcon,
+  alcohol: WineIcon,
+  spicy: FlameIcon,
+};

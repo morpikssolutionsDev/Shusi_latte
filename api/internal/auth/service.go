@@ -79,7 +79,7 @@ func lockedProblem(until int64) *httpx.Problem {
 
 // Login signs a Crew member in and returns the session token (TR-AUTH-01..04, TR-AUTH-09).
 func (s *Service) Login(ctx context.Context, crewID, pin, deviceLabel string) (string, *Principal, error) {
-	crew, err := s.checkPIN(ctx, crewID, pin)
+	crew, err := s.CheckPIN(ctx, crewID, pin)
 	if err != nil {
 		return "", nil, err
 	}
@@ -92,10 +92,11 @@ func (s *Service) Login(ctx context.Context, crewID, pin, deviceLabel string) (s
 	return s.createSession(ctx, crew, "crew", "", deviceLabel, now, expires, idle)
 }
 
-// checkPIN verifies a Crew member's PIN and applies the lockout rules (TR-AUTH-02).
+// CheckPIN verifies a Crew member's PIN and applies the lockout rules (TR-AUTH-02); the HRIS
+// clock-in pad uses it too, so a wrong PIN there counts towards the same lockout.
 // A failed attempt must be committed even though the request fails, so the transaction
 // returns nil and the outcome is reported after the commit.
-func (s *Service) checkPIN(ctx context.Context, crewID, pin string) (store.Crew, error) {
+func (s *Service) CheckPIN(ctx context.Context, crewID, pin string) (store.Crew, error) {
 	var crew store.Crew
 	var outcome error
 	err := s.db.Write(ctx, func(tx *dbx.Tx) error {
@@ -248,7 +249,7 @@ func (s *Service) IssueOverride(ctx context.Context, requester *Principal, appro
 	if !KnownAction(action) {
 		return "", 0, httpx.NewProblem(http.StatusBadRequest, "unknown_action", "Unknown override action")
 	}
-	approver, err := s.checkPIN(ctx, approverCrewID, pin)
+	approver, err := s.CheckPIN(ctx, approverCrewID, pin)
 	if err != nil {
 		return "", 0, err
 	}

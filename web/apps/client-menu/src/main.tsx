@@ -2,7 +2,8 @@ import '@sushi-latte/ui/styles.css';
 import './menu.css';
 import './i18n';
 
-import { Button, mountApp } from '@sushi-latte/ui';
+import { watchDemoReset } from '@sushi-latte/api-client';
+import { Button, DemoResetOverlay, mountApp, useDemoReset } from '@sushi-latte/ui';
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
 import { Outlet, RouterProvider, createRootRoute, createRoute, createRouter, lazyRouteComponent, useNavigate } from '@tanstack/react-router';
 import { QrCodeIcon, SmartphoneIcon } from 'lucide-react';
@@ -16,7 +17,7 @@ import { loadCart } from './cart';
 import { CenteredLoader, JoinFlow, Notice, Splash } from './join';
 import { MenuScreen } from './menu';
 import { OrdersScreen } from './orders';
-import { clearSession, resume, setEnded, useEnded, useSession } from './session';
+import { clearSession, forgetAllSessions, resume, setEnded, useEnded, useSession } from './session';
 
 /**
  * Everything behind a Table QR: resume or join (OP-01), then load the Customer's view and
@@ -67,11 +68,22 @@ function Landing() {
   );
 }
 
+/** After a demo reset every QR code and Customer is new: forget sessions and start over (DEMO-AND-SEED §9). */
+function restart() {
+  forgetAllSessions();
+  window.location.assign('/');
+}
+
+function DemoReset() {
+  return <DemoResetOverlay active={useDemoReset(watchDemoReset, restart)} />;
+}
+
 const root = createRootRoute({
   component: () => (
     <>
       <Outlet />
       <Toaster position="top-center" richColors closeButton={false} />
+      <DemoReset />
     </>
   ),
 });

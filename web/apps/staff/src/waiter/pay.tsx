@@ -75,7 +75,7 @@ export function BillActions({ bill }: { bill: StaffBill }) {
           <Button size="lg" variant="secondary" disabled={settle.isPending} onClick={() => settle.mutate()}>
             {bill.status === 'settling' ? <><LockOpenIcon aria-hidden />{t('waiter.pay.unlock')}</> : <><HourglassIcon aria-hidden />{t('waiter.pay.settle')}</>}
           </Button>
-          {bill.type === 'table' && (
+          {bill.type !== 'takeaway' && (
             <>
               <Button variant="outline" disabled={b.payments.length > 0} onClick={() => setPanel('split')}><SplitIcon aria-hidden />{t('waiter.split.action')}</Button>
               <Button variant="outline" onClick={() => setPanel('move')}><ArrowRightLeftIcon aria-hidden />{t('waiter.move.action')}</Button>

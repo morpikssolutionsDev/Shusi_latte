@@ -8,6 +8,18 @@ import (
 	"database/sql"
 )
 
+type Attendance struct {
+	ID               string
+	CrewID           string
+	ShiftID          sql.NullString
+	ClockInAt        int64
+	ClockOutAt       sql.NullInt64
+	AutoClockedOut   int64
+	CorrectedBy      sql.NullString
+	CorrectedAt      sql.NullInt64
+	CorrectionReason sql.NullString
+}
+
 type AuditLog struct {
 	ID             string
 	At             int64
@@ -206,6 +218,16 @@ type DrawerSession struct {
 	ClosedBy      sql.NullString
 }
 
+type Employee struct {
+	CrewID           string
+	Phone            string
+	EmploymentType   string
+	JoinedOn         sql.NullString
+	EmergencyContact string
+	Notes            string
+	UpdatedAt        int64
+}
+
 type GuestToken struct {
 	ID              string
 	CustomerEntryID string
@@ -223,6 +245,20 @@ type IdempotencyKey struct {
 	ContentType sql.NullString
 	Body        []byte
 	CreatedAt   int64
+}
+
+type LeaveRequest struct {
+	ID             string
+	CrewID         string
+	FromDate       string
+	ToDate         string
+	Type           string
+	Reason         string
+	Status         string
+	DecidedBy      sql.NullString
+	DecidedAt      sql.NullInt64
+	DecisionReason sql.NullString
+	CreatedAt      int64
 }
 
 type Modifier struct {
@@ -435,6 +471,15 @@ type Session struct {
 	LastSeenAt    int64
 	ExpiresAt     int64
 	IdleTimeoutMs sql.NullInt64
+}
+
+type Shift struct {
+	ID        string
+	CrewID    string
+	StartsAt  int64
+	EndsAt    int64
+	CreatedBy string
+	CreatedAt int64
 }
 
 type SubBill struct {

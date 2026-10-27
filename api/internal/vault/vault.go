@@ -49,6 +49,23 @@ func Open(path string, masterKey []byte) (*Vault, error) {
 	if err != nil {
 		return nil, fmt.Errorf("master key: %w", err)
 	}
+	return load(path, master)
+}
+
+// Reload replaces the keys in memory with the key file on disk, after a demo reset installed a
+// fresh one next to the fresh database (TR-RET-04).
+func (v *Vault) Reload() error {
+	fresh, err := load(v.path, v.master)
+	if err != nil {
+		return err
+	}
+	v.mu.Lock()
+	v.keys, v.file = fresh.keys, fresh.file
+	v.mu.Unlock()
+	return nil
+}
+
+func load(path string, master cipher.AEAD) (*Vault, error) {
 	v := &Vault{path: path, master: master, keys: map[string]cipher.AEAD{}, file: fileFormat{Version: 1, Keys: map[string]string{}}}
 	data, err := os.ReadFile(path)
 	if errors.Is(err, os.ErrNotExist) {

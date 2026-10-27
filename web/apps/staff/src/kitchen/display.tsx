@@ -115,7 +115,7 @@ export function KitchenDisplay({ area }: { area: string }) {
         </main>
         {hidden > 0 && (
           // LAYOUT.md §3: overflow tickets scroll, with a visible "+N more".
-          <span className="pointer-events-none absolute right-[360px] top-1/2 z-10 -translate-y-1/2 rounded-l-control bg-[var(--sl-color-status-pending-solid)] px-3 py-2 text-base font-bold text-white">
+          <span className="pointer-events-none absolute right-[360px] top-1/2 z-10 -translate-y-1/2 rounded-l-control bg-[var(--sl-color-status-pending-solid)] px-3 py-2 text-base font-bold text-[var(--sl-color-status-pending-on-solid)]">
             {t('kitchen.more', { count: hidden })}
           </span>
         )}
@@ -158,10 +158,12 @@ function TicketCard({ ticket: k, now, fresh, busy, onStart, onReady, onCancel }:
         fresh && 'ring-4 ring-[var(--sl-color-status-pending-solid)]',
       )}
     >
-      <header className="flex items-center gap-3 px-4 py-3 text-white" style={{ background: `var(--sl-color-status-${status}-solid)` }}>
+      {/* The label colour is the status's own on-solid shade (COLOR.md: 950 on 400 in the dark Kitchen). */}
+      <header className="flex items-center gap-3 px-4 py-3"
+        style={{ background: `var(--sl-color-status-${status}-solid)`, color: `var(--sl-color-status-${status}-on-solid)` }}>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-lg font-bold">{k.tables.join(' + ')} <span className="font-normal opacity-80">{t('kitchen.order', { n: k.seq })}</span></p>
-          <p className="truncate text-sm opacity-90">{[k.waiter?.split(' ')[0], k.customer].filter(Boolean).join(' · ')}</p>
+          <p className="truncate text-lg font-bold">{k.tables.join(' + ')} <span className="font-normal">{t('kitchen.order', { n: k.seq })}</span></p>
+          <p className="truncate text-sm">{[k.waiter?.split(' ')[0], k.customer].filter(Boolean).join(' · ')}</p>
         </div>
         {k.remake && <span className="rounded bg-white px-2 py-0.5 text-sm font-black text-black">{t('kitchen.remake')}</span>}
       </header>
@@ -203,7 +205,7 @@ function TicketCard({ ticket: k, now, fresh, busy, onStart, onReady, onCancel }:
       <footer className="grid grid-cols-2 gap-2 border-t border-border p-3">
         <Button size="xl" variant="secondary" disabled={busy || !toStart.length} onClick={() => onStart(toStart)}>{t('kitchen.start')}</Button>
         <Button size="xl" disabled={busy || !toReady.length} onClick={() => onReady(toReady)}
-          className="bg-[var(--sl-color-status-ready-solid)] text-white hover:bg-[var(--sl-color-status-ready-solid)]">{t('kitchen.ready')}</Button>
+          className="bg-[var(--sl-color-status-ready-solid)] text-[var(--sl-color-status-ready-on-solid)] hover:bg-[var(--sl-color-status-ready-solid)]">{t('kitchen.ready')}</Button>
       </footer>
     </article>
   );

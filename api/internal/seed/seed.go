@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"sushilatte/api/internal/auth"
+	"sushilatte/api/internal/config"
 	"sushilatte/api/internal/dbx"
 	"sushilatte/api/internal/media"
 	"sushilatte/api/internal/platform"
@@ -93,10 +94,29 @@ func Build(ctx context.Context, opts Options) error {
 	if err := seedDisplay(ctx, db, opts, crewIDs["M001"], ids); err != nil {
 		return err
 	}
+	if err := seedHRIS(ctx, db, opts, crewIDs); err != nil {
+		return err
+	}
 	if err := seedCustomers(ctx, db, opts, ids, crewIDs); err != nil {
 		return err
 	}
+	if err := lockOut(ctx, db, opts, crewIDs[lockedOutCrew]); err != nil {
+		return err
+	}
 	return db.Checkpoint(ctx)
+}
+
+// lockOut shows the PIN lockout on W005 until T0 +15m (DEMO-AND-SEED §4). It comes last: a
+// locked Crew member could not have clocked in during the seeded week.
+func lockOut(ctx context.Context, db *dbx.DB, opts Options, id string) error {
+	return db.Write(ctx, func(tx *dbx.Tx) error {
+		return tx.SetCrewLockout(ctx, store.SetCrewLockoutParams{
+			FailedAttempts: 5,
+			LockedUntil:    nullMs(opts.T0.Add(15 * time.Minute)),
+			UpdatedAt:      platform.Millis(opts.T0),
+			ID:             id,
+		})
+	})
 }
 
 func seedCrew(ctx context.Context, db *dbx.DB, opts Options) (map[string]string, error) {
@@ -122,16 +142,6 @@ func seedCrew(ctx context.Context, db *dbx.DB, opts Options) (map[string]string,
 				return fmt.Errorf("crew %s: %w", a.CrewID, err)
 			}
 			ids[a.CrewID] = id
-			if a.CrewID == lockedOutCrew {
-				if err := tx.SetCrewLockout(ctx, store.SetCrewLockoutParams{
-					FailedAttempts: 5,
-					LockedUntil:    nullMs(opts.T0.Add(15 * time.Minute)),
-					UpdatedAt:      platform.Millis(opts.T0),
-					ID:             id,
-				}); err != nil {
-					return err
-				}
-			}
 		}
 		return nil
 	})
@@ -163,4 +173,34 @@ func removeDatabase(path string) error {
 		}
 	}
 	return nil
+}
+
+// Next is a freshly built demo database and key file waiting next to the live ones.
+type Next struct{ DB, Keys string }
+
+// BuildNext builds the demo database anchored at t0 into data/sushi-latte.next.db with its own
+// key file (DEMO-AND-SEED §9 step 1). The live files are untouched until Install.
+func BuildNext(ctx context.Context, cfg config.Config, t0 time.Time) (Next, error) {
+	if err := os.MkdirAll(cfg.DataDir, 0o755); err != nil {
+		return Next{}, err
+	}
+	n := Next{DB: filepath.Join(cfg.DataDir, "sushi-latte.next.db"), Keys: filepath.Join(cfg.DataDir, "keys.next.json")}
+	if err := os.Remove(n.Keys); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return Next{}, err
+	}
+	masterKey, err := vault.LoadMasterKey(cfg.MasterKey, cfg.MasterKeyPath())
+	if err != nil {
+		return Next{}, err
+	}
+	keys, err := vault.Open(n.Keys, masterKey)
+	if err != nil {
+		return Next{}, err
+	}
+	opts := Options{DBPath: n.DB, ImagesDir: cfg.ImagesDir(), AssetsDir: cfg.AssetsDir, T0: t0, Vault: keys}
+	return n, Build(ctx, opts)
+}
+
+// Install moves the built files over the live ones.
+func (n Next) Install(cfg config.Config) error {
+	return Install(n.DB, cfg.DatabasePath(), n.Keys, cfg.KeysPath())
 }

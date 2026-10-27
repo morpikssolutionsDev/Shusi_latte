@@ -1,10 +1,10 @@
 import '@sushi-latte/ui/styles.css';
 import './display.css';
 
-import { api, connectRealtime, unwrap } from '@sushi-latte/api-client';
+import { api, connectRealtime, unwrap, watchDemoReset } from '@sushi-latte/api-client';
 import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
-import { mountApp } from '@sushi-latte/ui';
+import { DemoResetOverlay, mountApp, useDemoReset } from '@sushi-latte/ui';
 import { StrictMode, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { BrandIdle, renderers, slideImages, type PlaylistSlide } from './slides';
 
@@ -113,10 +113,18 @@ function Player() {
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: true, refetchOnWindowFocus: false } } });
 
+const reload = () => window.location.reload();
+
+/** A demo reset restarts the playlist from the new data (DEMO-AND-SEED §9). */
+function DemoReset() {
+  return <DemoResetOverlay active={useDemoReset(watchDemoReset, reload)} />;
+}
+
 mountApp(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <Player />
+      <DemoReset />
     </QueryClientProvider>
   </StrictMode>,
 );

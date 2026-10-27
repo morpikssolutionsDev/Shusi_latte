@@ -47,4 +47,4 @@ export function unwrap<T>(result: { data?: T; error?: unknown; response: Respons
   return result.data as T;
 }
 
-export { connectRealtime, type RealtimeEvent, type RealtimeConnection } from './realtime';
+export { connectRealtime, watchDemoReset, type RealtimeEvent, type RealtimeConnection } from './realtime';

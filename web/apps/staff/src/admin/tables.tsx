@@ -97,7 +97,7 @@ function TableCard({ table, onEdit, onRegenerate, onToggle }: { table: Table; on
   const { t } = useTranslation();
   const qr = useQr(table.qrToken ?? '');
   return (
-    <Card className={cn('flex flex-col gap-3 p-4', !table.active && 'opacity-60')}>
+    <Card className={cn('flex flex-col gap-3 p-4', !table.active && 'border-dashed')}>
       <div className="flex items-center justify-between gap-2">
         <button type="button" onClick={onEdit} className="text-left text-lg font-bold hover:underline">{table.label}</button>
         <Switch aria-label={`${table.label} ${t('admin.common.active')}`} checked={table.active} onCheckedChange={onToggle} />

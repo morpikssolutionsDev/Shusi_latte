@@ -69,6 +69,7 @@ func (h Handlers) StaffRoutes(r chi.Router) {
 	r.With(cashier).Post("/bills", h.staff(h.takeaway))
 	r.With(cashier).Post("/post-outage/bills", h.staff(h.postOutage))
 	r.With(auth.Require(auth.Roles(auth.RoleManagement))).Get("/reports/operations", h.staff(h.operations))
+	r.With(auth.Require(auth.Roles(auth.RoleManagement))).Get("/reports/bills", h.staff(h.billHistory))
 }
 
 func (h Handlers) cashierBills(w http.ResponseWriter, r *http.Request, p *auth.Principal) error {
@@ -205,8 +206,16 @@ func (h Handlers) operations(w http.ResponseWriter, r *http.Request, _ *auth.Pri
 	if err != nil {
 		return err
 	}
-	httpx.WriteJSON(w, http.StatusOK, o)
-	return nil
+	return respond(w, r, "operasional", o.Date, o, o.sections)
+}
+
+func (h Handlers) billHistory(w http.ResponseWriter, r *http.Request, _ *auth.Principal) error {
+	date := r.URL.Query().Get("date")
+	rows, err := h.Svc.BillHistory(r.Context(), date)
+	if err != nil {
+		return err
+	}
+	return respond(w, r, "tagihan", date, rows, func() []section { return historySections(rows) })
 }
 
 func (h Handlers) queue(w http.ResponseWriter, r *http.Request, _ *auth.Principal) error {
@@ -264,8 +273,7 @@ func (h Handlers) prepTime(w http.ResponseWriter, r *http.Request, _ *auth.Princ
 	if err != nil {
 		return err
 	}
-	httpx.WriteJSON(w, http.StatusOK, rep)
-	return nil
+	return respond(w, r, "prep-time", rep.Date, rep, rep.sections)
 }
 
 func (h Handlers) billing(w http.ResponseWriter, r *http.Request, _ *auth.Principal) error {
@@ -402,8 +410,7 @@ func (h Handlers) dailySales(w http.ResponseWriter, r *http.Request, _ *auth.Pri
 	if err != nil {
 		return err
 	}
-	httpx.WriteJSON(w, http.StatusOK, d)
-	return nil
+	return respond(w, r, "penjualan", d.Date, d, d.sections)
 }
 
 func (h Handlers) staff(fn func(http.ResponseWriter, *http.Request, *auth.Principal) error) http.HandlerFunc {

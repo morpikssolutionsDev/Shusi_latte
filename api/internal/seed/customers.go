@@ -146,10 +146,13 @@ func seedCustomers(ctx context.Context, db *dbx.DB, opts Options, ids catalogIDs
 	// Meja 3, last: Raka's fresh Order with an acknowledged Dietary Warning.
 	s.order(raka, -40*time.Second, s.line("latte", 0, 1, "Susu segar").ack("dairy"), s.line("salmon-aburi", 0, 1))
 
-	// Bills closed more than 48 hours ago lose their Customer names, as the nightly job does.
+	// Bills closed more than 48 hours ago lose their Customer names, and data keys older than
+	// three days are destroyed, as the nightly jobs do (TR-RET-01, TR-RET-04, G-24).
 	if s.err == nil {
 		_, err := base.Anonymise(ctx)
 		s.fail(err, "anonymise")
+		_, err = opts.Vault.DestroyBefore(opts.T0)
+		s.fail(err, "destroy old keys")
 	}
 	return s.err
 }

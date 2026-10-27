@@ -16,6 +16,8 @@ import (
 	"sushilatte/api/internal/auth"
 	"sushilatte/api/internal/config"
 	"sushilatte/api/internal/dbx"
+	"sushilatte/api/internal/demo"
+	"sushilatte/api/internal/hris"
 	"sushilatte/api/internal/jobs"
 	"sushilatte/api/internal/ordering"
 	"sushilatte/api/internal/outlet"
@@ -62,12 +64,27 @@ func run(cfg config.Config, log *slog.Logger) error {
 		return err
 	}
 
-	sched := jobs.NewScheduler(log, append(maintenanceJobs(db, clock), customerJobs(db, clock, keys, log)...)...)
+	hr := hris.NewService(db, clock, authSvc)
+	all := append(maintenanceJobs(db, clock), customerJobs(db, clock, keys, log)...)
+	// Crew still clocked in 2 h after their shift ends are clocked out and flagged (BR-HR-06).
+	all = append(all, jobs.Every("attendance.auto_clock_out", 5*time.Minute, func(ctx context.Context) error {
+		n, err := hr.AutoClockOut(ctx)
+		if n > 0 {
+			log.Info("auto clock-out", "count", n)
+		}
+		return err
+	}))
+	reset := &demo.Resetter{Config: cfg, DB: db, Vault: keys, Log: log}
+	if cfg.DemoMode {
+		// The demo starts over every night with T0 = 03.00 (DEMO-AND-SEED §9).
+		all = append(all, jobs.DailyAt("demo.reset", 3, 0, func(ctx context.Context) error { return reset.Reset(ctx, "nightly") }))
+	}
+	sched := jobs.NewScheduler(log, all...)
 	sched.Start(ctx)
 
 	srv := &http.Server{
 		Addr:              cfg.Addr,
-		Handler:           server.New(server.Deps{Config: cfg, DB: db, Auth: authSvc, Vault: keys, Clock: clock, Log: log}),
+		Handler:           server.New(server.Deps{Config: cfg, DB: db, Auth: authSvc, Vault: keys, Clock: clock, Log: log, Reset: reset}),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 	errc := make(chan error, 1)

@@ -2,6 +2,7 @@ import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import { adminId } from './admin/i18n-admin';
 import { cashierId } from './cashier/i18n-cashier';
+import { hrisId } from './hris/i18n-hris';
 import { kitchenId } from './kitchen/i18n-kitchen';
 import { waiterId } from './waiter/i18n-waiter';
 
@@ -46,7 +47,7 @@ const id = {
 void i18n.use(initReactI18next).init({
   lng: 'id',
   fallbackLng: 'id',
-  resources: { id: { translation: { ...id, admin: adminId, waiter: waiterId, kitchen: kitchenId, cashier: cashierId } } },
+  resources: { id: { translation: { ...id, admin: adminId, waiter: waiterId, kitchen: kitchenId, cashier: cashierId, hris: hrisId } } },
   interpolation: { escapeValue: false },
 });
 

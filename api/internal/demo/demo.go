@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"sushilatte/api/internal/auth"
 	"sushilatte/api/internal/dbx"
 	"sushilatte/api/internal/httpx"
 	"sushilatte/api/internal/outlet"
@@ -19,8 +20,11 @@ type account struct {
 	ImageKey string `json:"imageKey,omitempty"`
 }
 
-func Routes(db *dbx.DB) func(chi.Router) {
+func Routes(db *dbx.DB, reset *Resetter) func(chi.Router) {
 	return func(r chi.Router) {
+		if reset != nil {
+			r.With(auth.Require(auth.Roles(auth.RoleManagement))).Post("/reset", httpx.Handler(reset.handle))
+		}
 		r.Get("/accounts", httpx.Handler(func(w http.ResponseWriter, req *http.Request) error {
 			crew, err := db.Read().ListAllCrew(req.Context())
 			if err != nil {

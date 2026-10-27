@@ -322,6 +322,7 @@ function PhotoSection({ draft, set, canEdit }: { draft: Product; set: (p: Partia
             <button
               type="button"
               className="relative block w-full overflow-hidden rounded-lg"
+              aria-label={t('admin.editor.focus')}
               disabled={!canEdit}
               onClick={(e) => {
                 const r = e.currentTarget.getBoundingClientRect();

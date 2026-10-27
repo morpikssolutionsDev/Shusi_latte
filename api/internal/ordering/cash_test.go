@@ -2,10 +2,14 @@ package ordering_test
 
 import (
 	"context"
+	"errors"
+	"strings"
 	"testing"
 	"time"
 
 	"sushilatte/api/internal/auth"
+	"sushilatte/api/internal/hris"
+	"sushilatte/api/internal/httpx"
 	"sushilatte/api/internal/ordering"
 	"sushilatte/api/internal/outlet"
 	"sushilatte/api/internal/platform"
@@ -202,4 +206,46 @@ func TestPostOutageEntry(t *testing.T) {
 		ServedBy: s.w1.ID, Items: []ordering.ItemInput{f.nigiriLine()}, Payments: []ordering.OutagePayment{{Method: "card", Amount: 1000}}}); problemCode(err) != "invalid_input" {
 		t.Fatalf("underpaid outage bill: %v", err)
 	}
+}
+
+// BR-HR-07, BR-WT-11, TR-HR-03, G-06, G-20, Phase 7 done-when: a Waiter cannot clock out while holding
+// cash; once the Cashier receives the handover, open Claims are listed for handover first.
+func TestClockOutNeedsHandover(t *testing.T) {
+	f := setup(t)
+	s := f.staff(t)
+	c := f.cashier(t)
+	ctx := context.Background()
+	hr := hris.NewService(f.db, f.clock, s.auth)
+	if _, err := hr.Clock(ctx, hris.ClockInput{CrewID: "W001", PIN: "333333"}); err != nil {
+		t.Fatal(err)
+	}
+	billID := f.directBill(t, s.w1, 0, f.nigiriLine())
+	res, err := f.svc.Pay(ctx, s.w1, billID, ordering.PayInput{Method: ordering.PayCash, Amount: 60000}, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = hr.Clock(ctx, hris.ClockInput{CrewID: "W001", PIN: "333333"})
+	if problemCode(err) != "cash_held" || !strings.Contains(asProblem(err).Detail, "Setor Rp 55.400 ke kasir dulu.") {
+		t.Fatalf("clock-out holding cash: %v", err)
+	}
+	_ = f.svc.OpenDrawer(ctx, c, 0)
+	if _, err := f.svc.ReceiveHandover(ctx, c, s.w1.ID, res.Payment.Amount); err != nil {
+		t.Fatal(err)
+	}
+	_, err = hr.Clock(ctx, hris.ClockInput{CrewID: "W001", PIN: "333333"})
+	if problemCode(err) != "open_claims" || len(asProblem(err).Extra["claims"].([]hris.OpenClaim)) != 1 {
+		t.Fatalf("clock-out with an open Claim: %v", err)
+	}
+	out, err := hr.Clock(ctx, hris.ClockInput{CrewID: "W001", PIN: "333333", AcknowledgeClaims: true})
+	if err != nil || out.Action != "out" {
+		t.Fatalf("clock-out after handover: %+v %v", out, err)
+	}
+}
+
+func asProblem(err error) *httpx.Problem {
+	var p *httpx.Problem
+	if errors.As(err, &p) {
+		return p
+	}
+	return &httpx.Problem{}
 }

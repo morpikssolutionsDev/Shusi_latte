@@ -22,7 +22,7 @@ export function FloorPage() {
               className={cn(
                 'flex min-h-32 flex-col gap-1.5 p-4',
                 state === 'free' && 'border-dashed',
-                state === 'inactive' && 'opacity-50',
+                state === 'inactive' && 'border-dashed',
                 state === 'settling' && 'border-[var(--sl-color-feedback-warning-border)]',
                 b?.unclaimed && 'border-[var(--sl-color-status-pending-border)]',
               )}

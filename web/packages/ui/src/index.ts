@@ -17,6 +17,7 @@ export { Input, Label } from './components/input';
 export { Card } from './components/card';
 export { PinPad, type PinPadProps } from './components/pin-pad';
 export { Logo, type LogoProps } from './components/logo';
+export { DemoResetOverlay, useDemoReset } from './components/demo-reset';
 export { Switch, Textarea, Select, Tabs, TabsList, TabsTrigger, TabsContent, Field } from './components/controls';
 export { Dialog, type DialogProps } from './components/dialog';
 export { Chip, DietaryBadge, TagChip, SoldOutBadge, type Tone, type Feedback } from './components/badges';

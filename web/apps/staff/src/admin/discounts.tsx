@@ -59,7 +59,7 @@ export function DiscountsPage({ me }: { me: Principal }) {
         {discounts.map((d) => {
           const info = describe(d);
           return (
-            <Card key={d.id} className={cn('flex flex-col gap-2 p-4', !d.active && 'opacity-60')}>
+            <Card key={d.id} className={cn('flex flex-col gap-2 p-4', !d.active && 'border-dashed')}>
               <div className="flex items-start justify-between gap-2">
                 <h2 className="font-bold">{d.name}</h2>
                 <span className="tabular text-lg font-extrabold">{info.value}</span>

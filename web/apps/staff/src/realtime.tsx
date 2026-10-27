@@ -19,13 +19,7 @@ export function useRealtime(topics: string[], onEvent?: (e: RealtimeEvent) => vo
     if (!enabled) return;
     const conn = connectRealtime({
       topics: key.split('|').filter(Boolean),
-      onEvent: (e) => {
-        if (e.topic === 'system' && e.type === 'demo.reset') {
-          window.location.reload();
-          return;
-        }
-        handler.current?.(e);
-      },
+      onEvent: (e) => handler.current?.(e),
       onReconnect: () => void queryClient.invalidateQueries(),
       onStatus: setStatus,
     });

@@ -108,3 +108,52 @@ func (s *Service) Operations(ctx context.Context, date string) (Operations, erro
 	}
 	return out, nil
 }
+
+// HistoryRow is one closed Bill of a business day as Management sees it after the fact: names
+// while they are kept, "Customer" once Anonymised (TR-RET-01, G-24).
+type HistoryRow struct {
+	ID         string   `json:"id"`
+	Number     string   `json:"number"`
+	Tables     []string `json:"tables"`
+	Customers  []string `json:"customers"`
+	Total      int64    `json:"total"`
+	Status     string   `json:"status"` // closed | unpaid
+	Source     string   `json:"source"` // live | post_outage
+	ClosedAt   int64    `json:"closedAt"`
+	Anonymised bool     `json:"anonymised"`
+}
+
+// BillHistory lists the Bills closed in one business day, newest first.
+func (s *Service) BillHistory(ctx context.Context, date string) ([]HistoryRow, error) {
+	day, err := time.ParseInLocation(time.DateOnly, date, platform.Jakarta)
+	if err != nil {
+		return nil, invalid("Tanggal tidak valid.")
+	}
+	sc, err := s.staffContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	from, to := platform.Millis(day.Add(4*time.Hour)), platform.Millis(day.Add(28*time.Hour))
+	bills, err := sc.q.ListClosedBillsBetween(ctx, store.ListClosedBillsBetweenParams{ClosedAt: nullMs(from), ClosedAt_2: nullMs(to)})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]HistoryRow, 0, len(bills))
+	for i := len(bills) - 1; i >= 0; i-- {
+		b := bills[i]
+		row := HistoryRow{ID: b.ID, Number: BillNumber(b.Number), Tables: []string{}, Customers: []string{}, Total: b.Total.Int64, Status: b.Status,
+			Source: b.Source, ClosedAt: b.ClosedAt.Int64, Anonymised: b.AnonymisedAt.Valid}
+		for _, t := range sc.billTables(ctx, b.ID) {
+			row.Tables = append(row.Tables, t.Label)
+		}
+		entries, err := sc.q.ListCustomerEntries(ctx, b.ID)
+		if err != nil {
+			return nil, err
+		}
+		for _, e := range entries {
+			row.Customers = append(row.Customers, s.name(e))
+		}
+		out = append(out, row)
+	}
+	return out, nil
+}

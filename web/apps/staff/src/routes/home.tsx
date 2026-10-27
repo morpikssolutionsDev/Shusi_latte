@@ -22,9 +22,10 @@ const MODULES = [
 ] as const;
 
 /** Where each built module opens. */
-function moduleLink(key: 'admin' | 'waiter' | 'kitchen' | 'cashier') {
+function moduleLink(key: (typeof MODULES)[number]['key']) {
   if (key === 'kitchen') return { to: '/kitchen/$area', params: { area: 'kitchen' } } as const;
-  return { to: key === 'admin' ? '/admin/products' : key === 'cashier' ? '/cashier' : '/waiter' } as const;
+  const to = { admin: '/admin/products', cashier: '/cashier', waiter: '/waiter', hris: '/hris' } as const;
+  return { to: to[key] } as const;
 }
 
 function canUse(me: Principal, m: (typeof MODULES)[number]) {
@@ -54,14 +55,16 @@ export function HomePage({ me }: { me: Principal }) {
     onSuccess: (p) => {
       queryClient.setQueryData(['me'], p);
       if (p.screen === 'kitchen' || p.screen === 'bar') void navigate({ to: '/kitchen/$area', params: { area: p.screen } });
+      else if (p.screen === 'hris') void navigate({ to: '/clock' });
       else void router.invalidate(); // the home route re-reads the principal from its context
     },
   });
 
-  // A Kitchen or Bar screen goes straight to its display (TR-AUTH-08).
+  // A Kitchen or Bar screen goes straight to its display, the HRIS tablet to its pad (TR-AUTH-08).
   if (me.kind === 'screen' && (me.screen === 'kitchen' || me.screen === 'bar')) {
     return <Navigate to="/kitchen/$area" params={{ area: me.screen }} />;
   }
+  if (me.kind === 'screen' && me.screen === 'hris') return <Navigate to="/clock" />;
   if (me.kind === 'screen') {
     return (
       <main className="grid min-h-[calc(100dvh-28px)] place-items-center p-6 text-center">
@@ -97,22 +100,14 @@ export function HomePage({ me }: { me: Principal }) {
       <section aria-labelledby="modules" className="flex flex-col gap-3">
         <h2 id="modules" className="text-sm font-bold uppercase tracking-[0.12em] text-muted-foreground">{t('home.modules')}</h2>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-          {MODULES.filter((m) => canUse(me, m)).map(({ key, icon: Icon }) =>
-            key !== 'hris' ? (
-              <Link key={key} {...moduleLink(key)} className="rounded-card focus-visible:outline-2">
-                <Card className="flex h-full flex-col items-start gap-3 shadow-md transition-transform hover:-translate-y-0.5">
-                  <Icon aria-hidden className="size-6" />
-                  <span className="font-semibold">{t(`modules.${key}`)}</span>
-                </Card>
-              </Link>
-            ) : (
-              <Card key={key} className="flex flex-col items-start gap-3 opacity-70">
+          {MODULES.filter((m) => canUse(me, m)).map(({ key, icon: Icon }) => (
+            <Link key={key} {...moduleLink(key)} className="rounded-card focus-visible:outline-2">
+              <Card className="flex h-full flex-col items-start gap-3 shadow-md transition-transform hover:-translate-y-0.5">
                 <Icon aria-hidden className="size-6" />
                 <span className="font-semibold">{t(`modules.${key}`)}</span>
-                <span className="rounded-chip bg-sunken px-2 py-0.5 text-xs font-semibold text-muted-foreground">{t('home.comingSoon')}</span>
               </Card>
-            ),
-          )}
+            </Link>
+          ))}
         </div>
       </section>
 

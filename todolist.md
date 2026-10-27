@@ -259,50 +259,60 @@ Shared base that every module needs. **Done 2026-10-26.**
 
 ## Phase 6 — Cashier
 
-- [ ] Cashier landscape split view: Bills list + Bill detail with PaymentPad (LAYOUT.md §3)
-- [ ] All Waiter Bill and Payment capabilities (BR-CS-01)
-- [ ] Takeaway Bills paid before the Kitchen (BR-CS-02, TR-PAY-04, G-18)
-- [ ] Refunds within / above the cap, paid in cash from the drawer (BR-CS-03, BR-R-20, G-17)
-- [ ] Cash Drawer: Opening Float per drawer session (BR-CS-04, G-19)
-- [ ] Cash Handover with difference against the Waiter (BR-CS-05, BR-R-36, G-20)
-- [ ] Shift Closing for the drawer; pending QRIS must be resolved first (BR-CS-06, BR-CS-07, TR-PAY-01..03)
-- [ ] Post-outage Entry mode (BR-CS-08, G-21)
-- [ ] Reports: payment methods, best sellers, Shift Closing, Unpaid Bills, Remakes, post-outage (BR-ADM-11)
-- [ ] Seed: TA-1..TA-3, Cash Drawer state, refunds, pending QRIS, post-outage history, 14-day history (DEMO-AND-SEED §6.2, §7, §8)
+**Done 2026-10-27.** Verified by `cash_test.go`, `seed_test.go` (Cash Drawer, Takeaways, today's and 14 days of history) and `.tools/flow-cashier.mjs` (17/17 at 1280×800); the Waiter, Bills and Kitchen flows still pass.
+
+- [x] Cashier landscape split view at `/staff/cashier`: Bills list (40 %) + Bill detail with the PaymentPad pinned to the bottom (60 %); tabs Tagihan · Laci kas · Pasca-gangguan (LAYOUT.md §3)
+- [x] All Waiter Bill and Payment capabilities — the Waiter's BillPage reused with Cashier links; counter cash goes straight into the drawer (BR-CS-01)
+- [x] Takeaway Bills paid before the Kitchen: one held Order, no manual Confirm, no direct Order on the Bill (`409 takeaway_unpaid`); full payment queues it and closes the Bill; its Receipt names the Takeaway (BR-CS-02, TR-PAY-04, G-18)
+- [x] Refunds within / above the cap, paid in cash from the drawer; the dialog asks the approver the cap requires (BR-CS-03, BR-R-20, G-17)
+- [x] Cash Drawer: Opening Float per drawer session; counter cash refused while the drawer is closed (BR-CS-04, G-19)
+- [x] Cash Handover with the difference recorded against the Waiter (BR-CS-05, BR-R-36, G-20)
+- [x] Shift Closing for the drawer; pending QRIS verified or written off first (BR-CS-06, BR-CS-07, TR-PAY-01..03)
+- [x] Post-outage Entry form: original times, Crew ID from the paper Bill, items, Payments; the API answers with its total when the Payments fall short (BR-CS-08, G-21)
+- [x] Reports: payment methods and best sellers (Phase 4) plus the Operations section — Shift Closings, Unpaid Bills, Remakes, Refunds, Post-outage Entries (BR-ADM-11)
+- [x] Seed: TA-1..TA-3, today's drawer (C001 −5h, Rp 500.000, W001 exact, W003 −Rp 20.000, W002 holding Rp 200.000, pending QRIS Rp 94.300, Refunds Rp 52.000 / Rp 560.000), today's closed Bills (§6.3), 14-day history (45–70 Bills a day, ~90 % on time, QRIS/cash/card mix, daily Shift Closings, yesterday's two Post-outage Entries, one Unpaid Bill, −47h / −49h anonymisation), Ebi Tempura archived a week ago (DEMO-AND-SEED §6.2, §7, §8) — today's story is compressed into the business day when T0 is early in the morning
 
 **Done when**
-- [ ] Expected cash equals Float + handovers + counter cash − change − cash refunds (integration test)
-- [ ] Shift Closing is refused while a pending QRIS exists
+- [x] Expected cash equals Float + handovers + counter cash − change − cash refunds (`TestExpectedCashAndShiftClosing`, `seed_test.go`, Cashier flow)
+- [x] Shift Closing is refused while a pending QRIS exists (`pending_qris`; the button is disabled with "Selesaikan 1 QRIS dulu.")
 
 ---
 
 ## Phase 7 — HRIS
 
-- [ ] Employee records extending Crew (BR-HR-01)
-- [ ] Shift scheduling (BR-HR-02)
-- [ ] ClockInPad on the shared HRIS tablet only (BR-HR-03, TR-AUTH-08)
-- [ ] Clock-out blockers: held cash, open Claims (BR-HR-07, BR-WT-11)
-- [ ] Auto clock-out at shift end + 2 h; correction with reason (BR-HR-06, G-22)
-- [ ] Leave requests and approval (BR-HR-04)
-- [ ] Attendance export (BR-HR-05)
-- [ ] Seed: shifts, attendance, K002 auto clock-out, leave requests (DEMO-AND-SEED §8)
+**Done 2026-10-27.** Verified by `hris_test.go`, `TestClockOutNeedsHandover`, `seed_test.go` (at 15.00 and at the 03.00 nightly reset) and `.tools/flow-hris.mjs` (15/15).
+
+- [x] Employee records beside the Crew account: employment type, start date, phone, emergency contact, notes (BR-HR-01) — Management, `/staff/hris/employees`
+- [x] Shift scheduling: weekly grid, add / move / delete, Pagi and Malam presets, no overlaps, ≤ 16 h, worked shifts cannot be deleted (BR-HR-02)
+- [x] ClockInPad on the shared HRIS tablet only: screen mode → `/staff/clock`; large clock, Crew ID + PinPad, result card with shift and lateness; the PIN shares the sign-in lockout (BR-HR-03, TR-AUTH-08, TR-HR-01, TR-HR-02)
+- [x] Clock-out blockers: held cash refused with "Setor Rp X ke kasir dulu."; open Claims listed, then clock-out on acknowledgement (BR-HR-07, BR-WT-11, TR-HR-03)
+- [x] Auto clock-out at shift end + 2 h every 5 min, flagged "auto"; correction with reason, audit-logged (BR-HR-06, G-22, TR-HR-04)
+- [x] Leave requests from the Crew member's own page; approve / reject with reason by someone else; approved leave on the schedule and the board (BR-HR-04)
+- [x] Attendance board per day (late, absent, working, leave, auto) and CSV export for payroll (BR-HR-05)
+- [x] Seed: employee records; shifts for the past week, today (around T0) and the next 7 days; attendance played on the pad; W003 late, W004 not in; K002's auto clock-out last night; W004 pending, K001 approved, C002 rejected leave; W005 locked out last (DEMO-AND-SEED §8)
 
 **Done when**
-- [ ] W002 cannot clock out until the Cashier receives the handover
-- [ ] Attendance export matches the seeded shifts
+- [x] W002 cannot clock out until the Cashier receives the handover (`TestClockOutNeedsHandover`, seed test, HRIS flow)
+- [x] Attendance export matches the seeded shifts (`TestExportMatchesShifts`; the flow's 7-day export has one row per seeded shift: 68 = 68)
 
 ---
 
 ## Phase 8 — Demo polish
 
-- [ ] Anonymisation job + key destruction; −47 h / −49 h showcase (TR-RET-01, TR-RET-04, G-24)
-- [ ] Reset demo: Admin button with Management PIN, nightly 03:00, `demo.reset` reload (DEMO-AND-SEED §9)
-- [ ] Guided demo tours 1–6 on the launcher (DEMO-AND-SEED §10)
-- [ ] Walk the scenario catalogue: every row visible right after a reset (DEMO-AND-SEED §11)
-- [ ] Accessibility pass on every surface; axe in Playwright (ACCESSIBILITY.md §4)
-- [ ] End-to-end Playwright flow: scan → order → Claim → Kitchen → Ready → pay → receipt (TR-TST-03)
-- [ ] Load test at 300 Orders/hour (TR-TST-05)
-- [ ] Style guide regenerated and matches the shipped tokens
+**Done 2026-10-27.** Verified by the Go suite (including the seed at 15.00 and at the 03.00 reset), `.tools/tours.mjs` (6/6 on one reset), `.tools/flow-reset.mjs`, `.tools/flow-e2e.mjs`, `.tools/a11y.mjs` and `.tools/load.mjs`; every earlier flow re-run green.
+
+- [x] Anonymisation job + key destruction; −47 h / −49 h showcase: the seed anonymises and destroys keys older than three days like the nightly jobs; Reports → "Tagihan ditutup" shows names, or "Customer" with a Dianonimkan chip (TR-RET-01, TR-RET-04, G-24)
+- [x] Reset demo: Admin → Pengaturan → Reset demo with Management PIN (`demo_reset`), nightly 03.00 in Demo mode; `demo.resetting` shows a notice on every app, the file swaps in ~15 ms, `demo.reset` sends Staff to sign-in, the phone to the start and the TV round again (DEMO-AND-SEED §9) — the whole reset takes ~8–10 s (the 14-day build), recorded in §9
+- [x] Guided demo tours 1–6 on the launcher (`/demo`), with deep links to each screen, Indonesian and English (DEMO-AND-SEED §10)
+- [x] Walk the scenario catalogue: `checkCatalogue` in `seed_test.go` covers the rows not already asserted (takeover, reprint and Move audits, G-11, G-12, G-13, Sold Out cascade, Display skipping the Hidden Sakura) (DEMO-AND-SEED §11)
+- [x] Accessibility pass on every surface: axe (WCAG 2.1 AA) on 40 routes, 0 serious/critical — fixed contrast from `opacity` dimming (inactive cards now dashed), Kitchen ticket headers and Siap buttons on `on-solid` tokens, product-tile names, the cup progressbar name, the photo focus button, a keyboard-reachable history table (ACCESSIBILITY.md §4)
+- [x] End-to-end Playwright flow: scan → order → Claim → Bar → Ready → Served → card payment → Receipt, each on its own screen (TR-TST-03)
+- [x] Load test: 3 000 Orders/hour (10× the 2× peak) for 2 min with 30 Client Menu sessions and 15 staff devices: reads p95 45 ms, writes p95 22 ms, commit → screen p95 18 ms, no 5xx (TR-TST-05, TR-NF-01, TR-RT-05)
+- [x] Style guide regenerated (`python tools/design/build.py`): no changes, the shipped tokens match
+- [x] CSV export on every report (`?format=csv`, links on the Reports page) (TRD §6.1)
+- [x] Crew portrait upload in the Crew dialog
 
 **Done when**
-- [ ] A presenter can run all six tours back to back after one reset without touching the database
+- [x] A presenter can run all six tours back to back after one reset without touching the database (`.tools/tours.mjs`: 6/6)
+
+**Still open (need the venue or hardware):** the 58 mm BLE printer spike (TR-TST-04) and the 3 m Kitchen readability test (ACCESSIBILITY.md §4).

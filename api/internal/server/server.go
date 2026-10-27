@@ -18,6 +18,7 @@ import (
 	"sushilatte/api/internal/dbx"
 	"sushilatte/api/internal/demo"
 	"sushilatte/api/internal/display"
+	"sushilatte/api/internal/hris"
 	"sushilatte/api/internal/httpx"
 	"sushilatte/api/internal/media"
 	"sushilatte/api/internal/ordering"
@@ -35,6 +36,7 @@ type Deps struct {
 	Vault  *vault.Vault
 	Clock  platform.Clock
 	Log    *slog.Logger
+	Reset  *demo.Resetter // Demo mode only
 }
 
 func New(d Deps) http.Handler {
@@ -92,15 +94,16 @@ func New(d Deps) http.Handler {
 			Display: display.NewService(d.DB, d.Clock),
 		}
 		admin.Routes(r)
+		hris.Handlers{Svc: hris.NewService(d.DB, d.Clock, d.Auth)}.Routes(r)
 		if d.Config.DemoMode {
-			r.Route("/demo", demo.Routes(d.DB))
+			r.Route("/demo", demo.Routes(d.DB, d.Reset))
 		}
 	})
 	return r
 }
 
-// publicTopics carry only public catalog and playlist changes.
-var publicTopics = []string{"menu", "display"}
+// publicTopics carry only public catalog and playlist changes, and the demo reset signal.
+var publicTopics = []string{"menu", "display", demo.Topic}
 
 // topicsFor decides which realtime topics a principal may subscribe to (TR-RT-02).
 func topicsFor(p *auth.Principal) []string {
@@ -118,7 +121,7 @@ func topicsFor(p *auth.Principal) []string {
 	if p.HasRole(auth.RoleManagement, auth.RoleOutletAdmin) {
 		return []string{"*"}
 	}
-	topics := []string{"menu"}
+	topics := []string{"menu", "hris"}
 	if p.HasStation(auth.StationWaiter) || p.HasStation(auth.StationCashier) {
 		topics = append(topics, "waiters", "bill:*", "cash")
 	}

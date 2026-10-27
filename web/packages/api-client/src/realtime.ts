@@ -71,3 +71,20 @@ export function connectRealtime({ topics, onEvent, onReconnect, onStatus, url }:
     status: () => state,
   };
 }
+
+/**
+ * Follows the public `demo` topic (DEMO-AND-SEED §9): `onResetting` when a reset starts building,
+ * `onReset` once the new database is live, so the app can start over from its first screen.
+ */
+export function watchDemoReset(handlers: { onResetting: () => void; onReset: () => void; onFailed?: () => void }): () => void {
+  const conn = connectRealtime({
+    topics: ['demo'],
+    onEvent: (e) => {
+      if (e.topic !== 'demo') return;
+      if (e.type === 'demo.resetting') handlers.onResetting();
+      else if (e.type === 'demo.reset') handlers.onReset();
+      else if (e.type === 'demo.reset_failed') handlers.onFailed?.();
+    },
+  });
+  return () => conn.close();
+}

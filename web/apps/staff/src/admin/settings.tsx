@@ -1,9 +1,13 @@
 import { api, unwrap, type Principal } from '@sushi-latte/api-client';
 import { Button, Card, Field, Input, Select, formatRupiah } from '@sushi-latte/ui';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { RotateCcwIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { settingsQuery, useSave, type Settings } from './api';
+import { toast } from 'sonner';
+import { PinOverrideDialog } from '../components/pin-override';
+import { healthQuery } from '../session';
+import { errorText, settingsQuery, useSave, type Settings } from './api';
 import { PageHeader } from './layout';
 
 const OPS_FIELDS = [
@@ -66,6 +70,30 @@ export function SettingsPage({ me }: { me: Principal }) {
           {canEdit && <Button className="self-start" disabled={saveOps.isPending} onClick={() => saveOps.mutate(draft.ops)}>{t('admin.common.save')}</Button>}
         </Card>
       </fieldset>
+      {canEdit && <ResetDemoCard />}
     </>
+  );
+}
+
+/** DEMO-AND-SEED §9: Management rebuilds the demo with their PIN; every screen starts over. */
+function ResetDemoCard() {
+  const { t } = useTranslation();
+  const health = useQuery(healthQuery);
+  const [asking, setAsking] = useState(false);
+  const reset = useMutation({
+    mutationFn: async (token: string) => unwrap(await api.POST('/demo/reset', { headers: { 'X-Override-Token': token } })),
+    onSuccess: () => toast.info(t('admin.settings.resetStarted')),
+    onError: (e) => toast.error(errorText(e)),
+  });
+  if (!health.data?.demo) return null;
+  return (
+    <Card className="mt-6 flex max-w-4xl flex-wrap items-center gap-4 border-[var(--sl-color-feedback-danger-border)] p-5">
+      <div className="min-w-60 flex-1">
+        <h2 className="text-lg font-bold">{t('admin.settings.resetTitle')}</h2>
+        <p className="text-sm text-muted-foreground">{t('admin.settings.resetHint')}</p>
+      </div>
+      <Button variant="danger" disabled={reset.isPending} onClick={() => setAsking(true)}><RotateCcwIcon aria-hidden />{t('admin.settings.reset')}</Button>
+      <PinOverrideDialog action="demo_reset" open={asking} onClose={() => setAsking(false)} onApproved={(tok) => { setAsking(false); reset.mutate(tok); }} />
+    </Card>
   );
 }

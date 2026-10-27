@@ -39,7 +39,7 @@ func (s *liveSeeder) cooked(rng *rand.Rand, w *auth.Principal, at time.Time, tab
 // today seeds today's closed Bills, the Cash Drawer (§8) and the Takeaways (§6.2).
 func (s *liveSeeder) today() {
 	rng := rand.New(rand.NewPCG(Rand, 0))
-	w1, w2, w3, w4 := s.crew("W001"), s.crew("W002"), s.crew("W003"), s.crew("W004")
+	w1, w2, w3 := s.crew("W001"), s.crew("W002"), s.crew("W003") // W004 is late today: not clocked in (§8)
 	c1 := s.crew("C001")
 	pay := func(b histBill, at time.Duration, method string, by *auth.Principal) {
 		s.histPay(b, s.tm(at), method, by, rng)
@@ -47,8 +47,8 @@ func (s *liveSeeder) today() {
 	}
 
 	// Morning, before the drawer opens: QRIS and card only.
-	a := s.cooked(rng, w4, s.tm(-7*h), 1, "Bayu", false, s.line("latte", 0, 1, "Susu segar"), s.line("salmon-aburi", 0, 1))
-	pay(a, -6*h-20*m, ordering.PayQRIS, w4)
+	a := s.cooked(rng, w2, s.tm(-7*h), 1, "Bayu", false, s.line("latte", 0, 1, "Susu segar"), s.line("salmon-aburi", 0, 1))
+	pay(a, -6*h-20*m, ordering.PayQRIS, w2)
 	b := s.cooked(rng, w2, s.tm(-6*h-40*m), 2, "", false, s.line("tonkotsu", 0, 1, "Sedang"), s.line("cold-brew", 0, 1))
 	pay(b, -6*h, ordering.PayCard, w2)
 
@@ -64,7 +64,7 @@ func (s *liveSeeder) today() {
 	}
 	pay(mv, -4*h-20*m, ordering.PayCash, c1)
 
-	filler := s.cooked(rng, w4, s.tm(-4*h-40*m), 1, "", false, s.histLines(rng, s.t0)...)
+	filler := s.cooked(rng, w2, s.tm(-4*h-40*m), 1, "", false, s.histLines(rng, s.t0)...)
 	pay(filler, -4*h, ordering.PayCash, c1)
 
 	// Claim takeover: W003 takes over W001's Claim (G-06).
@@ -96,10 +96,10 @@ func (s *liveSeeder) today() {
 	}
 
 	// Unpaid Bill: the Customer left; closed with A001's PIN (G-14).
-	gone := s.cooked(rng, w4, s.tm(-3*h-50*m), 9, "Rizky", true, s.line("spicy-salmon", 0, 1), s.line("cold-brew", 0, 1))
-	tok := s.overrideAt(w4, "A001", "222222", auth.ActionUnpaidBill, s.tm(-3*h))
+	gone := s.cooked(rng, w2, s.tm(-3*h-50*m), 9, "Rizky", true, s.line("spicy-salmon", 0, 1), s.line("cold-brew", 0, 1))
+	tok := s.overrideAt(w2, "A001", "222222", auth.ActionUnpaidBill, s.tm(-3*h))
 	if s.err == nil {
-		s.fail(s.atTime(s.tm(-3*h)).CloseUnpaid(s.ctx, w4, gone.billID, "Pelanggan pergi tanpa bayar", tok), "unpaid")
+		s.fail(s.atTime(s.tm(-3*h)).CloseUnpaid(s.ctx, w2, gone.billID, "Pelanggan pergi tanpa bayar", tok), "unpaid")
 	}
 
 	// Large group: W001 takes Rp 312.000 in cash (handed over exactly later), the rest by card;
@@ -139,8 +139,8 @@ func (s *liveSeeder) today() {
 	pay(disc, -2*h-5*m, ordering.PayCard, w2)
 
 	// Paket Hemat: subtotal Rp 412.000 → −Rp 25.000 (Bill-level discount).
-	hemat := s.cooked(rng, w4, s.tm(-2*h-40*m), 11, "Nanda", false, s.line("sashimi", 1, 1), s.line("wagyu", 1, 1), s.line("cheesecake", 0, 1))
-	pay(hemat, -2*h, ordering.PayQRIS, w4)
+	hemat := s.cooked(rng, w2, s.tm(-2*h-40*m), 11, "Nanda", false, s.line("sashimi", 1, 1), s.line("wagyu", 1, 1), s.line("cheesecake", 0, 1))
+	pay(hemat, -2*h, ordering.PayQRIS, w2)
 
 	// Pending QRIS Rp 94.300 approved by A001; it blocks the Shift Closing (G-16).
 	pend := s.cooked(rng, w2, s.tm(-2*h-40*m), 8, "Made", false, s.line("unagi", 0, 1), s.line("tonkotsu", 0, 1, "Sedang"), s.line("hojicha", 0, 1, "Susu segar"))
@@ -157,8 +157,8 @@ func (s *liveSeeder) today() {
 	pay(more, -2*h-50*m, ordering.PayCash, c1)
 	more = s.cooked(rng, w1, s.tm(-2*h), 1, "Vina", false, s.histLines(rng, s.t0)...)
 	pay(more, -h-20*m, ordering.PayQRIS, w1)
-	more = s.cooked(rng, w4, s.tm(-h-15*m), 1, "", false, s.histLines(rng, s.t0)...)
-	pay(more, -35*m, ordering.PayCard, w4)
+	more = s.cooked(rng, w2, s.tm(-h-15*m), 1, "", false, s.histLines(rng, s.t0)...)
+	pay(more, -35*m, ordering.PayCard, w2)
 
 	// Cash Handovers: W001 exact, W003 Rp 20.000 short (BR-CS-05, BR-R-36).
 	for _, ho := range []struct {

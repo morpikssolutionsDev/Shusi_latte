@@ -189,6 +189,14 @@ _Avoid_: Starting cash, modal
 A Waiter passing cash taken at the Table to the Cashier, who confirms the amount received; until then the cash is Held by Waiter.
 _Avoid_: Deposit, setoran (in docs)
 
+**Held by Waiter**:
+Cash a Waiter has taken for a Payment and not yet passed to the Cashier in a Cash Handover; the Waiter cannot clock out while holding any.
+_Avoid_: Pocket cash, unsettled cash
+
+**Pending QRIS**:
+A QRIS Payment recorded before staff could see it in the merchant app, approved by PIN Override; it must be verified or written off with a reason before the Shift Closing.
+_Avoid_: Unverified payment, QRIS hold
+
 **Shift Closing**:
 The Cashier's end-of-shift count of the Cash Drawer against expected cash: Opening Float plus Cash Handovers and counter cash, minus change and cash Refunds.
 _Avoid_: Cash up, end of day
@@ -196,3 +204,25 @@ _Avoid_: Cash up, end of day
 **Anonymisation**:
 Replacing Customer names with "Customer" and deleting Dietary Restrictions and Dietary Notes once the retention period ends, leaving sales figures and Product-side Dietary Warnings intact.
 _Avoid_: Deletion (for this specific act)
+
+## HRIS
+
+**Shift**:
+A scheduled working period for one Crew member, set by the Outlet Admin or Management; a clock-in up to 2 hours before it belongs to it.
+_Avoid_: Roster slot, jadwal (in docs)
+
+**Attendance**:
+A Crew member's clock-in and clock-out, made only on the shared HRIS tablet with Crew ID and PIN.
+_Avoid_: Timesheet, absen (in docs), presence
+
+**Auto clock-out**:
+The system clocking out a Crew member still clocked in 2 hours after their Shift ended; flagged "auto" until the Outlet Admin corrects it with a reason.
+_Avoid_: Forced logout, system checkout
+
+**Leave Request**:
+A Crew member's request for days off, approved or rejected (with a reason) by an Outlet Admin or Management other than themselves; approved leave shows on the schedule.
+_Avoid_: Time-off ticket, cuti (in docs)
+
+**Employee Record**:
+The HR details kept beside a Crew member's sign-in account — employment type, start date, phone, emergency contact — maintained by Management.
+_Avoid_: Profile, personnel file

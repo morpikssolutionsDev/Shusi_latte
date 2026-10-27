@@ -94,7 +94,7 @@ type CustomerDetail struct {
 // StaffBill is the BillSummary: every Order on the Bill and its totals from `pricing`.
 type StaffBill struct {
 	BillInfo
-	Type      string           `json:"type"`     // table | takeaway
+	Type      string           `json:"type"`     // dine_in | takeaway
 	Source    string           `json:"source"`   // live | post_outage
 	Refunded  int64            `json:"refunded"` // cash Refunds paid on this Bill so far
 	Customers []CustomerDetail `json:"customers"`

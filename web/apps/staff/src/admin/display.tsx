@@ -77,7 +77,7 @@ export function DisplayPage({ me }: { me: Principal }) {
           const src = thumb(s);
           return (
             <li key={s.id}>
-              <Card className={cn('flex items-center gap-4 p-3', !s.active && 'opacity-60')}>
+              <Card className={cn('flex items-center gap-4 p-3', !s.active && 'border-dashed')}>
                 <span className="tabular w-6 text-center text-sm font-bold text-muted-foreground">{i + 1}</span>
                 <div className="aspect-video w-36 shrink-0 overflow-hidden rounded-lg bg-[var(--sl-color-nori-900)]">
                   {!src && s.videoKey && <video src={videoUrl(s.videoKey)} muted preload="metadata" className="size-full object-cover" />}

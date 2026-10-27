@@ -96,7 +96,7 @@ function ProductRow({ product: p, onOpen }: { product: Product; onOpen: () => vo
   const min = Math.min(...prices);
   const max = Math.max(...prices);
   return (
-    <Card className={cn('p-0', p.status !== 'active' && 'opacity-70')}>
+    <Card className={cn('p-0', p.status !== 'active' && 'border-dashed')}>
       <button type="button" onClick={onOpen} className="flex w-full items-center gap-3 p-3 text-left">
         <div className="relative size-20 shrink-0 overflow-hidden rounded-lg bg-sunken">
           {p.imageKey ? (

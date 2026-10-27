@@ -76,6 +76,7 @@ export function OrdersScreen({ qr, me }: { qr: string; me: CustomerView }) {
       <section className="flex flex-col items-center gap-2 px-6 pt-4 text-center">
         <div
           role="progressbar"
+          aria-label={t('orders.progress')}
           aria-valuemin={0}
           aria-valuemax={100}
           aria-valuenow={Math.round(level * 100)}

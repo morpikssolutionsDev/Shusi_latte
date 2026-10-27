@@ -167,13 +167,11 @@ function ProductCard({ product: p, feature, index, menu, warnings, inCart, onOpe
   const soldOut = p.variants.every((v) => v.soldOut);
   const { price, from, base } = lowestPrice(p, menu.promos);
   const promo = price < base;
-  const label = `${soldOut ? `${t('menu.soldOut')}, ` : ''}${of(p)}, ${formatRupiah(price)}`;
   return (
     // M3: rise 16 px + fade, staggered 40 ms, once per section; max 8 staggered.
     <motion.button
       type="button"
       onClick={onOpen}
-      aria-label={label}
       data-product={p.nameEn}
       initial={reduce ? { opacity: 0 } : { opacity: 0, y: 16 }}
       whileInView={{ opacity: 1, y: 0 }}

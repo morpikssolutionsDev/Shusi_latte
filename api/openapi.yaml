@@ -708,7 +708,9 @@ paths:
     get:
       operationId: getDailySales
       summary: Daily sales for one business day (04:00–04:00 WIB) from frozen Bill totals (BR-ADM-11)
-      parameters: [{ name: date, in: query, required: true, schema: { type: string, format: date } }]
+      parameters:
+        - { name: date, in: query, required: true, schema: { type: string, format: date } }
+        - { name: format, in: query, required: false, description: csv for a spreadsheet download, schema: { type: string, enum: [json, csv] } }
       responses:
         '200': { description: Report, content: { application/json: { schema: { $ref: '#/components/schemas/DailySales' } } } }
   # ---------------------------------------------------------------- Phase 5: Kitchen
@@ -748,7 +750,9 @@ paths:
     get:
       operationId: getPrepTimeReport
       summary: Share of items Ready within their Prep Time, by Prep Area and Product (TR-KT-05)
-      parameters: [{ name: date, in: query, required: true, schema: { type: string, format: date } }]
+      parameters:
+        - { name: date, in: query, required: true, schema: { type: string, format: date } }
+        - { name: format, in: query, required: false, description: csv for a spreadsheet download, schema: { type: string, enum: [json, csv] } }
       responses:
         '200': { description: Report, content: { application/json: { schema: { $ref: '#/components/schemas/PrepReport' } } } }
   # ---------------------------------------------------------------- Phase 6: Cashier
@@ -848,13 +852,147 @@ paths:
       responses:
         '201': { description: Entered, content: { application/json: { schema: { type: object, required: [billId], properties: { billId: { type: string } } } } } }
         '422': { $ref: '#/components/responses/Problem' }
+  /reports/bills:
+    get:
+      operationId: getBillHistory
+      summary: Bills closed in a business day with Customer names, or "Customer" once Anonymised (TR-RET-01, G-24)
+      parameters:
+        - { name: date, in: query, required: true, schema: { type: string, format: date } }
+        - { name: format, in: query, required: false, description: csv for a spreadsheet download, schema: { type: string, enum: [json, csv] } }
+      responses:
+        '200': { description: Bills, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/HistoryRow' } } } } }
   /reports/operations:
     get:
       operationId: getOperationsReport
       summary: Shift Closings, Unpaid Bills, Remakes, Refunds and Post-outage Entries for a business day (BR-ADM-11)
-      parameters: [{ name: date, in: query, required: true, schema: { type: string, format: date } }]
+      parameters:
+        - { name: date, in: query, required: true, schema: { type: string, format: date } }
+        - { name: format, in: query, required: false, description: csv for a spreadsheet download, schema: { type: string, enum: [json, csv] } }
       responses:
         '200': { description: Report, content: { application/json: { schema: { $ref: '#/components/schemas/Operations' } } } }
+  # ---------------------------------------------------------------- Phase 7: HRIS
+  /attendance/clock:
+    post:
+      operationId: clock
+      summary: Clock in, or out when already in — HRIS screen-mode session only (BR-HR-03, TR-AUTH-08); clock-out refused while holding cash (BR-HR-07) and asks to acknowledge open Claims (G-06)
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ClockRequest' } } } }
+      responses:
+        '200': { description: Clocked, content: { application/json: { schema: { $ref: '#/components/schemas/ClockResult' } } } }
+        '401': { $ref: '#/components/responses/Problem' }
+        '409': { description: "cash_held (extra.amount) or open_claims (extra.claims)", content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } } }
+        '423': { $ref: '#/components/responses/Problem' }
+  /attendance:
+    get:
+      operationId: listAttendance
+      summary: Shifts and attendance per Crew member and day, with leave (Outlet Admin, Management)
+      parameters:
+        - { name: from, in: query, required: true, schema: { type: string, format: date } }
+        - { name: to, in: query, required: true, schema: { type: string, format: date } }
+      responses:
+        '200': { description: Rows, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/AttendanceRow' } } } } }
+  /attendance/{id}/correct:
+    post:
+      operationId: correctAttendance
+      summary: Correct clock times with a reason; audit-logged (BR-HR-06)
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/CorrectAttendanceRequest' } } } }
+      responses:
+        '204': { description: Corrected }
+        '422': { $ref: '#/components/responses/Problem' }
+  /attendance/export:
+    get:
+      operationId: exportAttendance
+      summary: Attendance CSV for external payroll (BR-HR-05, Management)
+      parameters:
+        - { name: from, in: query, required: true, schema: { type: string, format: date } }
+        - { name: to, in: query, required: true, schema: { type: string, format: date } }
+      responses:
+        '200': { description: CSV, content: { text/csv: { schema: { type: string } } } }
+  /shifts:
+    get:
+      operationId: listShifts
+      summary: Shift schedule with approved leave (any Crew member)
+      parameters:
+        - { name: from, in: query, required: true, schema: { type: string, format: date } }
+        - { name: to, in: query, required: true, schema: { type: string, format: date } }
+      responses:
+        '200': { description: Schedule, content: { application/json: { schema: { $ref: '#/components/schemas/Schedule' } } } }
+    post:
+      operationId: createShift
+      summary: Schedule a shift (BR-HR-02, Outlet Admin, Management)
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ShiftRequest' } } } }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { type: object, required: [id], properties: { id: { type: string } } } } } }
+        '409': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+  /shifts/{id}:
+    put:
+      operationId: updateShift
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ShiftRequest' } } } }
+      responses:
+        '204': { description: Updated }
+        '409': { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: deleteShift
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses:
+        '204': { description: Deleted }
+        '409': { $ref: '#/components/responses/Problem' }
+  /leave-requests:
+    get:
+      operationId: listLeave
+      summary: Every request for Outlet Admin and Management; a Crew member's own otherwise
+      responses:
+        '200': { description: Requests, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/LeaveView' } } } } }
+    post:
+      operationId: requestLeave
+      summary: Request leave (BR-HR-04)
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/LeaveRequest' } } } }
+      responses:
+        '201': { description: Requested, content: { application/json: { schema: { type: object, required: [id], properties: { id: { type: string } } } } } }
+        '422': { $ref: '#/components/responses/Problem' }
+  /leave-requests/{id}/decision:
+    post:
+      operationId: decideLeave
+      summary: Approve or reject (with reason) a pending request; not one's own (BR-HR-04)
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [approve], properties: { approve: { type: boolean }, reason: { type: string } } } } }
+      responses:
+        '204': { description: Decided }
+        '403': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+  /employees:
+    get:
+      operationId: listEmployees
+      summary: Employee records (BR-HR-01, Management)
+      responses:
+        '200': { description: Employees, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Employee' } } } } }
+  /employees/{id}:
+    put:
+      operationId: saveEmployee
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/EmployeeRequest' } } } }
+      responses:
+        '204': { description: Saved }
+        '422': { $ref: '#/components/responses/Problem' }
+  /hris/me:
+    get:
+      operationId: hrisMe
+      summary: The caller's open attendance, shifts for the next 14 days, leave and held cash
+      responses:
+        '200': { description: Me, content: { application/json: { schema: { $ref: '#/components/schemas/HrisMe' } } } }
+  # ---------------------------------------------------------------- Phase 8: demo reset
+  /demo/reset:
+    post:
+      operationId: resetDemo
+      summary: Rebuild the demo at T0 = now (Demo mode, Management + X-Override-Token demo_reset); answers at once and resets in the background, announced on the public `demo` topic (DEMO-AND-SEED §9)
+      responses:
+        '202': { description: Reset started, content: { application/json: { schema: { type: object, required: [status, at], properties: { status: { type: string }, at: { type: integer, format: int64 } } } } } }
+        '403': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
 components:
   securitySchemes:
     guest:
@@ -1260,6 +1398,19 @@ components:
         closedAt: { type: integer, format: int64 }
         reason: { type: string }
         by: { type: string }
+    HistoryRow:
+      type: object
+      required: [id, number, tables, customers, total, status, source, closedAt, anonymised]
+      properties:
+        id: { type: string }
+        number: { type: string }
+        tables: { type: array, items: { type: string } }
+        customers: { type: array, items: { type: string } }
+        total: { type: integer, format: int64 }
+        status: { type: string, enum: [closed, unpaid] }
+        source: { type: string, enum: [live, post_outage] }
+        closedAt: { type: integer, format: int64 }
+        anonymised: { type: boolean }
     Operations:
       type: object
       required: [date, shiftClosings, unpaid, remakes, refunds, postOutage]
@@ -1287,6 +1438,151 @@ components:
               at: { type: integer, format: int64 }
         refunds: { type: array, items: { $ref: '#/components/schemas/RefundView' } }
         postOutage: { type: array, items: { $ref: '#/components/schemas/BillRow' } }
+    ClockRequest:
+      type: object
+      required: [crewId, pin]
+      properties:
+        crewId: { type: string }
+        pin: { type: string }
+        acknowledgeClaims: { type: boolean }
+    ShiftTime:
+      type: object
+      required: [startsAt, endsAt]
+      properties:
+        startsAt: { type: integer, format: int64 }
+        endsAt: { type: integer, format: int64 }
+    ClockResult:
+      type: object
+      required: [action, crewId, name, at, lateMinutes, workedMinutes]
+      properties:
+        action: { type: string, enum: [in, out] }
+        crewId: { type: string }
+        name: { type: string }
+        at: { type: integer, format: int64 }
+        shift: { $ref: '#/components/schemas/ShiftTime' }
+        lateMinutes: { type: integer, format: int64 }
+        workedMinutes: { type: integer, format: int64 }
+    OpenClaim:
+      type: object
+      required: [orderId, seq, status, table]
+      properties:
+        orderId: { type: string }
+        seq: { type: integer, format: int64 }
+        status: { type: string }
+        table: { type: string }
+    AttendanceRow:
+      type: object
+      required: [crewId, code, name, date, auto, lateMinutes, workedMinutes, status]
+      properties:
+        crewId: { type: string }
+        code: { type: string }
+        name: { type: string }
+        date: { type: string }
+        shift: { $ref: '#/components/schemas/ShiftTime' }
+        attendanceId: { type: string }
+        clockInAt: { type: integer, format: int64 }
+        clockOutAt: { type: integer, format: int64 }
+        auto: { type: boolean }
+        correctedBy: { type: string }
+        correctionReason: { type: string }
+        lateMinutes: { type: integer, format: int64 }
+        workedMinutes: { type: integer, format: int64 }
+        status: { type: string, enum: [scheduled, late, absent, working, done, auto, leave] }
+    CorrectAttendanceRequest:
+      type: object
+      required: [clockInAt, clockOutAt, reason]
+      properties:
+        clockInAt: { type: integer, format: int64 }
+        clockOutAt: { type: integer, format: int64 }
+        reason: { type: string }
+    ShiftView:
+      type: object
+      required: [id, crewId, code, name, startsAt, endsAt]
+      properties:
+        id: { type: string }
+        crewId: { type: string }
+        code: { type: string }
+        name: { type: string }
+        startsAt: { type: integer, format: int64 }
+        endsAt: { type: integer, format: int64 }
+    ShiftRequest:
+      type: object
+      required: [crewId, startsAt, endsAt]
+      properties:
+        crewId: { type: string, description: crew.id }
+        startsAt: { type: integer, format: int64 }
+        endsAt: { type: integer, format: int64 }
+    Schedule:
+      type: object
+      required: [from, to, crew, shifts, leave]
+      properties:
+        from: { type: string }
+        to: { type: string }
+        crew:
+          type: array
+          items:
+            type: object
+            required: [id, code, name, role]
+            properties: { id: { type: string }, code: { type: string }, name: { type: string }, role: { type: string } }
+        shifts: { type: array, items: { $ref: '#/components/schemas/ShiftView' } }
+        leave: { type: array, items: { $ref: '#/components/schemas/LeaveView' } }
+    LeaveView:
+      type: object
+      required: [id, crewId, code, name, fromDate, toDate, type, reason, status, createdAt]
+      properties:
+        id: { type: string }
+        crewId: { type: string }
+        code: { type: string }
+        name: { type: string }
+        fromDate: { type: string }
+        toDate: { type: string }
+        type: { type: string, enum: [annual, sick, unpaid] }
+        reason: { type: string }
+        status: { type: string, enum: [pending, approved, rejected] }
+        decidedBy: { type: string }
+        decidedAt: { type: integer, format: int64 }
+        decisionReason: { type: string }
+        createdAt: { type: integer, format: int64 }
+    LeaveRequest:
+      type: object
+      required: [fromDate, toDate, type]
+      properties:
+        fromDate: { type: string, format: date }
+        toDate: { type: string, format: date }
+        type: { type: string, enum: [annual, sick, unpaid] }
+        reason: { type: string }
+    Employee:
+      type: object
+      required: [id, crewId, fullName, role, active, phone, employmentType, emergencyContact, notes]
+      properties:
+        id: { type: string }
+        crewId: { type: string }
+        fullName: { type: string }
+        role: { type: string }
+        imageKey: { type: string }
+        active: { type: boolean }
+        phone: { type: string }
+        employmentType: { type: string, enum: [full_time, part_time, intern] }
+        joinedOn: { type: string }
+        emergencyContact: { type: string }
+        notes: { type: string }
+    EmployeeRequest:
+      type: object
+      required: [employmentType]
+      properties:
+        phone: { type: string }
+        employmentType: { type: string, enum: [full_time, part_time, intern] }
+        joinedOn: { type: string }
+        emergencyContact: { type: string }
+        notes: { type: string }
+    HrisMe:
+      type: object
+      required: [shifts, leave, heldCash]
+      properties:
+        clockedInAt: { type: integer, format: int64 }
+        shifts: { type: array, items: { $ref: '#/components/schemas/ShiftView' } }
+        leave: { type: array, items: { $ref: '#/components/schemas/LeaveView' } }
+        heldCash: { type: integer, format: int64 }
     ItemIds:
       type: object
       required: [itemIds]
@@ -1488,7 +1784,7 @@ components:
         id: { type: string }
         number: { type: string }
         status: { type: string, enum: [open, settling, closed, unpaid, merged] }
-        type: { type: string, enum: [table, takeaway] }
+        type: { type: string, enum: [dine_in, takeaway] }
         source: { type: string, enum: [live, post_outage] }
         refunded: { type: integer, format: int64, description: cash Refunds paid on this Bill so far }
         tables: { type: array, items: { $ref: '#/components/schemas/TableRef' } }

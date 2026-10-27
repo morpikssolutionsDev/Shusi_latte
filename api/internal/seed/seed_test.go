@@ -3,6 +3,7 @@ package seed_test
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"os"
 	"path/filepath"
 	"slices"
@@ -11,7 +12,11 @@ import (
 	"time"
 
 	"sushilatte/api/internal/auth"
+	"sushilatte/api/internal/catalog"
 	"sushilatte/api/internal/dbx"
+	"sushilatte/api/internal/display"
+	"sushilatte/api/internal/hris"
+	"sushilatte/api/internal/httpx"
 	"sushilatte/api/internal/ordering"
 	"sushilatte/api/internal/platform"
 	"sushilatte/api/internal/seed"
@@ -116,6 +121,93 @@ func TestDemoSeedScenarios(t *testing.T) {
 
 	checkCashier(t, ctx, svc, db, t0)
 	checkHistory(t, ctx, svc, db, t0)
+	checkHRIS(t, ctx, db, t0)
+	checkCatalogue(t, ctx, svc, db, t0, card)
+
+	// TR-RET-04: data keys older than three days are destroyed with the seed, as nightly.
+	if ids := v.KeyIDs(); len(ids) > 4 {
+		t.Fatalf("data keys kept: %v", ids)
+	}
+	// G-24 in the report Management opens: −47h still named, −49h "Customer".
+	named, anonymised := false, false
+	for _, d := range []time.Duration{-47 * time.Hour, -49 * time.Hour} {
+		rows, err := svc.BillHistory(ctx, ordering.BusinessDate(t0.Add(d)))
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, r := range rows {
+			if r.ClosedAt == platform.Millis(t0.Add(d)) {
+				named = named || (!r.Anonymised && slices.Contains(r.Customers, "Galih"))
+				anonymised = anonymised || (r.Anonymised && slices.Contains(r.Customers, "Customer"))
+			}
+		}
+	}
+	if !named || !anonymised {
+		t.Fatalf("bill history: named −47h %v, anonymised −49h %v", named, anonymised)
+	}
+}
+
+// DEMO-AND-SEED §8 HRIS: today's attendance, last night's auto clock-out, clock-out blockers,
+// leave and the lockout.
+func checkHRIS(t *testing.T, ctx context.Context, db *dbx.DB, t0 time.Time) {
+	t.Helper()
+	clock := testutil.NewClock(t0)
+	hr := hris.NewService(db, clock, auth.NewService(db, clock))
+	// Today's shift is the one around T0 (it starts the evening before when T0 is after midnight).
+	from := t0.AddDate(0, 0, -2).Format(time.DateOnly)
+	rows, err := hr.Attendance(ctx, from, t0.Format(time.DateOnly))
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := platform.Millis(t0)
+	current := func(code string) hris.AttendanceRow {
+		for _, r := range rows {
+			if r.Code == code && r.Shift != nil && r.Shift.StartsAt <= now && now < r.Shift.EndsAt {
+				return r
+			}
+		}
+		return hris.AttendanceRow{}
+	}
+	if r := current("W004"); r.Status != "late" {
+		t.Fatalf("W004 today: %+v", r)
+	}
+	if r := current("W003"); r.Status != "working" || r.LateMinutes != 7 {
+		t.Fatalf("W003 today: %+v", r)
+	}
+	if r := current("W001"); r.Status != "working" {
+		t.Fatalf("W001 today: %+v", r)
+	}
+	if !slices.ContainsFunc(rows, func(r hris.AttendanceRow) bool { return r.Code == "K002" && r.Status == "auto" }) {
+		t.Fatal("K002 has no auto clock-out last night")
+	}
+	// W002 holds the Meja 8 cash (G-20); W001 has Meja 5 and Meja 7 Claims (G-06).
+	_, err = hr.Clock(ctx, hris.ClockInput{CrewID: "W002", PIN: "333333"})
+	var p *httpx.Problem
+	if !errors.As(err, &p) || p.Code != "cash_held" || p.Detail != "Setor Rp 200.000 ke kasir dulu." {
+		t.Fatalf("W002 clock-out: %v", err)
+	}
+	_, err = hr.Clock(ctx, hris.ClockInput{CrewID: "W001", PIN: "333333"})
+	if !errors.As(err, &p) || p.Code != "open_claims" {
+		t.Fatalf("W001 clock-out: %v", err)
+	}
+	var tables []string
+	for _, c := range p.Extra["claims"].([]hris.OpenClaim) {
+		tables = append(tables, c.Table)
+	}
+	if !slices.Contains(tables, "Meja 5") || !slices.Contains(tables, "Meja 7") {
+		t.Fatalf("W001 open Claims: %v", tables)
+	}
+	leave, _ := hr.Leave(ctx, &auth.Principal{Kind: "crew", Role: auth.RoleOutletAdmin})
+	byCode := map[string]string{}
+	for _, l := range leave {
+		byCode[l.Code] = l.Status
+	}
+	if byCode["W004"] != "pending" || byCode["K001"] != "approved" || byCode["C002"] != "rejected" {
+		t.Fatalf("leave: %v", byCode)
+	}
+	if _, err := hr.Clock(ctx, hris.ClockInput{CrewID: "W005", PIN: "333333"}); !errors.As(err, &p) || p.Code != "account_locked" {
+		t.Fatalf("W005 lockout: %v", err)
+	}
 }
 
 // DEMO-AND-SEED §6.2, §6.3, §8: the Cash Drawer, Takeaways and today's closed Bills at T0.
@@ -236,5 +328,100 @@ func checkHistory(t *testing.T, ctx context.Context, svc *ordering.Service, db *
 		if named != c.named {
 			t.Fatalf("Bill closed at %s: customers %+v", c.closed, b.Customers)
 		}
+	}
+}
+
+// DEMO-AND-SEED §9: the nightly reset seeds at 03.00 WIB, before the 04.00 business-day
+// turnover; every story must still fit (today's Bills compressed, shifts around T0).
+func TestDemoSeedAtNightlyReset(t *testing.T) {
+	if testing.Short() {
+		t.Skip("builds the full demo database")
+	}
+	ctx := context.Background()
+	t0 := time.Date(2026, 10, 28, 3, 0, 0, 0, platform.Jakarta)
+	v := testutil.NewVault(t)
+	opts := seed.Options{DBPath: filepath.Join(t.TempDir(), "demo.db"), ImagesDir: filepath.Join(os.TempDir(), "sushi-latte-seed-images"),
+		AssetsDir: filepath.Join("..", "..", "..", "docs", "images"), T0: t0, Vault: v}
+	if err := seed.Build(ctx, opts); err != nil {
+		t.Fatal(err)
+	}
+	db, err := dbx.Open(ctx, opts.DBPath, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	svc := ordering.NewService(db, testutil.NewClock(t0), v)
+	d, _ := svc.Drawer(ctx)
+	if d.Session == nil || len(d.Pending) != 1 || len(d.Handovers) != 2 {
+		t.Fatalf("drawer at 03.00: %+v", d)
+	}
+	checkHRIS(t, ctx, db, t0)
+}
+
+// DEMO-AND-SEED §11, Phase 8: the scenario catalogue rows not covered above are visible at T0.
+func checkCatalogue(t *testing.T, ctx context.Context, svc *ordering.Service, db *dbx.DB, t0 time.Time, card func(int64) ordering.TableCard) {
+	t.Helper()
+	q := db.Read()
+	audits := func(prefix string) int {
+		rows, err := q.SearchAudit(ctx, store.SearchAuditParams{ActionPrefix: prefix, RowLimit: 50})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return len(rows)
+	}
+	// G-06 takeover, G-15 reprint, Move audit (§6.3).
+	if audits("claim.takeover") < 1 || audits("receipt.reprinted") < 1 || audits("bill.moved") < 1 {
+		t.Fatalf("audit: takeover %d, reprint %d, move %d", audits("claim.takeover"), audits("receipt.reprinted"), audits("bill.moved"))
+	}
+	a001, _ := q.GetCrewByCrewID(ctx, "A001")
+	admin := &auth.Principal{ID: a001.ID, CrewID: "A001", Kind: "crew", Role: auth.RoleOutletAdmin}
+	// G-11: moving Meja 6 onto occupied Meja 3 is refused; G-12: splitting Meja 8+9 after a Payment too.
+	var p *httpx.Problem
+	if err := svc.Move(ctx, admin, card(6).Bill.ID, card(6).ID, card(3).ID); !errors.As(err, &p) || p.Code != "table_occupied" {
+		t.Fatalf("G-11 move onto Meja 3: %v", err)
+	}
+	if err := svc.Split(ctx, admin, card(8).Bill.ID, ordering.SplitInput{Method: "equal", Count: 2}); !errors.As(err, &p) || p.Code != "bill_has_payments" {
+		t.Fatalf("G-12 split after payment: %v", err)
+	}
+	// G-13: a Bill closed today as pay now, serve later.
+	day := t0.Add(-8 * time.Hour)
+	closed, _ := q.ListClosedBillsBetween(ctx, store.ListClosedBillsBetweenParams{ClosedAt: sql.NullInt64{Int64: platform.Millis(day), Valid: true},
+		ClosedAt_2: sql.NullInt64{Int64: platform.Millis(t0), Valid: true}})
+	if !slices.ContainsFunc(closed, func(b store.Bill) bool { return b.PayNowServeLaterBy.Valid && b.Type == "dine_in" }) {
+		t.Fatal("G-13: no Table Bill closed as pay now, serve later")
+	}
+	// Sold Out cascade: Hojicha Iced from the Kitchen Cancel, Unagi 4 pcs set by hand.
+	cat, err := catalog.Load(ctx, q, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	soldOut := map[string]bool{}
+	for _, pr := range cat.Products {
+		for _, v := range pr.Variants {
+			if v.SoldOut {
+				soldOut[pr.NameEN+" "+v.NameEN] = true
+			}
+		}
+	}
+	if !soldOut["Hojicha Caramel Latte Iced"] || !soldOut["Unagi Kabayaki Nigiri 4 pcs"] {
+		t.Fatalf("Sold Out variants: %v", soldOut)
+	}
+	// Product Display skips the Hidden Sakura Latte's featured slide (playlist slide 5).
+	slides, err := q.ListSlides(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	playlist, err := display.NewService(db, testutil.NewClock(t0)).Playlist(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	active := 0
+	for _, sl := range slides {
+		if sl.Active == 1 {
+			active++
+		}
+	}
+	if len(playlist.Slides) >= active {
+		t.Fatalf("playlist shows %d of %d active slides: nothing skipped", len(playlist.Slides), active)
 	}
 }

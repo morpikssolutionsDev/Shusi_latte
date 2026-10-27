@@ -123,7 +123,8 @@ function DemoAccounts({ accounts, selected, onPick }: { accounts: DemoAccount[];
   );
 }
 
-function errorMessage(error: Error, t: (k: string, o?: Record<string, unknown>) => string): string {
+/** Sign-in problems in words; the HRIS clock pad shares it, as it shares the lockout. */
+export function errorMessage(error: Error, t: (k: string, o?: Record<string, unknown>) => string): string {
   if (!(error instanceof ApiError)) return t('login.network');
   switch (error.code) {
     case 'invalid_credentials':

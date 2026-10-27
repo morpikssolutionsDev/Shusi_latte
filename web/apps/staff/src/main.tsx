@@ -1,7 +1,7 @@
 import '@sushi-latte/ui/styles.css';
 import './i18n';
 
-import type { Principal } from '@sushi-latte/api-client';
+import { watchDemoReset, type Principal } from '@sushi-latte/api-client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
   Outlet,
@@ -11,7 +11,7 @@ import {
   createRouter,
   redirect,
 } from '@tanstack/react-router';
-import { mountApp } from '@sushi-latte/ui';
+import { DemoResetOverlay, mountApp, useDemoReset } from '@sushi-latte/ui';
 import { StrictMode } from 'react';
 import { Toaster } from 'sonner';
 import { AuditPage } from './admin/audit';
@@ -32,6 +32,13 @@ import { CashierBillsPage } from './cashier/bills';
 import { DrawerPage } from './cashier/drawer';
 import { CashierLayout } from './cashier/layout';
 import { OutagePage } from './cashier/outage';
+import { AttendancePage } from './hris/attendance';
+import { ClockPad } from './hris/clock-pad';
+import { EmployeesPage } from './hris/employees';
+import { HrisLayout, isHrAdmin } from './hris/layout';
+import { LeavePage } from './hris/leave';
+import { MePage } from './hris/me';
+import { SchedulePage } from './hris/schedule';
 import { KitchenDisplay } from './kitchen/display';
 import { BillPage } from './waiter/bill';
 import { EntryPage } from './waiter/entry';
@@ -44,12 +51,20 @@ import { meQuery } from './session';
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: true } } });
 
+/** After a demo reset every session is gone: start again from the sign-in (DEMO-AND-SEED §9). */
+const restart = () => window.location.assign('/staff/');
+
+function DemoReset() {
+  return <DemoResetOverlay active={useDemoReset(watchDemoReset, restart)} />;
+}
+
 const rootRoute = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   component: () => (
     <>
       <DemoBanner />
       <Outlet />
       <Toaster position="top-right" richColors closeButton />
+      <DemoReset />
     </>
   ),
 });
@@ -264,6 +279,39 @@ function CashierEntry({ children }: { children: React.ReactNode }) {
   );
 }
 
+// ---------------------------------------------------------------- HRIS (Phase 7)
+
+// The shared clock-in tablet: an HRIS screen-mode session only (BR-HR-03, TR-AUTH-08).
+const clockRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/clock',
+  beforeLoad: ({ context }) => requireMe(context.queryClient, (me) => me.kind === 'screen' && me.screen === 'hris'),
+  component: ClockPad,
+});
+
+const hrisRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/hris',
+  beforeLoad: ({ context }) => requireMe(context.queryClient, (me) => me.kind === 'crew'),
+  component: function Hris() {
+    const { me } = hrisRoute.useRouteContext();
+    return <HrisLayout me={me} />;
+  },
+});
+
+function hrisPage<TPath extends string>(path: TPath, render: (me: Principal) => React.ReactNode, check?: (me: Principal) => boolean) {
+  const route = createRoute({
+    getParentRoute: () => hrisRoute,
+    path,
+    beforeLoad: ({ context }) => (check ? requireMe(context.queryClient, check) : undefined),
+    component: function Page() {
+      const { me } = route.useRouteContext() as { me: Principal };
+      return <>{render(me)}</>;
+    },
+  });
+  return route;
+}
+
 // ---------------------------------------------------------------- Kitchen (Phase 5)
 
 const isKitchen = (me: Principal) =>
@@ -284,6 +332,14 @@ const router = createRouter({
     loginRoute,
     homeRoute,
     kitchenRoute,
+    clockRoute,
+    hrisRoute.addChildren([
+      hrisPage('/', () => <MePage />),
+      hrisPage('attendance', (me) => <AttendancePage me={me} />, isHrAdmin),
+      hrisPage('schedule', (me) => <SchedulePage me={me} />),
+      hrisPage('leave', (me) => <LeavePage me={me} />, isHrAdmin),
+      hrisPage('employees', () => <EmployeesPage />, isManagement),
+    ]),
     waiterRoute.addChildren([waiterIndex, waiterTables, waiterOrders, waiterBill, waiterBillNew, waiterTableNew, waiterOrderAdd]),
     cashierRoute.addChildren([cashierIndex, cashierDrawer, cashierOutage, cashierTakeaway, cashierBillNew, cashierOrderAdd]),
     adminRoute.addChildren([

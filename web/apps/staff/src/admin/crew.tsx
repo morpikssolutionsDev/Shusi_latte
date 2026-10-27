@@ -1,10 +1,11 @@
 import { api, unwrap } from '@sushi-latte/api-client';
 import { Button, Card, Chip, Dialog, Field, Input, Select, Switch, cn, imageUrl } from '@sushi-latte/ui';
 import { useQuery } from '@tanstack/react-query';
-import { KeyRoundIcon, PlusIcon } from 'lucide-react';
-import { useState } from 'react';
+import { ImageUpIcon, KeyRoundIcon, PlusIcon } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
-import { crewQuery, useSave, type CrewInput, type CrewMember } from './api';
+import { crewQuery, errorText, uploadImage, useSave, type CrewInput, type CrewMember } from './api';
 import { PageHeader } from './layout';
 
 const STATIONS = ['waiter', 'cashier', 'kitchen'] as const;
@@ -19,6 +20,34 @@ export function Avatar({ member, size = 'size-11' }: { member: Pick<CrewMember, 
     <span aria-hidden className={cn(size, 'grid shrink-0 place-items-center rounded-full font-display text-sm font-semibold text-white')} style={{ background: tile }}>
       {initials}
     </span>
+  );
+}
+
+/** Portrait shown on sign-in, HRIS and the Crew list; without one the initials avatar stands in. */
+function Portrait({ value, onChange }: { value: CrewInput; onChange: (imageKey: string | undefined) => void }) {
+  const { t } = useTranslation();
+  const input = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  const upload = async (file: File) => {
+    setBusy(true);
+    try {
+      onChange(await uploadImage(file));
+    } catch (e) {
+      toast.error(errorText(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="flex items-center gap-4 sm:col-span-2">
+      <Avatar member={{ fullName: value.fullName || '?', crewId: value.crewId || 'X000', imageKey: value.imageKey }} size="size-16" />
+      <input ref={input} type="file" accept="image/jpeg,image/png,image/webp" hidden aria-label={t('admin.crew.portrait')}
+        onChange={(e) => e.target.files?.[0] && void upload(e.target.files[0])} />
+      <Button variant="secondary" disabled={busy} onClick={() => input.current?.click()}>
+        <ImageUpIcon aria-hidden />{busy ? t('admin.common.saving') : value.imageKey ? t('admin.editor.replacePhoto') : t('admin.editor.uploadPhoto')}
+      </Button>
+      {value.imageKey && <Button variant="ghost" onClick={() => onChange(undefined)}>{t('admin.common.remove')}</Button>}
+    </div>
   );
 }
 
@@ -51,7 +80,7 @@ export function CrewPage() {
       />
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         {data.map((m) => (
-          <Card key={m.id} className={cn('flex items-center gap-3 p-3', !m.active && 'opacity-60')}>
+          <Card key={m.id} className={cn('flex items-center gap-3 p-3', !m.active && 'border-dashed')}>
             <Avatar member={m} />
             <button type="button" className="min-w-0 flex-1 text-left" onClick={() => setEdit({ id: m.id, crewId: m.crewId, fullName: m.fullName, role: m.role, stations: m.stations, active: m.active, imageKey: m.imageKey })}>
               <span className="block truncate font-semibold">{m.fullName}</span>
@@ -77,6 +106,7 @@ export function CrewPage() {
             <Button disabled={save.isPending} onClick={() => save.mutate(edit, { onSuccess: () => setEdit(null) })}>{t('admin.common.save')}</Button>
           </>}>
           <div className="grid gap-4 sm:grid-cols-2">
+            <Portrait value={edit} onChange={(imageKey) => setEdit({ ...edit, imageKey })} />
             <Field label={t('admin.crew.crewId')} htmlFor="c-id" hint={t('admin.crew.crewIdHint')}>
               <Input id="c-id" className="font-mono uppercase" disabled={!!edit.id} value={edit.crewId} onChange={(e) => setEdit({ ...edit, crewId: e.target.value.toUpperCase() })} />
             </Field>

@@ -4,10 +4,15 @@
 import { api, unwrap } from '@sushi-latte/api-client';
 import { Card, Field, Input, formatRupiah } from '@sushi-latte/ui';
 import { useQuery } from '@tanstack/react-query';
+import { DownloadIcon } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PageHeader } from './layout';
+import { BillHistory } from './bill-history';
 import { OperationsReport } from './operations';
+
+/** Each report downloads as CSV for a spreadsheet (TRD §6.1 Reports). */
+const CSV = [['daily-sales', 'sales'], ['prep-time', 'prepTime'], ['operations', 'operations'], ['bills', 'history']] as const;
 
 /** The business day turns over at 04:00 WIB (TRD §4.3). */
 function businessDate(now = new Date()) {
@@ -47,6 +52,13 @@ export function ReportsPage() {
       }>
         {t('admin.reports.dailyHint')}
       </PageHeader>
+      <nav aria-label={t('admin.reports.csv')} className="-mt-3 mb-6 flex flex-wrap items-center gap-2 text-sm">
+        <span className="font-semibold text-muted-foreground"><DownloadIcon className="mr-1 inline size-4" aria-hidden />{t('admin.reports.csv')}</span>
+        {CSV.map(([path, key]) => (
+          <a key={path} href={`/api/v1/reports/${path}?date=${date}&format=csv`} download
+            className="inline-flex h-9 items-center rounded-chip border border-border px-3 font-semibold hover:bg-accent">{t(`admin.reports.${key}`)}</a>
+        ))}
+      </nav>
       {r && (
         <div className="flex flex-col gap-6">
           <section className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label={t('admin.reports.daily')}>
@@ -125,6 +137,7 @@ export function ReportsPage() {
             </Card>
           )}
           <OperationsReport date={date} />
+          <BillHistory date={date} />
         </div>
       )}
     </>

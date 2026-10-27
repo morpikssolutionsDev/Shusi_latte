@@ -90,3 +90,13 @@ export function useEnded(): Ended {
     () => ended,
   );
 }
+
+/** Forget this tab's and every per-Table session, e.g. after a demo reset made them all invalid. */
+export function forgetAllSessions() {
+  try {
+    for (const key of Object.keys(localStorage)) if (key.startsWith('sl.guest.')) localStorage.removeItem(key);
+  } catch {
+    // storage blocked: nothing was kept
+  }
+  clearSession();
+}

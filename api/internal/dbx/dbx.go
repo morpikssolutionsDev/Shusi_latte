@@ -10,20 +10,33 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"net/http"
 	"net/url"
+	"sync"
+	"sync/atomic"
 
 	"github.com/pressly/goose/v3"
 	_ "modernc.org/sqlite"
 
+	"sushilatte/api/internal/httpx"
 	"sushilatte/api/internal/realtime"
 	"sushilatte/api/internal/store"
 )
 
 type DB struct {
-	write *sql.DB
-	read  *sql.DB
-	bus   *realtime.Bus
+	path string
+	bus  *realtime.Bus
+	// mu guards the write pool: every unit of work holds it shared; Replace takes it alone to
+	// swap the file underneath (demo reset, DEMO-AND-SEED §9). The read pool is swapped
+	// atomically instead, so a read inside a unit of work never waits on Replace.
+	mu        sync.RWMutex
+	write     *sql.DB
+	read      atomic.Pointer[sql.DB]
+	replacing atomic.Bool
 }
+
+// ErrReplacing is returned to writes while the database file is being swapped.
+var ErrReplacing = httpx.NewProblem(http.StatusServiceUnavailable, "demo_resetting", "Demo sedang direset, coba lagi sebentar")
 
 func dsn(path string, readOnly bool) string {
 	q := url.Values{}
@@ -41,22 +54,49 @@ func dsn(path string, readOnly bool) string {
 
 // Open opens (creating if needed) the database at path and applies all migrations.
 func Open(ctx context.Context, path string, bus *realtime.Bus) (*DB, error) {
-	write, err := sql.Open("sqlite", dsn(path, false))
-	if err != nil {
+	d := &DB{path: path, bus: bus}
+	if err := d.open(ctx); err != nil {
 		return nil, err
+	}
+	return d, nil
+}
+
+func (d *DB) open(ctx context.Context) error {
+	write, err := sql.Open("sqlite", dsn(d.path, false))
+	if err != nil {
+		return err
 	}
 	write.SetMaxOpenConns(1)
 	if err := migrate(ctx, write); err != nil {
 		write.Close()
-		return nil, fmt.Errorf("migrate: %w", err)
+		return fmt.Errorf("migrate: %w", err)
 	}
-	read, err := sql.Open("sqlite", dsn(path, true))
+	read, err := sql.Open("sqlite", dsn(d.path, true))
 	if err != nil {
 		write.Close()
-		return nil, err
+		return err
 	}
 	read.SetMaxOpenConns(8)
-	return &DB{write: write, read: read, bus: bus}, nil
+	d.write = write
+	d.read.Store(read)
+	return nil
+}
+
+// Replace swaps the database file: new writes are refused with ErrReplacing, in-flight units
+// of work finish, the pools close, install moves the new file into place and the pools reopen
+// on it. Used by the demo reset; reads in flight at that moment fail once and are retried by
+// their clients.
+func (d *DB) Replace(ctx context.Context, install func() error) error {
+	d.replacing.Store(true)
+	defer d.replacing.Store(false)
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	if err := errors.Join(d.read.Load().Close(), d.write.Close()); err != nil {
+		return err
+	}
+	installErr := install()
+	// Reopen whatever is in place now, so the API keeps serving even if the install failed.
+	return errors.Join(installErr, d.open(ctx))
 }
 
 func migrate(ctx context.Context, conn *sql.DB) error {
@@ -69,11 +109,13 @@ func migrate(ctx context.Context, conn *sql.DB) error {
 }
 
 func (d *DB) Close() error {
-	return errors.Join(d.read.Close(), d.write.Close())
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	return errors.Join(d.read.Load().Close(), d.write.Close())
 }
 
 // Read returns queries bound to the read-only pool.
-func (d *DB) Read() *store.Queries { return store.New(d.read) }
+func (d *DB) Read() *store.Queries { return store.New(d.read.Load()) }
 
 // Tx is one write unit of work. Events queued with Publish are delivered on the bus only
 // after a successful commit, so no client ever sees a rolled-back change (TR-ARC-03).
@@ -94,6 +136,11 @@ func (t *Tx) Exec(ctx context.Context, query string, args ...any) error {
 // Write runs fn in a write transaction. If fn returns an error the transaction rolls back
 // and its queued events are discarded.
 func (d *DB) Write(ctx context.Context, fn func(tx *Tx) error) error {
+	if d.replacing.Load() {
+		return ErrReplacing
+	}
+	d.mu.RLock()
+	defer d.mu.RUnlock()
 	sqlTx, err := d.write.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -123,6 +170,13 @@ func (d *DB) Bus() *realtime.Bus { return d.bus }
 
 // Checkpoint flushes the WAL into the main file (used before copying the database).
 func (d *DB) Checkpoint(ctx context.Context) error {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
 	_, err := d.write.ExecContext(ctx, "PRAGMA wal_checkpoint(TRUNCATE)")
 	return err
+}
+
+// QueryRow reads one row inside the unit of work (rare; prefer generated queries).
+func (t *Tx) QueryRow(ctx context.Context, query string, args ...any) *sql.Row {
+	return t.sqlTx.QueryRowContext(ctx, query, args...)
 }

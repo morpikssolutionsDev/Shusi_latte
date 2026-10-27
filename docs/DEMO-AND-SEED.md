@@ -212,7 +212,7 @@ About 18 closed Bills fill today's reports, including:
 
 | Item | Detail |
 |---|---|
-| Shifts | Today and the next 7 days, Pagi and Malam |
+| Shifts | The past week, today and the next 7 days: Pagi 08.00–16.00 (A001, W001–W004, C001, K001, K003) and Malam 15.00–23.00 (W005, C002, K002), one day off a week each. Today's Pagi runs T0 −7h … +2h so the live story fits at any T0; attendance for the past week is played on the pad (about 10 % late) |
 | Attendance today | Everyone on the current shift clocked in; W004 not clocked in yet (late) |
 | Auto clock-out | K002 yesterday, flagged "auto", waiting for Outlet Admin correction (G-22) |
 | Clock-out blockers | W002 holds cash (G-20); W001 has open Claims (Meja 5, Meja 7) to hand over (G-06) |
@@ -223,17 +223,17 @@ About 18 closed Bills fill today's reports, including:
 
 | Trigger | Who | How |
 |---|---|---|
-| CLI | Developer | `go run ./cmd/seed` (or `make seed`) |
-| Admin Panel → Settings → **Reset demo** | Management (PIN Override) | API endpoint, Demo mode only |
+| CLI | Developer | `pnpm seed` (`go run ./cmd/seed`) with the API stopped |
+| Admin Panel → Settings → **Reset demo** | Management (PIN Override `demo_reset`) | `POST /demo/reset`, Demo mode only |
 | Scheduler | System | 03.00 WIB daily, Demo mode only |
 
 Mechanics:
 
-1. The seed generator builds a **new** database file `data/sushi-latte.next.db` with T0 = now. It goes through the domain packages, so totals, statuses and audit entries are consistent.
-2. Image variants (WebP) are generated once and cached in `data/images/`; later resets reuse them.
-3. The API enters maintenance for ~1 s: it rejects writes with `503 demo_resetting`, closes its connection pool, atomically renames `.next.db` over `sushi-latte.db`, reopens the pool, regenerates the crypto-shredding key file and clears sessions.
-4. It broadcasts `demo.reset` on every channel; all apps reload to their start screen, and Customers return to the scan prompt.
-5. Target: under 3 seconds end to end.
+1. The API announces `demo.resetting` on the public `demo` topic; every app shows "Menyiapkan ulang demo…" over its screen. The demo keeps running underneath; anything done now is discarded.
+2. The seed generator builds a **new** database file `data/sushi-latte.next.db` with T0 = now, and a new crypto-shredding key file `keys.next.json` beside it. It goes through the domain packages, so totals, statuses and audit entries are consistent. Image variants (WebP) are generated once and cached in `data/images/`; later resets reuse them.
+3. The swap: the API refuses new writes with `503 demo_resetting`, lets units of work in flight finish, closes its connection pools, renames `.next.db` over `sushi-latte.db` and `keys.next.json` over `keys.json`, reopens the pools and reloads the keys. Sessions live in the database, so they are gone with it.
+4. It broadcasts `demo.reset` on the `demo` topic: Staff screens return to sign-in, the Client Menu forgets every guest session and returns to the start (old QR codes no longer work), the Product Display restarts its playlist.
+5. Timing (decided 2026-10-27, measured on the reference laptop): the swap takes **under 50 ms**; the whole reset takes **about 8–10 s**, almost all of it building the 14-day history (~800 Bills played through the domain). The original "under 3 s end to end" target holds for the swap only: building ahead of time would freeze T0 and break every live timer, so the screens show the notice instead.
 
 ## 10. Guided demo tours
 

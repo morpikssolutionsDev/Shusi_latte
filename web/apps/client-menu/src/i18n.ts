@@ -98,6 +98,7 @@ const id = {
   },
   orders: {
     title: 'Pesananku',
+    progress: 'Kemajuan pesanan',
     empty: 'Belum ada pesanan. Pilih menu dulu, ya.',
     order: 'Pesanan #{{n}}',
     waitingWaiter: 'Menunggu pelayan mengonfirmasi',
@@ -150,6 +151,9 @@ const id = {
     staff: 'Aplikasi staf',
     display: 'Product Display',
     inactive: 'Nonaktif',
+    tours: 'Tur demo',
+    toursBody: 'Enam alur untuk dipresentasikan berurutan setelah satu kali reset. Buka layar-layarnya berdampingan.',
+    tables: 'Meja',
   },
 };
 
@@ -238,6 +242,7 @@ const en: Strings = {
   sent: { title: 'Order sent!', body: 'A waiter will confirm it shortly.', view: 'See status' },
   orders: {
     title: 'My orders',
+    progress: 'Order progress',
     empty: 'No orders yet. Pick something from the menu.',
     order: 'Order #{{n}}',
     waitingWaiter: 'Waiting for a waiter to confirm',
@@ -287,6 +292,9 @@ const en: Strings = {
     staff: 'Staff app',
     display: 'Product Display',
     inactive: 'Inactive',
+    tours: 'Guided tours',
+    toursBody: 'Six flows to present back to back after one reset. Open their screens side by side.',
+    tables: 'Tables',
   },
 };
 

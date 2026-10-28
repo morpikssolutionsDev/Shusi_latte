@@ -8,6 +8,7 @@ import (
 )
 
 type Config struct {
+	DatabaseURL    string   // POSTGRE_URL: the PostgreSQL database (ADR-0007), set in the environment
 	Addr           string   // SL_ADDR, default 127.0.0.1:8080 (Caddy fronts it on the LAN)
 	DataDir        string   // SL_DATA_DIR, default ../data (repo-root data/ when run from api/)
 	AssetsDir      string   // SL_ASSETS_DIR, default ../docs/images (demo photos copied by the seed)
@@ -20,6 +21,7 @@ type Config struct {
 
 func Load() Config {
 	return Config{
+		DatabaseURL:    os.Getenv("POSTGRE_URL"),
 		Addr:           env("SL_ADDR", "127.0.0.1:8080"),
 		DataDir:        env("SL_DATA_DIR", filepath.Join("..", "data")),
 		AssetsDir:      env("SL_ASSETS_DIR", filepath.Join("..", "docs", "images")),
@@ -30,9 +32,6 @@ func Load() Config {
 		MasterKey:      os.Getenv("SL_MASTER_KEY"),
 	}
 }
-
-// DatabasePath is the live SQLite file.
-func (c Config) DatabasePath() string { return filepath.Join(c.DataDir, "sushi-latte.db") }
 
 // ImagesDir holds served images: originals and generated variants (TR-DM-09).
 func (c Config) ImagesDir() string { return filepath.Join(c.DataDir, "images") }

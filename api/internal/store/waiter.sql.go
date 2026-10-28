@@ -11,7 +11,7 @@ import (
 )
 
 const answerWaiterCall = `-- name: AnswerWaiterCall :execrows
-UPDATE waiter_call SET answered_by = ?, answered_at = ? WHERE id = ? AND answered_at IS NULL
+UPDATE waiter_call SET answered_by = $1, answered_at = $2 WHERE id = $3 AND answered_at IS NULL
 `
 
 type AnswerWaiterCallParams struct {
@@ -30,8 +30,8 @@ func (q *Queries) AnswerWaiterCall(ctx context.Context, arg AnswerWaiterCallPara
 
 const claimOrder = `-- name: ClaimOrder :execrows
 
-UPDATE orders SET claimed_by = ?, claimed_at = ?, status = 'claimed', updated_at = ?
-WHERE id = ? AND claimed_by IS NULL AND status = 'pending'
+UPDATE orders SET claimed_by = $1, claimed_at = $2, status = 'claimed', updated_at = $3
+WHERE id = $4 AND claimed_by IS NULL AND status = 'pending'
 `
 
 type ClaimOrderParams struct {
@@ -57,8 +57,8 @@ func (q *Queries) ClaimOrder(ctx context.Context, arg ClaimOrderParams) (int64, 
 }
 
 const confirmOrder = `-- name: ConfirmOrder :execrows
-UPDATE orders SET status = 'confirmed', confirmed_by = ?, confirmed_at = ?, updated_at = ?
-WHERE id = ? AND status = 'claimed'
+UPDATE orders SET status = 'confirmed', confirmed_by = $1, confirmed_at = $2, updated_at = $3
+WHERE id = $4 AND status = 'claimed'
 `
 
 type ConfirmOrderParams struct {
@@ -82,7 +82,7 @@ func (q *Queries) ConfirmOrder(ctx context.Context, arg ConfirmOrderParams) (int
 }
 
 const confirmOrderItems = `-- name: ConfirmOrderItems :exec
-UPDATE order_item SET status = 'confirmed', updated_at = ? WHERE order_id = ? AND status = 'pending'
+UPDATE order_item SET status = 'confirmed', updated_at = $1 WHERE order_id = $2 AND status = 'pending'
 `
 
 type ConfirmOrderItemsParams struct {
@@ -97,7 +97,7 @@ func (q *Queries) ConfirmOrderItems(ctx context.Context, arg ConfirmOrderItemsPa
 
 const copyRemakeModifiers = `-- name: CopyRemakeModifiers :exec
 INSERT INTO order_item_modifier (order_item_id, modifier_id, name_id, name_en, price)
-SELECT ?1, m.modifier_id, m.name_id, m.name_en, 0 FROM order_item_modifier m WHERE m.order_item_id = ?2
+SELECT $1, m.modifier_id, m.name_id, m.name_en, 0 FROM order_item_modifier m WHERE m.order_item_id = $2
 `
 
 type CopyRemakeModifiersParams struct {
@@ -112,7 +112,7 @@ func (q *Queries) CopyRemakeModifiers(ctx context.Context, arg CopyRemakeModifie
 
 const copyRemakeWarnings = `-- name: CopyRemakeWarnings :exec
 INSERT INTO order_item_dietary_warning (order_item_id, dietary_tag_id, acknowledged_at)
-SELECT ?1, w.dietary_tag_id, w.acknowledged_at FROM order_item_dietary_warning w WHERE w.order_item_id = ?2
+SELECT $1, w.dietary_tag_id, w.acknowledged_at FROM order_item_dietary_warning w WHERE w.order_item_id = $2
 `
 
 type CopyRemakeWarningsParams struct {
@@ -126,7 +126,7 @@ func (q *Queries) CopyRemakeWarnings(ctx context.Context, arg CopyRemakeWarnings
 }
 
 const createClaimTransfer = `-- name: CreateClaimTransfer :exec
-INSERT INTO claim_transfer (id, order_id, from_crew_id, to_crew_id, kind, by_crew_id, at) VALUES (?, ?, ?, ?, ?, ?, ?)
+INSERT INTO claim_transfer (id, order_id, from_crew_id, to_crew_id, kind, by_crew_id, at) VALUES ($1, $2, $3, $4, $5, $6, $7)
 `
 
 type CreateClaimTransferParams struct {
@@ -155,7 +155,7 @@ func (q *Queries) CreateClaimTransfer(ctx context.Context, arg CreateClaimTransf
 const createConfirmedOrder = `-- name: CreateConfirmedOrder :exec
 INSERT INTO orders (id, bill_id, seq, customer_entry_id, source, status, placed_by, claimed_by, claimed_at, confirmed_by,
                     confirmed_at, key_id, restriction_tags_enc, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, 'confirmed', ?, ?, ?, ?, ?, ?, ?, ?, ?)
+VALUES ($1, $2, $3, $4, $5, 'confirmed', $6, $7, $8, $9, $10, $11, $12, $13, $14)
 `
 
 type CreateConfirmedOrderParams struct {
@@ -199,10 +199,10 @@ const createRemakeItem = `-- name: CreateRemakeItem :exec
 INSERT INTO order_item (id, order_id, sort, product_id, variant_id, category_id, prep_area_id, product_name_id, product_name_en,
                         variant_name_id, variant_name_en, unit_price, prep_time_seconds, quantity, note, status,
                         remake_of_id, remake_reason, remake_override_by, created_at, updated_at)
-SELECT ?1, o.order_id, (SELECT MAX(sort) + 1 FROM order_item WHERE order_id = o.order_id), o.product_id, o.variant_id,
+SELECT $1, o.order_id, (SELECT MAX(sort) + 1 FROM order_item WHERE order_id = o.order_id), o.product_id, o.variant_id,
        o.category_id, o.prep_area_id, o.product_name_id, o.product_name_en, o.variant_name_id, o.variant_name_en, 0,
-       o.prep_time_seconds, o.quantity, o.note, 'confirmed', o.id, ?2, ?3, ?4, ?4
-FROM order_item o WHERE o.id = ?5
+       o.prep_time_seconds, o.quantity, o.note, 'confirmed', o.id, $2, $3, $4, $4
+FROM order_item o WHERE o.id = $5
 `
 
 type CreateRemakeItemParams struct {
@@ -226,7 +226,7 @@ func (q *Queries) CreateRemakeItem(ctx context.Context, arg CreateRemakeItemPara
 }
 
 const flagSoldOutItems = `-- name: FlagSoldOutItems :exec
-UPDATE order_item SET sold_out_flag = 1, updated_at = ? WHERE variant_id = ? AND status IN ('pending', 'confirmed')
+UPDATE order_item SET sold_out_flag = 1, updated_at = $1 WHERE variant_id = $2 AND status IN ('pending', 'confirmed')
 `
 
 type FlagSoldOutItemsParams struct {
@@ -240,7 +240,7 @@ func (q *Queries) FlagSoldOutItems(ctx context.Context, arg FlagSoldOutItemsPara
 }
 
 const flagUnavailableItems = `-- name: FlagUnavailableItems :exec
-UPDATE order_item SET unavailable_flag = 1, updated_at = ? WHERE product_id = ? AND status IN ('pending', 'confirmed')
+UPDATE order_item SET unavailable_flag = 1, updated_at = $1 WHERE product_id = $2 AND status IN ('pending', 'confirmed')
 `
 
 type FlagUnavailableItemsParams struct {
@@ -255,7 +255,7 @@ func (q *Queries) FlagUnavailableItems(ctx context.Context, arg FlagUnavailableI
 
 const getOrderItem = `-- name: GetOrderItem :one
 
-SELECT id, order_id, sort, product_id, variant_id, category_id, prep_area_id, product_name_id, product_name_en, variant_name_id, variant_name_en, unit_price, prep_time_seconds, quantity, note, status, cancel_reason, cancel_note, cancelled_by, cancelled_at, void_reason, voided_by, voided_override_by, voided_at, remake_of_id, remake_reason, remake_override_by, preparing_at, ready_at, served_at, served_by, sold_out_flag, unavailable_flag, created_at, updated_at, pickup_reminded_at, sub_bill_id FROM order_item WHERE id = ?
+SELECT id, order_id, sort, product_id, variant_id, category_id, prep_area_id, product_name_id, product_name_en, variant_name_id, variant_name_en, unit_price, prep_time_seconds, quantity, note, status, cancel_reason, cancel_note, cancelled_by, cancelled_at, void_reason, voided_by, voided_override_by, voided_at, remake_of_id, remake_reason, remake_override_by, preparing_at, ready_at, served_at, served_by, sold_out_flag, unavailable_flag, created_at, updated_at, pickup_reminded_at, sub_bill_id FROM order_item WHERE id = $1
 `
 
 // ---------------------------------------------------------------- Order Item transitions (TR-SM-01)
@@ -305,7 +305,7 @@ func (q *Queries) GetOrderItem(ctx context.Context, id string) (OrderItem, error
 }
 
 const listCallsToEscalate = `-- name: ListCallsToEscalate :many
-SELECT id, kind, table_id, bill_id, customer_entry_id, created_at, renotified_at, escalated_at, answered_by, answered_at FROM waiter_call WHERE answered_at IS NULL AND escalated_at IS NULL AND created_at < ?
+SELECT id, kind, table_id, bill_id, customer_entry_id, created_at, renotified_at, escalated_at, answered_by, answered_at FROM waiter_call WHERE answered_at IS NULL AND escalated_at IS NULL AND created_at < $1
 `
 
 func (q *Queries) ListCallsToEscalate(ctx context.Context, createdAt int64) ([]WaiterCall, error) {
@@ -343,7 +343,7 @@ func (q *Queries) ListCallsToEscalate(ctx context.Context, createdAt int64) ([]W
 }
 
 const listCallsToRenotify = `-- name: ListCallsToRenotify :many
-SELECT id, kind, table_id, bill_id, customer_entry_id, created_at, renotified_at, escalated_at, answered_by, answered_at FROM waiter_call WHERE answered_at IS NULL AND renotified_at IS NULL AND created_at < ?
+SELECT id, kind, table_id, bill_id, customer_entry_id, created_at, renotified_at, escalated_at, answered_by, answered_at FROM waiter_call WHERE answered_at IS NULL AND renotified_at IS NULL AND created_at < $1
 `
 
 func (q *Queries) ListCallsToRenotify(ctx context.Context, createdAt int64) ([]WaiterCall, error) {
@@ -381,7 +381,7 @@ func (q *Queries) ListCallsToRenotify(ctx context.Context, createdAt int64) ([]W
 }
 
 const listClaimTransfers = `-- name: ListClaimTransfers :many
-SELECT id, order_id, from_crew_id, to_crew_id, kind, by_crew_id, at FROM claim_transfer WHERE order_id = ? ORDER BY at
+SELECT id, order_id, from_crew_id, to_crew_id, kind, by_crew_id, at FROM claim_transfer WHERE order_id = $1 ORDER BY at
 `
 
 func (q *Queries) ListClaimTransfers(ctx context.Context, orderID string) ([]ClaimTransfer, error) {
@@ -417,7 +417,7 @@ func (q *Queries) ListClaimTransfers(ctx context.Context, orderID string) ([]Cla
 
 const listItemsToRemind = `-- name: ListItemsToRemind :many
 SELECT i.id, i.order_id, o.bill_id, o.claimed_by FROM order_item i JOIN orders o ON o.id = i.order_id
-WHERE i.status = 'ready' AND i.pickup_reminded_at IS NULL AND i.ready_at < ?
+WHERE i.status = 'ready' AND i.pickup_reminded_at IS NULL AND i.ready_at < $1
 `
 
 type ListItemsToRemindRow struct {
@@ -551,7 +551,7 @@ func (q *Queries) ListOpenBills(ctx context.Context) ([]Bill, error) {
 }
 
 const listOpenItemOrdersByProduct = `-- name: ListOpenItemOrdersByProduct :many
-SELECT DISTINCT order_id FROM order_item WHERE product_id = ? AND status IN ('pending', 'confirmed')
+SELECT DISTINCT order_id FROM order_item WHERE product_id = $1 AND status IN ('pending', 'confirmed')
 `
 
 func (q *Queries) ListOpenItemOrdersByProduct(ctx context.Context, productID string) ([]string, error) {
@@ -579,7 +579,7 @@ func (q *Queries) ListOpenItemOrdersByProduct(ctx context.Context, productID str
 
 const listOpenItemOrdersByVariant = `-- name: ListOpenItemOrdersByVariant :many
 
-SELECT DISTINCT order_id FROM order_item WHERE variant_id = ? AND status IN ('pending', 'confirmed')
+SELECT DISTINCT order_id FROM order_item WHERE variant_id = $1 AND status IN ('pending', 'confirmed')
 `
 
 // ---------------------------------------------------------------- flags (TR-SM-04, TR-SM-06)
@@ -645,7 +645,7 @@ func (q *Queries) ListOpenWaiterCalls(ctx context.Context) ([]WaiterCall, error)
 }
 
 const listOrdersToEscalate = `-- name: ListOrdersToEscalate :many
-SELECT id, bill_id, seq, customer_entry_id, source, status, placed_by, claimed_by, claimed_at, confirmed_by, confirmed_at, key_id, restriction_tags_enc, renotified_at, escalated_at, created_at, updated_at FROM orders WHERE status = 'pending' AND claimed_by IS NULL AND escalated_at IS NULL AND created_at < ?
+SELECT id, bill_id, seq, customer_entry_id, source, status, placed_by, claimed_by, claimed_at, confirmed_by, confirmed_at, key_id, restriction_tags_enc, renotified_at, escalated_at, created_at, updated_at FROM orders WHERE status = 'pending' AND claimed_by IS NULL AND escalated_at IS NULL AND created_at < $1
 `
 
 func (q *Queries) ListOrdersToEscalate(ctx context.Context, createdAt int64) ([]Order, error) {
@@ -691,7 +691,7 @@ func (q *Queries) ListOrdersToEscalate(ctx context.Context, createdAt int64) ([]
 
 const listOrdersToRenotify = `-- name: ListOrdersToRenotify :many
 
-SELECT id, bill_id, seq, customer_entry_id, source, status, placed_by, claimed_by, claimed_at, confirmed_by, confirmed_at, key_id, restriction_tags_enc, renotified_at, escalated_at, created_at, updated_at FROM orders WHERE status = 'pending' AND claimed_by IS NULL AND renotified_at IS NULL AND created_at < ?
+SELECT id, bill_id, seq, customer_entry_id, source, status, placed_by, claimed_by, claimed_at, confirmed_by, confirmed_at, key_id, restriction_tags_enc, renotified_at, escalated_at, created_at, updated_at FROM orders WHERE status = 'pending' AND claimed_by IS NULL AND renotified_at IS NULL AND created_at < $1
 `
 
 // ---------------------------------------------------------------- escalation and reminders (BR-WT-09, BR-WT-10)
@@ -737,7 +737,7 @@ func (q *Queries) ListOrdersToRenotify(ctx context.Context, createdAt int64) ([]
 }
 
 const readyItem = `-- name: ReadyItem :execrows
-UPDATE order_item SET status = 'ready', ready_at = ?, updated_at = ? WHERE id = ? AND status = 'preparing'
+UPDATE order_item SET status = 'ready', ready_at = $1, updated_at = $2 WHERE id = $3 AND status = 'preparing'
 `
 
 type ReadyItemParams struct {
@@ -755,7 +755,7 @@ func (q *Queries) ReadyItem(ctx context.Context, arg ReadyItemParams) (int64, er
 }
 
 const serveItem = `-- name: ServeItem :execrows
-UPDATE order_item SET status = 'served', served_at = ?, served_by = ?, updated_at = ? WHERE id = ? AND status = 'ready'
+UPDATE order_item SET status = 'served', served_at = $1, served_by = $2, updated_at = $3 WHERE id = $4 AND status = 'ready'
 `
 
 type ServeItemParams struct {
@@ -779,7 +779,7 @@ func (q *Queries) ServeItem(ctx context.Context, arg ServeItemParams) (int64, er
 }
 
 const setCallEscalated = `-- name: SetCallEscalated :exec
-UPDATE waiter_call SET escalated_at = ? WHERE id = ?
+UPDATE waiter_call SET escalated_at = $1 WHERE id = $2
 `
 
 type SetCallEscalatedParams struct {
@@ -793,7 +793,7 @@ func (q *Queries) SetCallEscalated(ctx context.Context, arg SetCallEscalatedPara
 }
 
 const setCallRenotified = `-- name: SetCallRenotified :exec
-UPDATE waiter_call SET renotified_at = ? WHERE id = ?
+UPDATE waiter_call SET renotified_at = $1 WHERE id = $2
 `
 
 type SetCallRenotifiedParams struct {
@@ -807,7 +807,7 @@ func (q *Queries) SetCallRenotified(ctx context.Context, arg SetCallRenotifiedPa
 }
 
 const setOrderClaimant = `-- name: SetOrderClaimant :exec
-UPDATE orders SET claimed_by = ?, updated_at = ? WHERE id = ?
+UPDATE orders SET claimed_by = $1, updated_at = $2 WHERE id = $3
 `
 
 type SetOrderClaimantParams struct {
@@ -822,7 +822,7 @@ func (q *Queries) SetOrderClaimant(ctx context.Context, arg SetOrderClaimantPara
 }
 
 const setOrderEscalated = `-- name: SetOrderEscalated :exec
-UPDATE orders SET escalated_at = ? WHERE id = ?
+UPDATE orders SET escalated_at = $1 WHERE id = $2
 `
 
 type SetOrderEscalatedParams struct {
@@ -836,7 +836,7 @@ func (q *Queries) SetOrderEscalated(ctx context.Context, arg SetOrderEscalatedPa
 }
 
 const setOrderRenotified = `-- name: SetOrderRenotified :exec
-UPDATE orders SET renotified_at = ? WHERE id = ?
+UPDATE orders SET renotified_at = $1 WHERE id = $2
 `
 
 type SetOrderRenotifiedParams struct {
@@ -850,7 +850,7 @@ func (q *Queries) SetOrderRenotified(ctx context.Context, arg SetOrderRenotified
 }
 
 const setPickupReminded = `-- name: SetPickupReminded :exec
-UPDATE order_item SET pickup_reminded_at = ? WHERE id = ?
+UPDATE order_item SET pickup_reminded_at = $1 WHERE id = $2
 `
 
 type SetPickupRemindedParams struct {
@@ -864,7 +864,7 @@ func (q *Queries) SetPickupReminded(ctx context.Context, arg SetPickupRemindedPa
 }
 
 const startItem = `-- name: StartItem :execrows
-UPDATE order_item SET status = 'preparing', preparing_at = ?, updated_at = ? WHERE id = ? AND status = 'confirmed'
+UPDATE order_item SET status = 'preparing', preparing_at = $1, updated_at = $2 WHERE id = $3 AND status = 'confirmed'
 `
 
 type StartItemParams struct {
@@ -882,8 +882,8 @@ func (q *Queries) StartItem(ctx context.Context, arg StartItemParams) (int64, er
 }
 
 const voidItem = `-- name: VoidItem :execrows
-UPDATE order_item SET status = 'voided', void_reason = ?, voided_by = ?, voided_override_by = ?, voided_at = ?, updated_at = ?
-WHERE id = ? AND status IN ('ready', 'served')
+UPDATE order_item SET status = 'voided', void_reason = $1, voided_by = $2, voided_override_by = $3, voided_at = $4, updated_at = $5
+WHERE id = $6 AND status IN ('ready', 'served')
 `
 
 type VoidItemParams struct {

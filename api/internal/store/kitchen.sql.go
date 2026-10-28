@@ -11,7 +11,7 @@ import (
 )
 
 const getPrepArea = `-- name: GetPrepArea :one
-SELECT id, code, name_id, name_en, parallel_capacity, sort FROM prep_area WHERE id = ?
+SELECT id, code, name_id, name_en, parallel_capacity, sort FROM prep_area WHERE id = $1
 `
 
 func (q *Queries) GetPrepArea(ctx context.Context, id string) (PrepArea, error) {
@@ -29,7 +29,7 @@ func (q *Queries) GetPrepArea(ctx context.Context, id string) (PrepArea, error) 
 }
 
 const getPrepAreaByCode = `-- name: GetPrepAreaByCode :one
-SELECT id, code, name_id, name_en, parallel_capacity, sort FROM prep_area WHERE code = ?
+SELECT id, code, name_id, name_en, parallel_capacity, sort FROM prep_area WHERE code = $1
 `
 
 func (q *Queries) GetPrepAreaByCode(ctx context.Context, code string) (PrepArea, error) {
@@ -49,7 +49,7 @@ func (q *Queries) GetPrepAreaByCode(ctx context.Context, code string) (PrepArea,
 const listKitchenItems = `-- name: ListKitchenItems :many
 SELECT i.id, i.order_id, i.sort, i.product_id, i.variant_id, i.category_id, i.prep_area_id, i.product_name_id, i.product_name_en, i.variant_name_id, i.variant_name_en, i.unit_price, i.prep_time_seconds, i.quantity, i.note, i.status, i.cancel_reason, i.cancel_note, i.cancelled_by, i.cancelled_at, i.void_reason, i.voided_by, i.voided_override_by, i.voided_at, i.remake_of_id, i.remake_reason, i.remake_override_by, i.preparing_at, i.ready_at, i.served_at, i.served_by, i.sold_out_flag, i.unavailable_flag, i.created_at, i.updated_at, i.pickup_reminded_at, i.sub_bill_id, o.bill_id, o.seq AS order_seq, o.confirmed_at AS order_confirmed_at, o.claimed_by, o.customer_entry_id
 FROM order_item i JOIN orders o ON o.id = i.order_id
-WHERE i.prep_area_id = ? AND i.status IN ('confirmed', 'preparing', 'ready')
+WHERE i.prep_area_id = $1 AND i.status IN ('confirmed', 'preparing', 'ready')
 ORDER BY o.confirmed_at, o.seq, i.sort
 `
 
@@ -167,7 +167,7 @@ func (q *Queries) ListKitchenItems(ctx context.Context, prepAreaID string) ([]Li
 
 const listQueueBills = `-- name: ListQueueBills :many
 SELECT DISTINCT o.bill_id FROM order_item i JOIN orders o ON o.id = i.order_id
-WHERE i.prep_area_id = ? AND i.status IN ('confirmed', 'preparing')
+WHERE i.prep_area_id = $1 AND i.status IN ('confirmed', 'preparing')
 `
 
 // Bills whose Estimated Wait depends on a Prep Area's queue (TR-KT-04).
@@ -197,7 +197,7 @@ func (q *Queries) ListQueueBills(ctx context.Context, prepAreaID string) ([]stri
 const listReadyItemsBetween = `-- name: ListReadyItemsBetween :many
 SELECT i.product_id, i.product_name_id, i.category_id, i.prep_area_id, i.prep_time_seconds, i.ready_at, o.confirmed_at
 FROM order_item i JOIN orders o ON o.id = i.order_id
-WHERE i.ready_at >= ? AND i.ready_at < ? AND o.confirmed_at IS NOT NULL
+WHERE i.ready_at >= $1 AND i.ready_at < $2 AND o.confirmed_at IS NOT NULL
 `
 
 type ListReadyItemsBetweenParams struct {

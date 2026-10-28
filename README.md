@@ -20,7 +20,7 @@ A HORECA web platform for a sushi-and-coffee outlet: Customers order from a QR c
 
 ## Stack
 
-Go (chi, sqlc, goose) · SQLite · WebSockets · React + Vite + TypeScript · TanStack Router/Query · Tailwind · shadcn/ui · Motion · PWA with Web Bluetooth receipt printing.
+Go (chi, sqlc, goose) · PostgreSQL · WebSockets · React + Vite + TypeScript · TanStack Router/Query · Tailwind · shadcn/ui · Motion · PWA with Web Bluetooth receipt printing.
 
 ## Documentation
 
@@ -39,23 +39,26 @@ Go (chi, sqlc, goose) · SQLite · WebSockets · React + Vite + TypeScript · Ta
 
 ## Development
 
-Requirements: Go 1.27+, Node 24+, pnpm 12, Python 3.10+ (design tooling only), Windows PowerShell for the tool fetch script.
+Requirements: Go 1.27+, Node 24+, pnpm 12, a local PostgreSQL 17+ server with an empty database (e.g. `sushi_latte`), Python 3.10+ (design tooling only), Windows PowerShell for the tool fetch script.
+
+The API, seed and Go tests read the database from `POSTGRE_URL` ([ADR-0007](docs/adr/0007-postgresql.md)); the demo lives in schema `app`, tests use throwaway `test_…` schemas. The `pnpm` commands load it from a git-ignored `.env` at the repo root; [.env.example](.env.example) lists every variable with its default.
 
 ```sh
 powershell -ExecutionPolicy Bypass -File tools/fetch-tools.ps1   # once: pinned sqlc + Caddy into .tools/
 pnpm install
+cp .env.example .env   # once: set POSTGRE_URL
 pnpm dev     # API in Demo mode + Client Menu :5173, Staff :5174/staff/, Display :5175/display/
 ```
 
 | Command | Does |
 |---|---|
-| `pnpm dev` | Generates API types and tokens, seeds if no database exists, runs the API and all Vite dev servers |
-| `pnpm seed` | Rebuilds `data/sushi-latte.db` anchored at now (stop the API first; while it runs, use Admin → Pengaturan → Reset demo instead) |
+| `pnpm dev` | Generates API types and tokens, seeds the clean start if the database is empty, runs the API and all Vite dev servers |
+| `pnpm seed` | Rebuilds the demo in PostgreSQL as the clean start (menu, staff, Tables, discounts, Display, settings); `pnpm seed --story` adds the scripted demo story. Stop the API first; while it runs, use Admin → Pengaturan → Reset demo |
 | `pnpm demo` | Builds the apps and API, then serves everything over LAN HTTPS through Caddy (prints the URLs and the CA download link) |
 | `pnpm gen` | Regenerates sqlc code (`api/internal/store`), API client types and design tokens |
 | `pnpm test` | Web tests and `go test ./...` |
 | `python tools/design/build.py` | Regenerates design tokens, `COLOR.md` and the style guide |
 
-Demo logins are listed on the staff login screen (Crew ID + PIN, e.g. `M001` / `111111`). The launcher at `http://localhost:5173/demo` has every Table's QR code and the six guided tours ([DEMO-AND-SEED §10](docs/DEMO-AND-SEED.md)); the demo resets itself at 03.00 or from Admin → Pengaturan → Reset demo.
+Demo logins are listed on the staff login screen (Crew ID + PIN, e.g. `M001` / `111111`). The launcher at `http://localhost:5173/demo` has every Table's QR code; the six guided tours ([DEMO-AND-SEED §10](docs/DEMO-AND-SEED.md)) appear once the demo story is loaded (`pnpm seed --story`, or "Muat cerita demo" on Admin → Pengaturan → Reset demo). The demo resets itself to the clean start at 03.00.
 
 **LAN demo devices:** open `http://<host-ip>:8081/ca.crt` on each phone or tablet once and install it as a trusted CA. Web Bluetooth printing and installing the staff app require HTTPS ([TRD TR-ARC-05](docs/TRD.md)).

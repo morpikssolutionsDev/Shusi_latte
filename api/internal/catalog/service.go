@@ -133,7 +133,7 @@ func (s *Service) SaveDietaryTag(ctx context.Context, actor string, in DietaryTa
 			in.ID, in.Active = platform.NewID(), true
 			if err := tx.CreateDietaryTag(ctx, store.CreateDietaryTagParams{ID: in.ID, Code: in.Code, NameID: in.NameID,
 				NameEn: in.NameEN, Icon: in.Icon, Sort: in.Sort}); err != nil {
-				if strings.Contains(err.Error(), "UNIQUE") {
+				if dbx.IsUniqueViolation(err) {
 					return invalid("Kode tag sudah dipakai")
 				}
 				return err

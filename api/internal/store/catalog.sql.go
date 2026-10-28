@@ -11,7 +11,7 @@ import (
 )
 
 const addModifierDietaryTag = `-- name: AddModifierDietaryTag :exec
-INSERT INTO modifier_dietary_tag (modifier_id, dietary_tag_id) VALUES (?, ?)
+INSERT INTO modifier_dietary_tag (modifier_id, dietary_tag_id) VALUES ($1, $2)
 `
 
 type AddModifierDietaryTagParams struct {
@@ -25,7 +25,7 @@ func (q *Queries) AddModifierDietaryTag(ctx context.Context, arg AddModifierDiet
 }
 
 const addProductDietaryTag = `-- name: AddProductDietaryTag :exec
-INSERT INTO product_dietary_tag (product_id, dietary_tag_id) VALUES (?, ?)
+INSERT INTO product_dietary_tag (product_id, dietary_tag_id) VALUES ($1, $2)
 `
 
 type AddProductDietaryTagParams struct {
@@ -39,7 +39,7 @@ func (q *Queries) AddProductDietaryTag(ctx context.Context, arg AddProductDietar
 }
 
 const archiveModifier = `-- name: ArchiveModifier :exec
-UPDATE modifier SET archived_at = ? WHERE id = ?
+UPDATE modifier SET archived_at = $1 WHERE id = $2
 `
 
 type ArchiveModifierParams struct {
@@ -53,7 +53,7 @@ func (q *Queries) ArchiveModifier(ctx context.Context, arg ArchiveModifierParams
 }
 
 const archiveModifierGroup = `-- name: ArchiveModifierGroup :exec
-UPDATE modifier_group SET archived_at = ? WHERE id = ?
+UPDATE modifier_group SET archived_at = $1 WHERE id = $2
 `
 
 type ArchiveModifierGroupParams struct {
@@ -67,7 +67,7 @@ func (q *Queries) ArchiveModifierGroup(ctx context.Context, arg ArchiveModifierG
 }
 
 const archiveVariant = `-- name: ArchiveVariant :exec
-UPDATE variant SET archived_at = ?, is_default = 0 WHERE id = ?
+UPDATE variant SET archived_at = $1, is_default = 0 WHERE id = $2
 `
 
 type ArchiveVariantParams struct {
@@ -81,7 +81,7 @@ func (q *Queries) ArchiveVariant(ctx context.Context, arg ArchiveVariantParams) 
 }
 
 const clearModifierDietaryTags = `-- name: ClearModifierDietaryTags :exec
-DELETE FROM modifier_dietary_tag WHERE modifier_id = ?
+DELETE FROM modifier_dietary_tag WHERE modifier_id = $1
 `
 
 func (q *Queries) ClearModifierDietaryTags(ctx context.Context, modifierID string) error {
@@ -90,7 +90,7 @@ func (q *Queries) ClearModifierDietaryTags(ctx context.Context, modifierID strin
 }
 
 const clearProductDietaryTags = `-- name: ClearProductDietaryTags :exec
-DELETE FROM product_dietary_tag WHERE product_id = ?
+DELETE FROM product_dietary_tag WHERE product_id = $1
 `
 
 func (q *Queries) ClearProductDietaryTags(ctx context.Context, productID string) error {
@@ -99,7 +99,7 @@ func (q *Queries) ClearProductDietaryTags(ctx context.Context, productID string)
 }
 
 const clearVariantSoldOut = `-- name: ClearVariantSoldOut :exec
-UPDATE variant SET sold_out = 0, sold_out_at = NULL, sold_out_by = NULL, sold_out_source = NULL WHERE id = ?
+UPDATE variant SET sold_out = 0, sold_out_at = NULL, sold_out_by = NULL, sold_out_source = NULL WHERE id = $1
 `
 
 func (q *Queries) ClearVariantSoldOut(ctx context.Context, id string) error {
@@ -108,7 +108,7 @@ func (q *Queries) ClearVariantSoldOut(ctx context.Context, id string) error {
 }
 
 const countProductsInCategory = `-- name: CountProductsInCategory :one
-SELECT COUNT(*) FROM product WHERE category_id = ? AND status <> 'archived'
+SELECT COUNT(*) FROM product WHERE category_id = $1 AND status <> 'archived'
 `
 
 func (q *Queries) CountProductsInCategory(ctx context.Context, categoryID string) (int64, error) {
@@ -121,7 +121,7 @@ func (q *Queries) CountProductsInCategory(ctx context.Context, categoryID string
 const createCategory = `-- name: CreateCategory :exec
 
 INSERT INTO category (id, name_id, name_en, prep_area_id, sort, active, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 `
 
 type CreateCategoryParams struct {
@@ -152,7 +152,7 @@ func (q *Queries) CreateCategory(ctx context.Context, arg CreateCategoryParams) 
 
 const createDietaryTag = `-- name: CreateDietaryTag :exec
 
-INSERT INTO dietary_tag (id, code, name_id, name_en, icon, sort, active) VALUES (?, ?, ?, ?, ?, ?, 1)
+INSERT INTO dietary_tag (id, code, name_id, name_en, icon, sort, active) VALUES ($1, $2, $3, $4, $5, $6, 1)
 `
 
 type CreateDietaryTagParams struct {
@@ -178,7 +178,7 @@ func (q *Queries) CreateDietaryTag(ctx context.Context, arg CreateDietaryTagPara
 }
 
 const createModifier = `-- name: CreateModifier :exec
-INSERT INTO modifier (id, modifier_group_id, name_id, name_en, price, sort) VALUES (?, ?, ?, ?, ?, ?)
+INSERT INTO modifier (id, modifier_group_id, name_id, name_en, price, sort) VALUES ($1, $2, $3, $4, $5, $6)
 `
 
 type CreateModifierParams struct {
@@ -204,7 +204,7 @@ func (q *Queries) CreateModifier(ctx context.Context, arg CreateModifierParams) 
 
 const createModifierGroup = `-- name: CreateModifierGroup :exec
 
-INSERT INTO modifier_group (id, product_id, name_id, name_en, min_select, max_select, sort) VALUES (?, ?, ?, ?, ?, ?, ?)
+INSERT INTO modifier_group (id, product_id, name_id, name_en, min_select, max_select, sort) VALUES ($1, $2, $3, $4, $5, $6, $7)
 `
 
 type CreateModifierGroupParams struct {
@@ -233,7 +233,7 @@ func (q *Queries) CreateModifierGroup(ctx context.Context, arg CreateModifierGro
 
 const createPrepArea = `-- name: CreatePrepArea :exec
 
-INSERT INTO prep_area (id, code, name_id, name_en, parallel_capacity, sort) VALUES (?, ?, ?, ?, ?, ?)
+INSERT INTO prep_area (id, code, name_id, name_en, parallel_capacity, sort) VALUES ($1, $2, $3, $4, $5, $6)
 `
 
 type CreatePrepAreaParams struct {
@@ -262,7 +262,7 @@ const createProduct = `-- name: CreateProduct :exec
 
 INSERT INTO product (id, category_id, name_id, name_en, description_id, description_en, image_key, image_focus_x,
                      image_focus_y, prep_time_seconds, status, sort, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 `
 
 type CreateProductParams struct {
@@ -305,7 +305,7 @@ func (q *Queries) CreateProduct(ctx context.Context, arg CreateProductParams) er
 
 const createVariant = `-- name: CreateVariant :exec
 
-INSERT INTO variant (id, product_id, name_id, name_en, price, is_default, sort) VALUES (?, ?, ?, ?, ?, ?, ?)
+INSERT INTO variant (id, product_id, name_id, name_en, price, is_default, sort) VALUES ($1, $2, $3, $4, $5, $6, $7)
 `
 
 type CreateVariantParams struct {
@@ -333,7 +333,7 @@ func (q *Queries) CreateVariant(ctx context.Context, arg CreateVariantParams) er
 }
 
 const getCategory = `-- name: GetCategory :one
-SELECT id, name_id, name_en, prep_area_id, sort, active, created_at, updated_at FROM category WHERE id = ?
+SELECT id, name_id, name_en, prep_area_id, sort, active, created_at, updated_at FROM category WHERE id = $1
 `
 
 func (q *Queries) GetCategory(ctx context.Context, id string) (Category, error) {
@@ -353,7 +353,7 @@ func (q *Queries) GetCategory(ctx context.Context, id string) (Category, error) 
 }
 
 const getProduct = `-- name: GetProduct :one
-SELECT id, category_id, name_id, name_en, description_id, description_en, image_key, image_focus_x, image_focus_y, prep_time_seconds, status, sort, created_at, updated_at FROM product WHERE id = ?
+SELECT id, category_id, name_id, name_en, description_id, description_en, image_key, image_focus_x, image_focus_y, prep_time_seconds, status, sort, created_at, updated_at FROM product WHERE id = $1
 `
 
 func (q *Queries) GetProduct(ctx context.Context, id string) (Product, error) {
@@ -379,7 +379,7 @@ func (q *Queries) GetProduct(ctx context.Context, id string) (Product, error) {
 }
 
 const getVariant = `-- name: GetVariant :one
-SELECT id, product_id, name_id, name_en, price, is_default, sort, sold_out, sold_out_at, sold_out_by, sold_out_source, archived_at FROM variant WHERE id = ?
+SELECT id, product_id, name_id, name_en, price, is_default, sort, sold_out, sold_out_at, sold_out_by, sold_out_source, archived_at FROM variant WHERE id = $1
 `
 
 func (q *Queries) GetVariant(ctx context.Context, id string) (Variant, error) {
@@ -474,7 +474,7 @@ func (q *Queries) ListDietaryTags(ctx context.Context) ([]DietaryTag, error) {
 }
 
 const listGroupModifiers = `-- name: ListGroupModifiers :many
-SELECT id, modifier_group_id, name_id, name_en, price, sort, archived_at FROM modifier WHERE modifier_group_id = ? AND archived_at IS NULL ORDER BY sort
+SELECT id, modifier_group_id, name_id, name_en, price, sort, archived_at FROM modifier WHERE modifier_group_id = $1 AND archived_at IS NULL ORDER BY sort
 `
 
 func (q *Queries) ListGroupModifiers(ctx context.Context, modifierGroupID string) ([]Modifier, error) {
@@ -668,7 +668,7 @@ func (q *Queries) ListProductDietaryTags(ctx context.Context) ([]ProductDietaryT
 }
 
 const listProductModifierGroups = `-- name: ListProductModifierGroups :many
-SELECT id, product_id, name_id, name_en, min_select, max_select, sort, archived_at FROM modifier_group WHERE product_id = ? AND archived_at IS NULL ORDER BY sort
+SELECT id, product_id, name_id, name_en, min_select, max_select, sort, archived_at FROM modifier_group WHERE product_id = $1 AND archived_at IS NULL ORDER BY sort
 `
 
 func (q *Queries) ListProductModifierGroups(ctx context.Context, productID string) ([]ModifierGroup, error) {
@@ -704,7 +704,7 @@ func (q *Queries) ListProductModifierGroups(ctx context.Context, productID strin
 }
 
 const listProductVariants = `-- name: ListProductVariants :many
-SELECT id, product_id, name_id, name_en, price, is_default, sort, sold_out, sold_out_at, sold_out_by, sold_out_source, archived_at FROM variant WHERE product_id = ? AND archived_at IS NULL ORDER BY sort
+SELECT id, product_id, name_id, name_en, price, is_default, sort, sold_out, sold_out_at, sold_out_by, sold_out_source, archived_at FROM variant WHERE product_id = $1 AND archived_at IS NULL ORDER BY sort
 `
 
 func (q *Queries) ListProductVariants(ctx context.Context, productID string) ([]Variant, error) {
@@ -826,7 +826,7 @@ func (q *Queries) ListVariants(ctx context.Context) ([]Variant, error) {
 }
 
 const maxProductSort = `-- name: MaxProductSort :one
-SELECT CAST(COALESCE(MAX(sort), 0) AS INTEGER) FROM product WHERE category_id = ?
+SELECT CAST(COALESCE(MAX(sort), 0) AS BIGINT) FROM product WHERE category_id = $1
 `
 
 func (q *Queries) MaxProductSort(ctx context.Context, categoryID string) (int64, error) {
@@ -837,7 +837,7 @@ func (q *Queries) MaxProductSort(ctx context.Context, categoryID string) (int64,
 }
 
 const setVariantSoldOut = `-- name: SetVariantSoldOut :exec
-UPDATE variant SET sold_out = 1, sold_out_at = ?, sold_out_by = ?, sold_out_source = ? WHERE id = ?
+UPDATE variant SET sold_out = 1, sold_out_at = $1, sold_out_by = $2, sold_out_source = $3 WHERE id = $4
 `
 
 type SetVariantSoldOutParams struct {
@@ -858,7 +858,7 @@ func (q *Queries) SetVariantSoldOut(ctx context.Context, arg SetVariantSoldOutPa
 }
 
 const updateCategory = `-- name: UpdateCategory :exec
-UPDATE category SET name_id = ?, name_en = ?, prep_area_id = ?, sort = ?, active = ?, updated_at = ? WHERE id = ?
+UPDATE category SET name_id = $1, name_en = $2, prep_area_id = $3, sort = $4, active = $5, updated_at = $6 WHERE id = $7
 `
 
 type UpdateCategoryParams struct {
@@ -885,7 +885,7 @@ func (q *Queries) UpdateCategory(ctx context.Context, arg UpdateCategoryParams) 
 }
 
 const updateDietaryTag = `-- name: UpdateDietaryTag :exec
-UPDATE dietary_tag SET name_id = ?, name_en = ?, icon = ?, sort = ?, active = ? WHERE id = ?
+UPDATE dietary_tag SET name_id = $1, name_en = $2, icon = $3, sort = $4, active = $5 WHERE id = $6
 `
 
 type UpdateDietaryTagParams struct {
@@ -910,7 +910,7 @@ func (q *Queries) UpdateDietaryTag(ctx context.Context, arg UpdateDietaryTagPara
 }
 
 const updateModifier = `-- name: UpdateModifier :exec
-UPDATE modifier SET name_id = ?, name_en = ?, price = ?, sort = ? WHERE id = ?
+UPDATE modifier SET name_id = $1, name_en = $2, price = $3, sort = $4 WHERE id = $5
 `
 
 type UpdateModifierParams struct {
@@ -933,7 +933,7 @@ func (q *Queries) UpdateModifier(ctx context.Context, arg UpdateModifierParams) 
 }
 
 const updateModifierGroup = `-- name: UpdateModifierGroup :exec
-UPDATE modifier_group SET name_id = ?, name_en = ?, min_select = ?, max_select = ?, sort = ? WHERE id = ?
+UPDATE modifier_group SET name_id = $1, name_en = $2, min_select = $3, max_select = $4, sort = $5 WHERE id = $6
 `
 
 type UpdateModifierGroupParams struct {
@@ -958,7 +958,7 @@ func (q *Queries) UpdateModifierGroup(ctx context.Context, arg UpdateModifierGro
 }
 
 const updatePrepAreaCapacity = `-- name: UpdatePrepAreaCapacity :exec
-UPDATE prep_area SET parallel_capacity = ? WHERE id = ?
+UPDATE prep_area SET parallel_capacity = $1 WHERE id = $2
 `
 
 type UpdatePrepAreaCapacityParams struct {
@@ -973,9 +973,9 @@ func (q *Queries) UpdatePrepAreaCapacity(ctx context.Context, arg UpdatePrepArea
 
 const updateProduct = `-- name: UpdateProduct :exec
 UPDATE product
-SET category_id = ?, name_id = ?, name_en = ?, description_id = ?, description_en = ?, image_key = ?,
-    image_focus_x = ?, image_focus_y = ?, prep_time_seconds = ?, status = ?, sort = ?, updated_at = ?
-WHERE id = ?
+SET category_id = $1, name_id = $2, name_en = $3, description_id = $4, description_en = $5, image_key = $6,
+    image_focus_x = $7, image_focus_y = $8, prep_time_seconds = $9, status = $10, sort = $11, updated_at = $12
+WHERE id = $13
 `
 
 type UpdateProductParams struct {
@@ -1014,7 +1014,7 @@ func (q *Queries) UpdateProduct(ctx context.Context, arg UpdateProductParams) er
 }
 
 const updateVariant = `-- name: UpdateVariant :exec
-UPDATE variant SET name_id = ?, name_en = ?, price = ?, is_default = ?, sort = ? WHERE id = ?
+UPDATE variant SET name_id = $1, name_en = $2, price = $3, is_default = $4, sort = $5 WHERE id = $6
 `
 
 type UpdateVariantParams struct {

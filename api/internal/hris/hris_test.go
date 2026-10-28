@@ -3,6 +3,7 @@ package hris_test
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"encoding/csv"
 	"errors"
 	"testing"
@@ -137,7 +138,7 @@ func TestAutoClockOutAndCorrection(t *testing.T) {
 	if rows[0].Status != "done" || rows[0].WorkedMinutes != 480 || rows[0].CorrectedBy != "A001 Crew" {
 		t.Fatalf("corrected row: %+v", rows[0])
 	}
-	logged, _ := f.db.Read().SearchAudit(f.ctx, store.SearchAuditParams{ActionPrefix: "attendance.corrected", RowLimit: 5})
+	logged, _ := f.db.Read().SearchAudit(f.ctx, store.SearchAuditParams{ActionPrefix: sql.NullString{String: "attendance.corrected", Valid: true}, RowLimit: 5})
 	if len(logged) != 1 || logged[0].Reason.String != "Lupa absen pulang" {
 		t.Fatalf("correction audit entries: %+v", logged)
 	}

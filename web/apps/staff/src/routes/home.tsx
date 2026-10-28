@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, Navigate, useNavigate, useRouter } from '@tanstack/react-router';
 import { ChefHat, ClipboardList, CoffeeIcon, LogOut, MonitorPlay, ReceiptText, Settings2, Users } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { ExitScreenButton } from '../components/exit-screen';
 import { useRealtime } from '../realtime';
 
 const SCREENS = [
@@ -73,6 +74,7 @@ export function HomePage({ me }: { me: Principal }) {
           <h1 className="font-display text-2xl font-semibold">{t(`screens.${me.screen}`)}</h1>
           <p className="text-muted-foreground">{t('home.comingSoon')}</p>
           <RealtimeDot status={status} />
+          <ExitScreenButton />
         </div>
       </main>
     );

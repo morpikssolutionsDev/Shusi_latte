@@ -132,7 +132,7 @@ The Product catalog is the single definition of what the Business sells. Every M
 | BR-ADM-05 | Management defines discounts: percentage or nominal; item-level or Bill-level; automatic promos with schedule windows; manual discounts. | M |
 | BR-ADM-06 | Management sets the Refund cap per Bill (e.g. Rp 500,000). | M |
 | BR-ADM-07 | Outlet Admin and Management toggle Sold Out per Variant and re-enable Sold Out Variants; every re-enable is audit-logged with person and time. | M |
-| BR-ADM-08 | Outlet Admin and Management manage Tables and generate/regenerate each Table's QR code. | M |
+| BR-ADM-08 | Outlet Admin and Management manage Tables and print each Table's QR code. The code is static: it opens `/table-NN` from the Table number and never changes (owner decision 2026-10-28, [ADR-0006](adr/0006-static-table-qr-codes.md)). | M |
 | BR-ADM-09 | Management manages crew records, roles, Stations, Crew IDs and PIN resets. | M |
 | BR-ADM-10 | Management manages Product Display content (banners, featured Products, ordering, schedule). | M |
 | BR-ADM-11 | Reports: daily sales, sales by payment method, best sellers, Prep Time performance, Shift Closing, Unpaid Bills, Remakes by reason, and Post-outage Entries. | M |
@@ -315,7 +315,7 @@ See [ADR-0002](adr/0002-two-day-customer-data-retention.md).
 - **BR-P-02** Dietary Restrictions and Dietary Notes are health data, classified as **specific personal data** under UU PDP (Law 27/2022) Art. 4; explicit consent is collected before entry.
 - **BR-P-03** Two days after a Bill closes, it is Anonymised: names become "Customer", and Dietary Restrictions and Dietary Notes are deleted. Dietary Warnings on Order Items keep only the Product-side tag ("contained Dairy"), not who avoided it. This applies UU PDP Art. 43 (delete data no longer needed for its purpose). The 2-day period is the Business's own necessity judgement; the law sets no fixed number.
 - **BR-P-04** Sales, Payment and Receipt figures are retained for 10 years per UU KUP Art. 28(11); they contain no Customer personal data after Anonymisation.
-- **BR-P-05** Data is hosted in a cloud region in Jakarta for a real deployment. The prototype/demo runs on a single local host with fictional data only ([ADR-0005](adr/0005-sqlite-for-demo.md)).
+- **BR-P-05** Data is hosted in a cloud region in Jakarta for a real deployment. The prototype/demo runs on a single local host with fictional data only ([ADR-0007](adr/0007-postgresql.md)).
 - **BR-P-06** Database backups must not keep Customer names or dietary data readable beyond the 2 days: these fields are encrypted with a daily key, and keys older than 48 hours are destroyed ([ADR-0002](adr/0002-two-day-customer-data-retention.md)).
 - **BR-P-07** While a Bill is open, anyone who scans its Table QR sees the full names of the Customers on it (BR-CM-12). This is an accepted owner decision; see §11.
 
@@ -347,12 +347,12 @@ See [ADR-0002](adr/0002-two-day-customer-data-retention.md).
 | QR scanned remotely to place prank Orders | Wasted kitchen work | Waiter Claim and confirmation before Kitchen |
 | PIN-only sign-in is guessable | Unauthorised actions | 6 digits, lockout, audit log, Management session timeout |
 | Staff resist QR ordering | O1 missed | Waiters coach Customers; Waiter-entered Orders still supported |
-| Rejoin shows full names and needs no verification: someone with a photo of the QR can see who is seated, Rejoin as them, and see their Dietary Warnings | Personal and health data exposure; Orders placed in another person's name | Accepted by owner. Names visible only while the Bill is open; every Order still needs Waiter Claim; Rejoin signs out the previous device, so the real Customer notices; staff can regenerate a Table QR |
+| Rejoin shows full names and needs no verification, and Table URLs are guessable (`/table-02`): anyone, even off-site, can see who is seated, Rejoin as them, and see their Dietary Warnings | Personal and health data exposure; Orders placed in another person's name | Accepted by owner (2026-10-28, ADR-0006). Names visible only while the Bill is open; every Order still needs Waiter Claim; Rejoin signs out the previous device, so the real Customer notices; a misused Table can be deactivated |
 | Cash held by Waiters goes missing | Cash loss | Held by Waiter tracking, Cash Handover confirmation, clock-out blocked until handed over |
 
 ## 11a. Prototype and demo
 
-The current build is a **prototype and showcase**, not a live café system. It runs on one local machine with SQLite ([ADR-0005](adr/0005-sqlite-for-demo.md)), uses only fictional data, and adds a Demo mode (seeded scenarios, demo launcher, demo logins, receipt preview, nightly reset) described in [DEMO-AND-SEED.md](DEMO-AND-SEED.md). All business rules in this document apply unchanged in the demo.
+The current build is a **prototype and showcase**, not a live café system. It runs on one local machine with PostgreSQL ([ADR-0007](adr/0007-postgresql.md)), uses only fictional data, and adds a Demo mode (seeded scenarios, demo launcher, demo logins, receipt preview, nightly reset) described in [DEMO-AND-SEED.md](DEMO-AND-SEED.md). All business rules in this document apply unchanged in the demo.
 
 ## 12. Open items
 

@@ -11,7 +11,7 @@ import (
 )
 
 const deleteExpiredIdempotencyKeys = `-- name: DeleteExpiredIdempotencyKeys :execrows
-DELETE FROM idempotency_key WHERE created_at <= ?
+DELETE FROM idempotency_key WHERE created_at <= $1
 `
 
 func (q *Queries) DeleteExpiredIdempotencyKeys(ctx context.Context, createdAt int64) (int64, error) {
@@ -22,8 +22,19 @@ func (q *Queries) DeleteExpiredIdempotencyKeys(ctx context.Context, createdAt in
 	return result.RowsAffected()
 }
 
+const getDemoSeed = `-- name: GetDemoSeed :one
+SELECT id, story, t0 FROM demo_seed WHERE id = 1
+`
+
+func (q *Queries) GetDemoSeed(ctx context.Context) (DemoSeed, error) {
+	row := q.db.QueryRowContext(ctx, getDemoSeed)
+	var i DemoSeed
+	err := row.Scan(&i.ID, &i.Story, &i.T0)
+	return i, err
+}
+
 const getIdempotentResponse = `-- name: GetIdempotentResponse :one
-SELECT scope, "key", method, path, status, content_type, body, created_at FROM idempotency_key WHERE scope = ? AND key = ?
+SELECT scope, key, method, path, status, content_type, body, created_at FROM idempotency_key WHERE scope = $1 AND key = $2
 `
 
 type GetIdempotentResponseParams struct {
@@ -67,7 +78,7 @@ func (q *Queries) GetOpsSetting(ctx context.Context) (OpsSetting, error) {
 
 const insertAudit = `-- name: InsertAudit :exec
 INSERT INTO audit_log (id, at, actor_crew_id, override_crew_id, action, entity, entity_id, before_json, after_json, reason)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 `
 
 type InsertAuditParams struct {
@@ -100,11 +111,11 @@ func (q *Queries) InsertAudit(ctx context.Context, arg InsertAuditParams) error 
 }
 
 const listAudit = `-- name: ListAudit :many
-SELECT id, at, actor_crew_id, override_crew_id, "action", entity, entity_id, before_json, after_json, reason FROM audit_log ORDER BY at DESC LIMIT ?
+SELECT id, at, actor_crew_id, override_crew_id, action, entity, entity_id, before_json, after_json, reason FROM audit_log ORDER BY at DESC LIMIT $1::bigint
 `
 
-func (q *Queries) ListAudit(ctx context.Context, limit int64) ([]AuditLog, error) {
-	rows, err := q.db.QueryContext(ctx, listAudit, limit)
+func (q *Queries) ListAudit(ctx context.Context, dollar_1 int64) ([]AuditLog, error) {
+	rows, err := q.db.QueryContext(ctx, listAudit, dollar_1)
 	if err != nil {
 		return nil, err
 	}
@@ -139,7 +150,7 @@ func (q *Queries) ListAudit(ctx context.Context, limit int64) ([]AuditLog, error
 
 const saveIdempotentResponse = `-- name: SaveIdempotentResponse :exec
 INSERT INTO idempotency_key (scope, key, method, path, status, content_type, body, created_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 ON CONFLICT (scope, key) DO NOTHING
 `
 
@@ -165,5 +176,20 @@ func (q *Queries) SaveIdempotentResponse(ctx context.Context, arg SaveIdempotent
 		arg.Body,
 		arg.CreatedAt,
 	)
+	return err
+}
+
+const setDemoSeed = `-- name: SetDemoSeed :exec
+INSERT INTO demo_seed (id, story, t0) VALUES (1, $1, $2)
+ON CONFLICT (id) DO UPDATE SET story = excluded.story, t0 = excluded.t0
+`
+
+type SetDemoSeedParams struct {
+	Story int64
+	T0    int64
+}
+
+func (q *Queries) SetDemoSeed(ctx context.Context, arg SetDemoSeedParams) error {
+	_, err := q.db.ExecContext(ctx, setDemoSeed, arg.Story, arg.T0)
 	return err
 }

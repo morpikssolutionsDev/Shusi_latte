@@ -60,6 +60,8 @@
 - Tables: 48 px rows, sticky header, tabular numbers right-aligned.
 
 ### Product Display — TV 1920×1080 (4K safe)
+- Slides are laid out on a stage whose short side is 1080 px, scaled to the screen. The long side stretches from 1440 to 2560, so 4:3 through 21:9 screens fill edge to edge with no letterbox; narrower landscape stages (< 1800) step the type down a size.
+- A screen taller than it is wide (vertical TV, phone) gets portrait layouts: photo above text, Category Spotlight in 2 columns, uploaded media shown whole over a blurred copy.
 - 64 px safe area on every edge (overscan).
 - Layout grid: 12 columns, 32 px gutters. Templates in [MOTION.md §6](MOTION.md#6-product-display-banners).
 

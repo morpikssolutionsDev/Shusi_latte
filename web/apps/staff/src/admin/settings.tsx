@@ -80,8 +80,9 @@ function ResetDemoCard() {
   const { t } = useTranslation();
   const health = useQuery(healthQuery);
   const [asking, setAsking] = useState(false);
+  const [story, setStory] = useState(false);
   const reset = useMutation({
-    mutationFn: async (token: string) => unwrap(await api.POST('/demo/reset', { headers: { 'X-Override-Token': token } })),
+    mutationFn: async (token: string) => unwrap(await api.POST('/demo/reset', { body: { story }, headers: { 'X-Override-Token': token } })),
     onSuccess: () => toast.info(t('admin.settings.resetStarted')),
     onError: (e) => toast.error(errorText(e)),
   });
@@ -91,6 +92,10 @@ function ResetDemoCard() {
       <div className="min-w-60 flex-1">
         <h2 className="text-lg font-bold">{t('admin.settings.resetTitle')}</h2>
         <p className="text-sm text-muted-foreground">{t('admin.settings.resetHint')}</p>
+        <label className="mt-3 flex items-start gap-2 text-sm">
+          <input type="checkbox" className="mt-0.5 size-4" checked={story} onChange={(e) => setStory(e.target.checked)} />
+          <span><span className="font-semibold">{t('admin.settings.resetStory')}</span><span className="block text-muted-foreground">{t('admin.settings.resetStoryHint')}</span></span>
+        </label>
       </div>
       <Button variant="danger" disabled={reset.isPending} onClick={() => setAsking(true)}><RotateCcwIcon aria-hidden />{t('admin.settings.reset')}</Button>
       <PinOverrideDialog action="demo_reset" open={asking} onClose={() => setAsking(false)} onApproved={(tok) => { setAsking(false); reset.mutate(tok); }} />

@@ -14,7 +14,7 @@ const createSlide = `-- name: CreateSlide :exec
 INSERT INTO display_slide (id, template, sort, active, headline_id, headline_en, subline_id, subline_en, image_key, video_key, image_focus_x,
                            image_focus_y, product_id, discount_id, category_ids, steam, duration_seconds, active_from, active_to,
                            created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
 `
 
 type CreateSlideParams struct {
@@ -69,7 +69,7 @@ func (q *Queries) CreateSlide(ctx context.Context, arg CreateSlideParams) error 
 }
 
 const deleteSlide = `-- name: DeleteSlide :exec
-DELETE FROM display_slide WHERE id = ?
+DELETE FROM display_slide WHERE id = $1
 `
 
 func (q *Queries) DeleteSlide(ctx context.Context, id string) error {
@@ -78,7 +78,7 @@ func (q *Queries) DeleteSlide(ctx context.Context, id string) error {
 }
 
 const getSlide = `-- name: GetSlide :one
-SELECT id, template, sort, active, headline_id, headline_en, subline_id, subline_en, image_key, video_key, image_focus_x, image_focus_y, product_id, discount_id, category_ids, steam, duration_seconds, active_from, active_to, created_at, updated_at FROM display_slide WHERE id = ?
+SELECT id, template, sort, active, headline_id, headline_en, subline_id, subline_en, image_key, video_key, image_focus_x, image_focus_y, product_id, discount_id, category_ids, steam, duration_seconds, active_from, active_to, created_at, updated_at FROM display_slide WHERE id = $1
 `
 
 func (q *Queries) GetSlide(ctx context.Context, id string) (DisplaySlide, error) {
@@ -160,7 +160,7 @@ func (q *Queries) ListSlides(ctx context.Context) ([]DisplaySlide, error) {
 }
 
 const setSlideSort = `-- name: SetSlideSort :exec
-UPDATE display_slide SET sort = ?, updated_at = ? WHERE id = ?
+UPDATE display_slide SET sort = $1, updated_at = $2 WHERE id = $3
 `
 
 type SetSlideSortParams struct {
@@ -176,10 +176,10 @@ func (q *Queries) SetSlideSort(ctx context.Context, arg SetSlideSortParams) erro
 
 const updateSlide = `-- name: UpdateSlide :exec
 UPDATE display_slide
-SET template = ?, sort = ?, active = ?, headline_id = ?, headline_en = ?, subline_id = ?, subline_en = ?, image_key = ?, video_key = ?,
-    image_focus_x = ?, image_focus_y = ?, product_id = ?, discount_id = ?, category_ids = ?, steam = ?, duration_seconds = ?,
-    active_from = ?, active_to = ?, updated_at = ?
-WHERE id = ?
+SET template = $1, sort = $2, active = $3, headline_id = $4, headline_en = $5, subline_id = $6, subline_en = $7, image_key = $8, video_key = $9,
+    image_focus_x = $10, image_focus_y = $11, product_id = $12, discount_id = $13, category_ids = $14, steam = $15, duration_seconds = $16,
+    active_from = $17, active_to = $18, updated_at = $19
+WHERE id = $20
 `
 
 type UpdateSlideParams struct {

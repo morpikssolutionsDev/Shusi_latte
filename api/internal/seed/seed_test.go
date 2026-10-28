@@ -22,6 +22,7 @@ import (
 	"sushilatte/api/internal/seed"
 	"sushilatte/api/internal/store"
 	"sushilatte/api/internal/testutil"
+	"sushilatte/api/internal/vault"
 )
 
 // DEMO-AND-SEED §1 principle 1: every scenario is live at T0. Builds the real demo database and
@@ -31,15 +32,13 @@ func TestDemoSeedScenarios(t *testing.T) {
 		t.Skip("builds the full demo database and its images")
 	}
 	ctx := context.Background()
-	dir := t.TempDir()
-	cache := filepath.Join(os.TempDir(), "sushi-latte-seed-images") // processed photos are reused between runs
 	t0 := time.Date(2026, 10, 27, 15, 0, 0, 0, platform.Jakarta)
 	v := testutil.NewVault(t)
-	opts := seed.Options{DBPath: filepath.Join(dir, "demo.db"), ImagesDir: cache, AssetsDir: filepath.Join("..", "..", "..", "docs", "images"), T0: t0, Vault: v}
+	opts := buildOptions(t, t0, v, true)
 	if err := seed.Build(ctx, opts); err != nil {
 		t.Fatal(err)
 	}
-	db, err := dbx.Open(ctx, opts.DBPath, nil)
+	db, err := dbx.Open(ctx, opts.DatabaseURL, opts.Schema, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -340,12 +339,11 @@ func TestDemoSeedAtNightlyReset(t *testing.T) {
 	ctx := context.Background()
 	t0 := time.Date(2026, 10, 28, 3, 0, 0, 0, platform.Jakarta)
 	v := testutil.NewVault(t)
-	opts := seed.Options{DBPath: filepath.Join(t.TempDir(), "demo.db"), ImagesDir: filepath.Join(os.TempDir(), "sushi-latte-seed-images"),
-		AssetsDir: filepath.Join("..", "..", "..", "docs", "images"), T0: t0, Vault: v}
+	opts := buildOptions(t, t0, v, true)
 	if err := seed.Build(ctx, opts); err != nil {
 		t.Fatal(err)
 	}
-	db, err := dbx.Open(ctx, opts.DBPath, nil)
+	db, err := dbx.Open(ctx, opts.DatabaseURL, opts.Schema, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -363,7 +361,7 @@ func checkCatalogue(t *testing.T, ctx context.Context, svc *ordering.Service, db
 	t.Helper()
 	q := db.Read()
 	audits := func(prefix string) int {
-		rows, err := q.SearchAudit(ctx, store.SearchAuditParams{ActionPrefix: prefix, RowLimit: 50})
+		rows, err := q.SearchAudit(ctx, store.SearchAuditParams{ActionPrefix: sql.NullString{String: prefix, Valid: true}, RowLimit: 50})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -423,5 +421,72 @@ func checkCatalogue(t *testing.T, ctx context.Context, svc *ordering.Service, db
 	}
 	if len(playlist.Slides) >= active {
 		t.Fatalf("playlist shows %d of %d active slides: nothing skipped", len(playlist.Slides), active)
+	}
+}
+
+// buildOptions seeds into a throwaway schema; processed photos are cached between runs.
+func buildOptions(t *testing.T, t0 time.Time, v *vault.Vault, story bool) seed.Options {
+	t.Helper()
+	url, schema := testutil.NewSchema(t)
+	return seed.Options{DatabaseURL: url, Schema: schema, ImagesDir: filepath.Join(os.TempDir(), "sushi-latte-seed-images"),
+		AssetsDir: filepath.Join("..", "..", "..", "docs", "images"), T0: t0, Vault: v, Story: story}
+}
+
+// DEMO-AND-SEED §9 (decided 2026-10-28): the default seed is the clean start — menu, Crew,
+// Tables, discounts, Product Display and settings — with no Bills, cash, HRIS records or lockout.
+func TestCleanSeed(t *testing.T) {
+	if testing.Short() {
+		t.Skip("builds the demo database and its images")
+	}
+	ctx := context.Background()
+	t0 := time.Date(2026, 10, 28, 9, 0, 0, 0, platform.Jakarta)
+	opts := buildOptions(t, t0, testutil.NewVault(t), false)
+	if err := seed.Build(ctx, opts); err != nil {
+		t.Fatal(err)
+	}
+	db, err := dbx.Open(ctx, opts.DatabaseURL, opts.Schema, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	count := func(table string) int {
+		var n int
+		if err := db.Write(ctx, func(tx *dbx.Tx) error { return tx.QueryRow(ctx, "SELECT COUNT(*) FROM "+table).Scan(&n) }); err != nil {
+			t.Fatal(err)
+		}
+		return n
+	}
+	kept := map[string]int{"crew": 12, "dining_table": 12, "category": 8, "discount": 5, "display_slide": 1}
+	for table, min := range kept {
+		if n := count(table); n < min {
+			t.Errorf("%s: %d rows, want at least %d", table, n, min)
+		}
+	}
+	for _, table := range []string{"bill", "orders", "order_item", "payment", "refund", "drawer_session", "cash_handover", "customer_entry",
+		"waiter_call", "shift", "attendance", "leave_request", "employee", "session"} {
+		if n := count(table); n != 0 {
+			t.Errorf("%s: %d rows in the clean start", table, n)
+		}
+	}
+	q := db.Read()
+	if seeded, _ := q.GetDemoSeed(ctx); seeded.Story != 0 {
+		t.Error("clean start marked as the story")
+	}
+	cat, err := catalog.Load(ctx, q, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, p := range cat.Products {
+		if p.NameEN == "Ebi Tempura Roll" && p.Status != catalog.StatusArchived {
+			t.Error("Ebi Tempura Roll should be retired")
+		}
+		for _, v := range p.Variants {
+			if v.SoldOut {
+				t.Errorf("%s %s is Sold Out in the clean start", p.NameEN, v.NameEN)
+			}
+		}
+	}
+	if w5, _ := q.GetCrewByCrewID(ctx, "W005"); w5.LockedUntil.Valid {
+		t.Error("W005 is locked in the clean start")
 	}
 }

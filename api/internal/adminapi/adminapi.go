@@ -3,6 +3,7 @@
 package adminapi
 
 import (
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -58,7 +59,6 @@ func (h *Handlers) Routes(r chi.Router) {
 	r.With(staff).Get("/tables", httpx.Handler(h.listTables))
 	r.With(admins).Post("/tables", httpx.Handler(h.saveTable))
 	r.With(admins).Put("/tables/{id}", httpx.Handler(h.saveTable))
-	r.With(admins).Post("/tables/{id}/regenerate-qr", httpx.Handler(h.regenerateQR))
 
 	r.With(management).Get("/crew", httpx.Handler(h.listCrew))
 	r.With(management).Post("/crew", httpx.Handler(h.createCrew))
@@ -315,15 +315,6 @@ func (h *Handlers) saveTable(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-func (h *Handlers) regenerateQR(w http.ResponseWriter, r *http.Request) error {
-	out, err := h.Outlet.RegenerateQR(r.Context(), actor(r), chi.URLParam(r, "id"))
-	if err != nil {
-		return err
-	}
-	httpx.WriteJSON(w, http.StatusOK, out)
-	return nil
-}
-
 // ---------------------------------------------------------------- crew
 
 func (h *Handlers) listCrew(w http.ResponseWriter, r *http.Request) error {
@@ -429,17 +420,12 @@ type auditEntry struct {
 
 func (h *Handlers) searchAudit(w http.ResponseWriter, r *http.Request) error {
 	q := r.URL.Query()
-	opt := func(key string) any {
-		if v := q.Get(key); v != "" {
-			return v
-		}
-		return nil
+	opt := func(key string) sql.NullString {
+		return sql.NullString{String: q.Get(key), Valid: q.Get(key) != ""}
 	}
-	optInt := func(key string) any {
-		if v, err := strconv.ParseInt(q.Get(key), 10, 64); err == nil {
-			return v
-		}
-		return nil
+	optInt := func(key string) sql.NullInt64 {
+		v, err := strconv.ParseInt(q.Get(key), 10, 64)
+		return sql.NullInt64{Int64: v, Valid: err == nil}
 	}
 	limit, _ := strconv.ParseInt(q.Get("limit"), 10, 64)
 	if limit <= 0 || limit > 500 {

@@ -11,7 +11,7 @@ import (
 )
 
 const clockIn = `-- name: ClockIn :exec
-INSERT INTO attendance (id, crew_id, shift_id, clock_in_at) VALUES (?, ?, ?, ?)
+INSERT INTO attendance (id, crew_id, shift_id, clock_in_at) VALUES ($1, $2, $3, $4)
 `
 
 type ClockInParams struct {
@@ -32,7 +32,7 @@ func (q *Queries) ClockIn(ctx context.Context, arg ClockInParams) error {
 }
 
 const clockOut = `-- name: ClockOut :execrows
-UPDATE attendance SET clock_out_at = ?, auto_clocked_out = ? WHERE id = ? AND clock_out_at IS NULL
+UPDATE attendance SET clock_out_at = $1, auto_clocked_out = $2 WHERE id = $3 AND clock_out_at IS NULL
 `
 
 type ClockOutParams struct {
@@ -50,7 +50,7 @@ func (q *Queries) ClockOut(ctx context.Context, arg ClockOutParams) (int64, erro
 }
 
 const correctAttendance = `-- name: CorrectAttendance :exec
-UPDATE attendance SET clock_in_at = ?, clock_out_at = ?, corrected_by = ?, corrected_at = ?, correction_reason = ? WHERE id = ?
+UPDATE attendance SET clock_in_at = $1, clock_out_at = $2, corrected_by = $3, corrected_at = $4, correction_reason = $5 WHERE id = $6
 `
 
 type CorrectAttendanceParams struct {
@@ -76,7 +76,7 @@ func (q *Queries) CorrectAttendance(ctx context.Context, arg CorrectAttendancePa
 
 const countOverlappingShifts = `-- name: CountOverlappingShifts :one
 SELECT COUNT(*) FROM shift
-WHERE crew_id = ?1 AND id != ?2 AND starts_at < ?3 AND ends_at > ?4
+WHERE crew_id = $1 AND id != $2 AND starts_at < $3 AND ends_at > $4
 `
 
 type CountOverlappingShiftsParams struct {
@@ -99,7 +99,7 @@ func (q *Queries) CountOverlappingShifts(ctx context.Context, arg CountOverlappi
 }
 
 const countShiftAttendance = `-- name: CountShiftAttendance :one
-SELECT COUNT(*) FROM attendance WHERE shift_id = ?
+SELECT COUNT(*) FROM attendance WHERE shift_id = $1
 `
 
 func (q *Queries) CountShiftAttendance(ctx context.Context, shiftID sql.NullString) (int64, error) {
@@ -111,7 +111,7 @@ func (q *Queries) CountShiftAttendance(ctx context.Context, shiftID sql.NullStri
 
 const createLeaveRequest = `-- name: CreateLeaveRequest :exec
 
-INSERT INTO leave_request (id, crew_id, from_date, to_date, type, reason, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)
+INSERT INTO leave_request (id, crew_id, from_date, to_date, type, reason, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7)
 `
 
 type CreateLeaveRequestParams struct {
@@ -140,7 +140,7 @@ func (q *Queries) CreateLeaveRequest(ctx context.Context, arg CreateLeaveRequest
 
 const createShift = `-- name: CreateShift :exec
 
-INSERT INTO shift (id, crew_id, starts_at, ends_at, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?)
+INSERT INTO shift (id, crew_id, starts_at, ends_at, created_by, created_at) VALUES ($1, $2, $3, $4, $5, $6)
 `
 
 type CreateShiftParams struct {
@@ -166,7 +166,7 @@ func (q *Queries) CreateShift(ctx context.Context, arg CreateShiftParams) error 
 }
 
 const decideLeaveRequest = `-- name: DecideLeaveRequest :execrows
-UPDATE leave_request SET status = ?, decided_by = ?, decided_at = ?, decision_reason = ? WHERE id = ? AND status = 'pending'
+UPDATE leave_request SET status = $1, decided_by = $2, decided_at = $3, decision_reason = $4 WHERE id = $5 AND status = 'pending'
 `
 
 type DecideLeaveRequestParams struct {
@@ -192,7 +192,7 @@ func (q *Queries) DecideLeaveRequest(ctx context.Context, arg DecideLeaveRequest
 }
 
 const deleteShift = `-- name: DeleteShift :execrows
-DELETE FROM shift WHERE id = ?
+DELETE FROM shift WHERE id = $1
 `
 
 func (q *Queries) DeleteShift(ctx context.Context, id string) (int64, error) {
@@ -204,7 +204,7 @@ func (q *Queries) DeleteShift(ctx context.Context, id string) (int64, error) {
 }
 
 const findShiftForClockIn = `-- name: FindShiftForClockIn :one
-SELECT id, crew_id, starts_at, ends_at, created_by, created_at FROM shift WHERE crew_id = ?1 AND starts_at <= ?2 AND ends_at > ?3
+SELECT id, crew_id, starts_at, ends_at, created_by, created_at FROM shift WHERE crew_id = $1 AND starts_at <= $2 AND ends_at > $3
 ORDER BY starts_at LIMIT 1
 `
 
@@ -230,7 +230,7 @@ func (q *Queries) FindShiftForClockIn(ctx context.Context, arg FindShiftForClock
 }
 
 const getAttendance = `-- name: GetAttendance :one
-SELECT id, crew_id, shift_id, clock_in_at, clock_out_at, auto_clocked_out, corrected_by, corrected_at, correction_reason FROM attendance WHERE id = ?
+SELECT id, crew_id, shift_id, clock_in_at, clock_out_at, auto_clocked_out, corrected_by, corrected_at, correction_reason FROM attendance WHERE id = $1
 `
 
 func (q *Queries) GetAttendance(ctx context.Context, id string) (Attendance, error) {
@@ -251,7 +251,7 @@ func (q *Queries) GetAttendance(ctx context.Context, id string) (Attendance, err
 }
 
 const getLeaveRequest = `-- name: GetLeaveRequest :one
-SELECT id, crew_id, from_date, to_date, type, reason, status, decided_by, decided_at, decision_reason, created_at FROM leave_request WHERE id = ?
+SELECT id, crew_id, from_date, to_date, type, reason, status, decided_by, decided_at, decision_reason, created_at FROM leave_request WHERE id = $1
 `
 
 func (q *Queries) GetLeaveRequest(ctx context.Context, id string) (LeaveRequest, error) {
@@ -275,7 +275,7 @@ func (q *Queries) GetLeaveRequest(ctx context.Context, id string) (LeaveRequest,
 
 const getOpenAttendance = `-- name: GetOpenAttendance :one
 
-SELECT id, crew_id, shift_id, clock_in_at, clock_out_at, auto_clocked_out, corrected_by, corrected_at, correction_reason FROM attendance WHERE crew_id = ? AND clock_out_at IS NULL
+SELECT id, crew_id, shift_id, clock_in_at, clock_out_at, auto_clocked_out, corrected_by, corrected_at, correction_reason FROM attendance WHERE crew_id = $1 AND clock_out_at IS NULL
 `
 
 // ---------------------------------------------------------------- attendance (BR-HR-03, BR-HR-06)
@@ -297,7 +297,7 @@ func (q *Queries) GetOpenAttendance(ctx context.Context, crewID string) (Attenda
 }
 
 const getShift = `-- name: GetShift :one
-SELECT id, crew_id, starts_at, ends_at, created_by, created_at FROM shift WHERE id = ?
+SELECT id, crew_id, starts_at, ends_at, created_by, created_at FROM shift WHERE id = $1
 `
 
 func (q *Queries) GetShift(ctx context.Context, id string) (Shift, error) {
@@ -315,7 +315,7 @@ func (q *Queries) GetShift(ctx context.Context, id string) (Shift, error) {
 }
 
 const listApprovedLeaveBetween = `-- name: ListApprovedLeaveBetween :many
-SELECT id, crew_id, from_date, to_date, type, reason, status, decided_by, decided_at, decision_reason, created_at FROM leave_request WHERE status = 'approved' AND from_date <= ?1 AND to_date >= ?2
+SELECT id, crew_id, from_date, to_date, type, reason, status, decided_by, decided_at, decision_reason, created_at FROM leave_request WHERE status = 'approved' AND from_date <= $1 AND to_date >= $2
 `
 
 type ListApprovedLeaveBetweenParams struct {
@@ -359,7 +359,7 @@ func (q *Queries) ListApprovedLeaveBetween(ctx context.Context, arg ListApproved
 }
 
 const listAttendanceBetween = `-- name: ListAttendanceBetween :many
-SELECT id, crew_id, shift_id, clock_in_at, clock_out_at, auto_clocked_out, corrected_by, corrected_at, correction_reason FROM attendance WHERE clock_in_at >= ?1 AND clock_in_at < ?2 ORDER BY clock_in_at
+SELECT id, crew_id, shift_id, clock_in_at, clock_out_at, auto_clocked_out, corrected_by, corrected_at, correction_reason FROM attendance WHERE clock_in_at >= $1 AND clock_in_at < $2 ORDER BY clock_in_at
 `
 
 type ListAttendanceBetweenParams struct {
@@ -499,7 +499,7 @@ func (q *Queries) ListLeaveRequests(ctx context.Context) ([]LeaveRequest, error)
 }
 
 const listLeaveRequestsByCrew = `-- name: ListLeaveRequestsByCrew :many
-SELECT id, crew_id, from_date, to_date, type, reason, status, decided_by, decided_at, decision_reason, created_at FROM leave_request WHERE crew_id = ? ORDER BY from_date DESC, created_at DESC
+SELECT id, crew_id, from_date, to_date, type, reason, status, decided_by, decided_at, decision_reason, created_at FROM leave_request WHERE crew_id = $1 ORDER BY from_date DESC, created_at DESC
 `
 
 func (q *Queries) ListLeaveRequestsByCrew(ctx context.Context, crewID string) ([]LeaveRequest, error) {
@@ -539,7 +539,7 @@ func (q *Queries) ListLeaveRequestsByCrew(ctx context.Context, crewID string) ([
 
 const listOpenClaims = `-- name: ListOpenClaims :many
 SELECT o.id, o.bill_id, o.seq, o.status FROM orders o JOIN bill b ON b.id = o.bill_id
-WHERE o.claimed_by = ? AND b.status IN ('open', 'settling') AND (o.status = 'claimed' OR (o.status = 'confirmed' AND EXISTS (
+WHERE o.claimed_by = $1 AND b.status IN ('open', 'settling') AND (o.status = 'claimed' OR (o.status = 'confirmed' AND EXISTS (
     SELECT 1 FROM order_item i WHERE i.order_id = o.id AND i.status IN ('pending', 'confirmed', 'preparing', 'ready'))))
 ORDER BY o.created_at
 `
@@ -583,7 +583,7 @@ func (q *Queries) ListOpenClaims(ctx context.Context, claimedBy sql.NullString) 
 
 const listOverdueAttendance = `-- name: ListOverdueAttendance :many
 SELECT a.id, a.crew_id, a.shift_id, a.clock_in_at, a.clock_out_at, a.auto_clocked_out, a.corrected_by, a.corrected_at, a.correction_reason, s.ends_at AS shift_ends_at FROM attendance a LEFT JOIN shift s ON s.id = a.shift_id
-WHERE a.clock_out_at IS NULL AND COALESCE(s.ends_at, a.clock_in_at + 43200000) + ?1 <= ?2
+WHERE a.clock_out_at IS NULL AND COALESCE(s.ends_at, a.clock_in_at + 43200000) + $1 <= $2
 `
 
 type ListOverdueAttendanceParams struct {
@@ -640,7 +640,7 @@ func (q *Queries) ListOverdueAttendance(ctx context.Context, arg ListOverdueAtte
 }
 
 const listShiftsBetween = `-- name: ListShiftsBetween :many
-SELECT id, crew_id, starts_at, ends_at, created_by, created_at FROM shift WHERE starts_at < ?1 AND ends_at > ?2 ORDER BY starts_at, crew_id
+SELECT id, crew_id, starts_at, ends_at, created_by, created_at FROM shift WHERE starts_at < $1 AND ends_at > $2 ORDER BY starts_at, crew_id
 `
 
 type ListShiftsBetweenParams struct {
@@ -679,7 +679,7 @@ func (q *Queries) ListShiftsBetween(ctx context.Context, arg ListShiftsBetweenPa
 }
 
 const updateShift = `-- name: UpdateShift :execrows
-UPDATE shift SET crew_id = ?, starts_at = ?, ends_at = ? WHERE id = ?
+UPDATE shift SET crew_id = $1, starts_at = $2, ends_at = $3 WHERE id = $4
 `
 
 type UpdateShiftParams struct {
@@ -704,7 +704,7 @@ func (q *Queries) UpdateShift(ctx context.Context, arg UpdateShiftParams) (int64
 
 const upsertEmployee = `-- name: UpsertEmployee :exec
 INSERT INTO employee (crew_id, phone, employment_type, joined_on, emergency_contact, notes, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
 ON CONFLICT (crew_id) DO UPDATE SET phone = excluded.phone, employment_type = excluded.employment_type,
     joined_on = excluded.joined_on, emergency_contact = excluded.emergency_contact, notes = excluded.notes,
     updated_at = excluded.updated_at

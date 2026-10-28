@@ -46,10 +46,10 @@ func GuestFrom(ctx context.Context) (*Guest, error) {
 type Handlers struct{ Svc *Service }
 
 func (h Handlers) Routes(r chi.Router) {
-	r.Get("/public/tables/{qr}", httpx.Handler(h.lookup))
-	r.Post("/public/tables/{qr}/join", httpx.Handler(h.join))
-	r.Post("/public/tables/{qr}/rejoin", httpx.Handler(h.rejoin))
-	r.Post("/public/tables/{qr}/not-mine", httpx.Handler(h.notMine))
+	r.Get("/public/tables/{code}", httpx.Handler(h.lookup))
+	r.Post("/public/tables/{code}/join", httpx.Handler(h.join))
+	r.Post("/public/tables/{code}/rejoin", httpx.Handler(h.rejoin))
+	r.Post("/public/tables/{code}/not-mine", httpx.Handler(h.notMine))
 	r.Get("/public/catalog", httpx.Handler(h.menu))
 	r.Get("/public/bills/me", h.guest(h.me))
 	r.Post("/public/cart/quote", h.guest(h.quote))
@@ -70,7 +70,7 @@ func (h Handlers) guest(fn func(http.ResponseWriter, *http.Request, *Guest) erro
 }
 
 func (h Handlers) lookup(w http.ResponseWriter, r *http.Request) error {
-	st, err := h.Svc.Lookup(r.Context(), chi.URLParam(r, "qr"))
+	st, err := h.Svc.Lookup(r.Context(), chi.URLParam(r, "code"))
 	if err != nil {
 		return err
 	}
@@ -83,7 +83,7 @@ func (h Handlers) join(w http.ResponseWriter, r *http.Request) error {
 	if err := httpx.DecodeJSON(r, &in); err != nil {
 		return err
 	}
-	s, err := h.Svc.Join(r.Context(), chi.URLParam(r, "qr"), in)
+	s, err := h.Svc.Join(r.Context(), chi.URLParam(r, "code"), in)
 	if err != nil {
 		return err
 	}
@@ -98,7 +98,7 @@ func (h Handlers) rejoin(w http.ResponseWriter, r *http.Request) error {
 	if err := httpx.DecodeJSON(r, &in); err != nil {
 		return err
 	}
-	s, err := h.Svc.Rejoin(r.Context(), chi.URLParam(r, "qr"), in.CustomerID)
+	s, err := h.Svc.Rejoin(r.Context(), chi.URLParam(r, "code"), in.CustomerID)
 	if err != nil {
 		return err
 	}
@@ -107,7 +107,7 @@ func (h Handlers) rejoin(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (h Handlers) notMine(w http.ResponseWriter, r *http.Request) error {
-	if err := h.Svc.NotMine(r.Context(), chi.URLParam(r, "qr")); err != nil {
+	if err := h.Svc.NotMine(r.Context(), chi.URLParam(r, "code")); err != nil {
 		return err
 	}
 	w.WriteHeader(http.StatusNoContent)

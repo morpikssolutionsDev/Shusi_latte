@@ -39,7 +39,7 @@ function progress(o: OrderView, now: number): number {
   return Math.min(0.95, Math.max(0.1, (now - o.confirmedAt) / 1000 / total));
 }
 
-export function OrdersScreen({ qr, me }: { qr: string; me: CustomerView }) {
+export function OrdersScreen({ code, me }: { code: string; me: CustomerView }) {
   const { t } = useTranslation();
   const now = useNow();
   const live = me.orders.filter((o) => o.status !== 'cancelled');
@@ -61,7 +61,7 @@ export function OrdersScreen({ qr, me }: { qr: string; me: CustomerView }) {
     <div className="mx-auto min-h-dvh max-w-[480px] pb-16">
       <DemoBanner />
       <header className="sticky top-0 z-30 flex items-center gap-2 bg-background/95 px-4 py-3 backdrop-blur">
-        <Link to="/t/$qr" params={{ qr }} className="grid size-10 place-items-center rounded-full bg-sunken" aria-label={t('common.back')}>
+        <Link to="/$code" params={{ code }} className="grid size-10 place-items-center rounded-full bg-sunken" aria-label={t('common.back')}>
           <ArrowLeftIcon className="size-5" aria-hidden />
         </Link>
         <div className="min-w-0 flex-1">
@@ -91,7 +91,7 @@ export function OrdersScreen({ qr, me }: { qr: string; me: CustomerView }) {
         )}
         <div className="mt-2 flex gap-2">
           <CallWaiterButton me={me} />
-          <Link to="/t/$qr" params={{ qr }} className="inline-flex h-10 items-center rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground">
+          <Link to="/$code" params={{ code }} className="inline-flex h-10 items-center rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground">
             {t('orders.backToMenu')}
           </Link>
         </div>

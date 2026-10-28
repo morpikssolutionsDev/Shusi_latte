@@ -5,11 +5,10 @@ import { api, connectRealtime, unwrap, watchDemoReset } from '@sushi-latte/api-c
 import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { DemoResetOverlay, mountApp, useDemoReset } from '@sushi-latte/ui';
-import { StrictMode, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { StrictMode, useEffect, useRef, useState } from 'react';
 import { BrandIdle, renderers, slideImages, type PlaylistSlide } from './slides';
+import { Stage } from './stage';
 
-const STAGE_W = 1920;
-const STAGE_H = 1080;
 const fallback: PlaylistSlide = {
   id: 'fallback', template: 'brand_idle', durationSeconds: 8, headline: { id: '', en: '' }, subline: { id: '', en: '' },
   imageFocus: { x: 50, y: 50 }, steam: false,
@@ -20,24 +19,6 @@ const playlistQuery = {
   queryFn: async () => unwrap(await api.GET('/public/display/playlist')),
   refetchInterval: 60_000, // also picks up time-window changes (promo start/end) without events
 };
-
-/** Renders the 1920×1080 design stage scaled to any screen, letterboxed (LAYOUT.md §3). */
-function Stage({ children }: { children: React.ReactNode }) {
-  const [scale, setScale] = useState(1);
-  useLayoutEffect(() => {
-    const fit = () => setScale(Math.min(window.innerWidth / STAGE_W, window.innerHeight / STAGE_H));
-    fit();
-    window.addEventListener('resize', fit);
-    return () => window.removeEventListener('resize', fit);
-  }, []);
-  return (
-    <div className="grid h-dvh w-dvw place-items-center overflow-hidden bg-[#12221B]">
-      <div style={{ width: STAGE_W, height: STAGE_H, transform: `scale(${scale})`, transformOrigin: 'center' }} className="relative shrink-0 overflow-hidden">
-        {children}
-      </div>
-    </div>
-  );
-}
 
 /**
  * Plays the playlist: each slide dwells for its duration, then a 1 s cross-fade + 40 px slide.

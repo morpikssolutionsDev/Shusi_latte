@@ -145,7 +145,7 @@ func (s *Service) Receipt(ctx context.Context, p *auth.Principal, billID, subBil
 				out.Customers = append(out.Customers, s.name(e))
 			}
 		}
-		prior, err := tx.CountReceiptPrints(ctx, store.CountReceiptPrintsParams{BillID: billID, Copy: copy, SubBillID: nullStr(subBillID), SubBillID_2: nullStr(subBillID)})
+		prior, err := tx.CountReceiptPrints(ctx, store.CountReceiptPrintsParams{BillID: billID, Copy: copy, SubBillID: nullStr(subBillID)})
 		if err != nil {
 			return err
 		}
@@ -258,7 +258,7 @@ func (s *Service) DailySales(ctx context.Context, date string) (DailySales, erro
 		if i == 10 {
 			break
 		}
-		out.Products = append(out.Products, ProductSales{ProductID: r.ProductID, Name: r.ProductNameID, Quantity: int64(r.Quantity.Float64), Gross: int64(r.Gross.Float64)})
+		out.Products = append(out.Products, ProductSales{ProductID: r.ProductID, Name: r.ProductNameID, Quantity: r.Quantity, Gross: r.Gross})
 	}
 	return out, nil
 }

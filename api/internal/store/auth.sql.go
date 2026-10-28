@@ -11,7 +11,7 @@ import (
 )
 
 const addCrewStation = `-- name: AddCrewStation :exec
-INSERT INTO crew_station (crew_id, station) VALUES (?, ?)
+INSERT INTO crew_station (crew_id, station) VALUES ($1, $2)
 `
 
 type AddCrewStationParams struct {
@@ -25,7 +25,7 @@ func (q *Queries) AddCrewStation(ctx context.Context, arg AddCrewStationParams) 
 }
 
 const clearLockout = `-- name: ClearLockout :exec
-UPDATE crew SET failed_attempts = 0, locked_until = NULL, updated_at = ? WHERE id = ?
+UPDATE crew SET failed_attempts = 0, locked_until = NULL, updated_at = $1 WHERE id = $2
 `
 
 type ClearLockoutParams struct {
@@ -40,12 +40,12 @@ func (q *Queries) ClearLockout(ctx context.Context, arg ClearLockoutParams) erro
 
 const consumeOverrideToken = `-- name: ConsumeOverrideToken :one
 UPDATE override_token
-SET used_at = ?1
-WHERE id = ?2
-  AND action = ?3
-  AND requester_id = ?4
+SET used_at = $1
+WHERE id = $2
+  AND action = $3
+  AND requester_id = $4
   AND used_at IS NULL
-  AND expires_at > ?1
+  AND expires_at > $1
 RETURNING approver_id
 `
 
@@ -70,7 +70,7 @@ func (q *Queries) ConsumeOverrideToken(ctx context.Context, arg ConsumeOverrideT
 
 const createCrew = `-- name: CreateCrew :exec
 INSERT INTO crew (id, crew_id, full_name, role, image_key, pin_hash, active, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)
+VALUES ($1, $2, $3, $4, $5, $6, 1, $7, $8)
 `
 
 type CreateCrewParams struct {
@@ -100,7 +100,7 @@ func (q *Queries) CreateCrew(ctx context.Context, arg CreateCrewParams) error {
 
 const createOverrideToken = `-- name: CreateOverrideToken :exec
 INSERT INTO override_token (id, approver_id, requester_id, action, created_at, expires_at)
-VALUES (?, ?, ?, ?, ?, ?)
+VALUES ($1, $2, $3, $4, $5, $6)
 `
 
 type CreateOverrideTokenParams struct {
@@ -126,7 +126,7 @@ func (q *Queries) CreateOverrideToken(ctx context.Context, arg CreateOverrideTok
 
 const createSession = `-- name: CreateSession :exec
 INSERT INTO session (id, crew_id, kind, screen, device_label, created_at, last_seen_at, expires_at, idle_timeout_ms)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 `
 
 type CreateSessionParams struct {
@@ -157,7 +157,7 @@ func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) er
 }
 
 const deleteExpiredOverrideTokens = `-- name: DeleteExpiredOverrideTokens :execrows
-DELETE FROM override_token WHERE expires_at <= ?
+DELETE FROM override_token WHERE expires_at <= $1
 `
 
 func (q *Queries) DeleteExpiredOverrideTokens(ctx context.Context, expiresAt int64) (int64, error) {
@@ -169,7 +169,7 @@ func (q *Queries) DeleteExpiredOverrideTokens(ctx context.Context, expiresAt int
 }
 
 const deleteExpiredSessions = `-- name: DeleteExpiredSessions :execrows
-DELETE FROM session WHERE expires_at <= ?
+DELETE FROM session WHERE expires_at <= $1
 `
 
 func (q *Queries) DeleteExpiredSessions(ctx context.Context, expiresAt int64) (int64, error) {
@@ -181,7 +181,7 @@ func (q *Queries) DeleteExpiredSessions(ctx context.Context, expiresAt int64) (i
 }
 
 const deleteSession = `-- name: DeleteSession :exec
-DELETE FROM session WHERE id = ?
+DELETE FROM session WHERE id = $1
 `
 
 func (q *Queries) DeleteSession(ctx context.Context, id string) error {
@@ -190,7 +190,7 @@ func (q *Queries) DeleteSession(ctx context.Context, id string) error {
 }
 
 const getCrew = `-- name: GetCrew :one
-SELECT id, crew_id, full_name, role, image_key, pin_hash, failed_attempts, locked_until, active, created_at, updated_at FROM crew WHERE id = ?
+SELECT id, crew_id, full_name, role, image_key, pin_hash, failed_attempts, locked_until, active, created_at, updated_at FROM crew WHERE id = $1
 `
 
 func (q *Queries) GetCrew(ctx context.Context, id string) (Crew, error) {
@@ -213,7 +213,7 @@ func (q *Queries) GetCrew(ctx context.Context, id string) (Crew, error) {
 }
 
 const getCrewByCrewID = `-- name: GetCrewByCrewID :one
-SELECT id, crew_id, full_name, role, image_key, pin_hash, failed_attempts, locked_until, active, created_at, updated_at FROM crew WHERE crew_id = ? AND active = 1
+SELECT id, crew_id, full_name, role, image_key, pin_hash, failed_attempts, locked_until, active, created_at, updated_at FROM crew WHERE crew_id = $1 AND active = 1
 `
 
 func (q *Queries) GetCrewByCrewID(ctx context.Context, crewID string) (Crew, error) {
@@ -236,7 +236,7 @@ func (q *Queries) GetCrewByCrewID(ctx context.Context, crewID string) (Crew, err
 }
 
 const getSession = `-- name: GetSession :one
-SELECT id, crew_id, kind, screen, device_label, created_at, last_seen_at, expires_at, idle_timeout_ms FROM session WHERE id = ?
+SELECT id, crew_id, kind, screen, device_label, created_at, last_seen_at, expires_at, idle_timeout_ms FROM session WHERE id = $1
 `
 
 func (q *Queries) GetSession(ctx context.Context, id string) (Session, error) {
@@ -296,7 +296,7 @@ func (q *Queries) ListActiveCrew(ctx context.Context) ([]Crew, error) {
 }
 
 const listCrewStations = `-- name: ListCrewStations :many
-SELECT station FROM crew_station WHERE crew_id = ? ORDER BY station
+SELECT station FROM crew_station WHERE crew_id = $1 ORDER BY station
 `
 
 func (q *Queries) ListCrewStations(ctx context.Context, crewID string) ([]string, error) {
@@ -325,9 +325,9 @@ func (q *Queries) ListCrewStations(ctx context.Context, crewID string) ([]string
 const recordFailedLogin = `-- name: RecordFailedLogin :one
 UPDATE crew
 SET failed_attempts = failed_attempts + 1,
-    locked_until    = CASE WHEN failed_attempts + 1 >= ?1 THEN ?2 ELSE locked_until END,
-    updated_at      = ?3
-WHERE id = ?4
+    locked_until    = CASE WHEN failed_attempts + 1 >= $1 THEN $2 ELSE locked_until END,
+    updated_at      = $3
+WHERE id = $4
 RETURNING failed_attempts, locked_until
 `
 
@@ -356,7 +356,7 @@ func (q *Queries) RecordFailedLogin(ctx context.Context, arg RecordFailedLoginPa
 }
 
 const setCrewLockout = `-- name: SetCrewLockout :exec
-UPDATE crew SET failed_attempts = ?, locked_until = ?, updated_at = ? WHERE id = ?
+UPDATE crew SET failed_attempts = $1, locked_until = $2, updated_at = $3 WHERE id = $4
 `
 
 type SetCrewLockoutParams struct {
@@ -377,7 +377,7 @@ func (q *Queries) SetCrewLockout(ctx context.Context, arg SetCrewLockoutParams) 
 }
 
 const touchSession = `-- name: TouchSession :exec
-UPDATE session SET last_seen_at = ? WHERE id = ?
+UPDATE session SET last_seen_at = $1 WHERE id = $2
 `
 
 type TouchSessionParams struct {

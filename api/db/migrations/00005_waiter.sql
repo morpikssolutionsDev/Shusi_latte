@@ -8,11 +8,11 @@ CREATE TABLE claim_transfer (
     to_crew_id   TEXT NOT NULL REFERENCES crew (id),
     kind         TEXT NOT NULL CHECK (kind IN ('takeover', 'reassign')),
     by_crew_id   TEXT NOT NULL REFERENCES crew (id),
-    at           INTEGER NOT NULL
+    at           BIGINT NOT NULL
 );
 CREATE INDEX claim_transfer_order ON claim_transfer (order_id);
 
-ALTER TABLE order_item ADD COLUMN pickup_reminded_at INTEGER;
+ALTER TABLE order_item ADD COLUMN pickup_reminded_at BIGINT;
 
 -- +goose Down
 ALTER TABLE order_item DROP COLUMN pickup_reminded_at;

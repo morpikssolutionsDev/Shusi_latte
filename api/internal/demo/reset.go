@@ -35,8 +35,9 @@ type Resetter struct {
 
 var errRunning = httpx.NewProblem(http.StatusConflict, "reset_running", "Reset demo sedang berjalan")
 
-// Reset runs one reset to the end; a second call while one runs is refused.
-func (r *Resetter) Reset(ctx context.Context, by string) error {
+// Reset runs one reset to the end; a second call while one runs is refused. It builds the clean
+// start, or the scripted demo when story is set (DEMO-AND-SEED §9).
+func (r *Resetter) Reset(ctx context.Context, by string, story bool) error {
 	if !r.running.CompareAndSwap(false, true) {
 		return errRunning
 	}
@@ -44,7 +45,7 @@ func (r *Resetter) Reset(ctx context.Context, by string) error {
 	bus := r.DB.Bus()
 	bus.Publish(realtime.Event{Topic: Topic, Type: "demo.resetting"})
 	started := time.Now()
-	next, err := seed.BuildNext(ctx, r.Config, time.Now().Truncate(time.Minute))
+	next, err := seed.BuildNext(ctx, r.Config, time.Now().Truncate(time.Minute), story)
 	if err != nil {
 		bus.Publish(realtime.Event{Topic: Topic, Type: "demo.reset_failed"})
 		return err
@@ -57,16 +58,24 @@ func (r *Resetter) Reset(ctx context.Context, by string) error {
 	if err := r.Vault.Reload(); err != nil {
 		return err
 	}
-	r.Log.Info("demo reset", "by", by, "build", built.Round(time.Millisecond), "total", time.Since(started).Round(time.Millisecond))
+	r.Log.Info("demo reset", "by", by, "story", story, "build", built.Round(time.Millisecond), "total", time.Since(started).Round(time.Millisecond))
 	bus.Publish(realtime.Event{Topic: Topic, Type: "demo.reset"})
 	return nil
 }
 
-// handle is POST /demo/reset: Management with their PIN (demo_reset). It answers 202 at once and
-// resets in the background; apps follow the `demo` topic.
+// handle is POST /demo/reset {story}: Management with their PIN (demo_reset). It answers 202 at
+// once and resets in the background; apps follow the `demo` topic.
 func (r *Resetter) handle(w http.ResponseWriter, req *http.Request) error {
 	p := auth.FromContext(req.Context())
 	token := auth.OverrideToken(req)
+	var in struct {
+		Story bool `json:"story"`
+	}
+	if req.ContentLength > 0 {
+		if err := httpx.DecodeJSON(req, &in); err != nil {
+			return err
+		}
+	}
 	err := r.DB.Write(req.Context(), func(tx *dbx.Tx) error {
 		_, err := auth.ConsumeOverride(req.Context(), tx, time.Now(), p, token, auth.ActionDemoReset,
 			audit.Entry{Action: "demo.reset", Entity: "demo", EntityID: "demo"})
@@ -79,7 +88,7 @@ func (r *Resetter) handle(w http.ResponseWriter, req *http.Request) error {
 		return errRunning
 	}
 	go func() {
-		if err := r.Reset(context.Background(), p.CrewID); err != nil {
+		if err := r.Reset(context.Background(), p.CrewID, in.Story); err != nil {
 			r.Log.Error("demo reset failed", "err", err)
 		}
 	}()

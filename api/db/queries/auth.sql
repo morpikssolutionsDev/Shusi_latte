@@ -1,21 +1,21 @@
 -- name: CreateCrew :exec
 INSERT INTO crew (id, crew_id, full_name, role, image_key, pin_hash, active, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?);
+VALUES ($1, $2, $3, $4, $5, $6, 1, $7, $8);
 
 -- name: AddCrewStation :exec
-INSERT INTO crew_station (crew_id, station) VALUES (?, ?);
+INSERT INTO crew_station (crew_id, station) VALUES ($1, $2);
 
 -- name: GetCrewByCrewID :one
-SELECT * FROM crew WHERE crew_id = ? AND active = 1;
+SELECT * FROM crew WHERE crew_id = $1 AND active = 1;
 
 -- name: GetCrew :one
-SELECT * FROM crew WHERE id = ?;
+SELECT * FROM crew WHERE id = $1;
 
 -- name: ListActiveCrew :many
 SELECT * FROM crew WHERE active = 1 ORDER BY crew_id;
 
 -- name: ListCrewStations :many
-SELECT station FROM crew_station WHERE crew_id = ? ORDER BY station;
+SELECT station FROM crew_station WHERE crew_id = $1 ORDER BY station;
 
 -- name: RecordFailedLogin :one
 UPDATE crew
@@ -26,30 +26,30 @@ WHERE id = sqlc.arg(id)
 RETURNING failed_attempts, locked_until;
 
 -- name: ClearLockout :exec
-UPDATE crew SET failed_attempts = 0, locked_until = NULL, updated_at = ? WHERE id = ?;
+UPDATE crew SET failed_attempts = 0, locked_until = NULL, updated_at = $1 WHERE id = $2;
 
 -- name: SetCrewLockout :exec
-UPDATE crew SET failed_attempts = ?, locked_until = ?, updated_at = ? WHERE id = ?;
+UPDATE crew SET failed_attempts = $1, locked_until = $2, updated_at = $3 WHERE id = $4;
 
 -- name: CreateSession :exec
 INSERT INTO session (id, crew_id, kind, screen, device_label, created_at, last_seen_at, expires_at, idle_timeout_ms)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);
 
 -- name: GetSession :one
-SELECT * FROM session WHERE id = ?;
+SELECT * FROM session WHERE id = $1;
 
 -- name: TouchSession :exec
-UPDATE session SET last_seen_at = ? WHERE id = ?;
+UPDATE session SET last_seen_at = $1 WHERE id = $2;
 
 -- name: DeleteSession :exec
-DELETE FROM session WHERE id = ?;
+DELETE FROM session WHERE id = $1;
 
 -- name: DeleteExpiredSessions :execrows
-DELETE FROM session WHERE expires_at <= ?;
+DELETE FROM session WHERE expires_at <= $1;
 
 -- name: CreateOverrideToken :exec
 INSERT INTO override_token (id, approver_id, requester_id, action, created_at, expires_at)
-VALUES (?, ?, ?, ?, ?, ?);
+VALUES ($1, $2, $3, $4, $5, $6);
 
 -- name: ConsumeOverrideToken :one
 UPDATE override_token
@@ -62,4 +62,4 @@ WHERE id = sqlc.arg(id)
 RETURNING approver_id;
 
 -- name: DeleteExpiredOverrideTokens :execrows
-DELETE FROM override_token WHERE expires_at <= ?;
+DELETE FROM override_token WHERE expires_at <= $1;

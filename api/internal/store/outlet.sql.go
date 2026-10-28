@@ -11,7 +11,7 @@ import (
 )
 
 const addDiscountTarget = `-- name: AddDiscountTarget :exec
-INSERT INTO discount_target (discount_id, target_type, target_id) VALUES (?, ?, ?)
+INSERT INTO discount_target (discount_id, target_type, target_id) VALUES ($1, $2, $3)
 `
 
 type AddDiscountTargetParams struct {
@@ -26,7 +26,7 @@ func (q *Queries) AddDiscountTarget(ctx context.Context, arg AddDiscountTargetPa
 }
 
 const clearCrewStations = `-- name: ClearCrewStations :exec
-DELETE FROM crew_station WHERE crew_id = ?
+DELETE FROM crew_station WHERE crew_id = $1
 `
 
 func (q *Queries) ClearCrewStations(ctx context.Context, crewID string) error {
@@ -35,7 +35,7 @@ func (q *Queries) ClearCrewStations(ctx context.Context, crewID string) error {
 }
 
 const clearDiscountTargets = `-- name: ClearDiscountTargets :exec
-DELETE FROM discount_target WHERE discount_id = ?
+DELETE FROM discount_target WHERE discount_id = $1
 `
 
 func (q *Queries) ClearDiscountTargets(ctx context.Context, discountID string) error {
@@ -58,7 +58,7 @@ const createDiscount = `-- name: CreateDiscount :exec
 
 INSERT INTO discount (id, name, kind, value, scope, trigger, days_mask, start_minute, end_minute, valid_from, valid_to,
                       min_subtotal, active, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
 `
 
 type CreateDiscountParams struct {
@@ -103,14 +103,14 @@ func (q *Queries) CreateDiscount(ctx context.Context, arg CreateDiscountParams) 
 
 const createTable = `-- name: CreateTable :exec
 
-INSERT INTO dining_table (id, number, label, qr_token, active, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)
+INSERT INTO dining_table (id, number, label, code, active, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7)
 `
 
 type CreateTableParams struct {
 	ID        string
 	Number    int64
 	Label     string
-	QrToken   string
+	Code      string
 	Active    int64
 	CreatedAt int64
 	UpdatedAt int64
@@ -122,7 +122,7 @@ func (q *Queries) CreateTable(ctx context.Context, arg CreateTableParams) error 
 		arg.ID,
 		arg.Number,
 		arg.Label,
-		arg.QrToken,
+		arg.Code,
 		arg.Active,
 		arg.CreatedAt,
 		arg.UpdatedAt,
@@ -131,7 +131,7 @@ func (q *Queries) CreateTable(ctx context.Context, arg CreateTableParams) error 
 }
 
 const deleteCrewSessions = `-- name: DeleteCrewSessions :exec
-DELETE FROM session WHERE crew_id = ?
+DELETE FROM session WHERE crew_id = $1
 `
 
 func (q *Queries) DeleteCrewSessions(ctx context.Context, crewID string) error {
@@ -140,7 +140,7 @@ func (q *Queries) DeleteCrewSessions(ctx context.Context, crewID string) error {
 }
 
 const getDiscount = `-- name: GetDiscount :one
-SELECT id, name, kind, value, scope, "trigger", days_mask, start_minute, end_minute, valid_from, valid_to, min_subtotal, active, created_at, updated_at FROM discount WHERE id = ?
+SELECT id, name, kind, value, scope, trigger, days_mask, start_minute, end_minute, valid_from, valid_to, min_subtotal, active, created_at, updated_at FROM discount WHERE id = $1
 `
 
 func (q *Queries) GetDiscount(ctx context.Context, id string) (Discount, error) {
@@ -186,7 +186,7 @@ func (q *Queries) GetPricingSetting(ctx context.Context) (PricingSetting, error)
 }
 
 const getTable = `-- name: GetTable :one
-SELECT id, number, label, qr_token, active, qr_regenerated_at, created_at, updated_at FROM dining_table WHERE id = ?
+SELECT id, number, label, code, active, created_at, updated_at FROM dining_table WHERE id = $1
 `
 
 func (q *Queries) GetTable(ctx context.Context, id string) (DiningTable, error) {
@@ -196,9 +196,8 @@ func (q *Queries) GetTable(ctx context.Context, id string) (DiningTable, error) 
 		&i.ID,
 		&i.Number,
 		&i.Label,
-		&i.QrToken,
+		&i.Code,
 		&i.Active,
-		&i.QrRegeneratedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -301,7 +300,7 @@ func (q *Queries) ListDiscountTargets(ctx context.Context) ([]DiscountTarget, er
 }
 
 const listDiscounts = `-- name: ListDiscounts :many
-SELECT id, name, kind, value, scope, "trigger", days_mask, start_minute, end_minute, valid_from, valid_to, min_subtotal, active, created_at, updated_at FROM discount ORDER BY active DESC, name
+SELECT id, name, kind, value, scope, trigger, days_mask, start_minute, end_minute, valid_from, valid_to, min_subtotal, active, created_at, updated_at FROM discount ORDER BY active DESC, name
 `
 
 func (q *Queries) ListDiscounts(ctx context.Context) ([]Discount, error) {
@@ -344,7 +343,7 @@ func (q *Queries) ListDiscounts(ctx context.Context) ([]Discount, error) {
 }
 
 const listTables = `-- name: ListTables :many
-SELECT id, number, label, qr_token, active, qr_regenerated_at, created_at, updated_at FROM dining_table ORDER BY number
+SELECT id, number, label, code, active, created_at, updated_at FROM dining_table ORDER BY number
 `
 
 func (q *Queries) ListTables(ctx context.Context) ([]DiningTable, error) {
@@ -360,9 +359,8 @@ func (q *Queries) ListTables(ctx context.Context) ([]DiningTable, error) {
 			&i.ID,
 			&i.Number,
 			&i.Label,
-			&i.QrToken,
+			&i.Code,
 			&i.Active,
-			&i.QrRegeneratedAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -379,45 +377,24 @@ func (q *Queries) ListTables(ctx context.Context) ([]DiningTable, error) {
 	return items, nil
 }
 
-const regenerateTableQR = `-- name: RegenerateTableQR :exec
-UPDATE dining_table SET qr_token = ?, qr_regenerated_at = ?, updated_at = ? WHERE id = ?
-`
-
-type RegenerateTableQRParams struct {
-	QrToken         string
-	QrRegeneratedAt sql.NullInt64
-	UpdatedAt       int64
-	ID              string
-}
-
-func (q *Queries) RegenerateTableQR(ctx context.Context, arg RegenerateTableQRParams) error {
-	_, err := q.db.ExecContext(ctx, regenerateTableQR,
-		arg.QrToken,
-		arg.QrRegeneratedAt,
-		arg.UpdatedAt,
-		arg.ID,
-	)
-	return err
-}
-
 const searchAudit = `-- name: SearchAudit :many
 
-SELECT id, at, actor_crew_id, override_crew_id, "action", entity, entity_id, before_json, after_json, reason FROM audit_log
-WHERE (?1 IS NULL OR entity = ?1)
-  AND (?2 IS NULL OR action LIKE ?2 || '%')
-  AND (?3 IS NULL OR actor_crew_id = ?3 OR override_crew_id = ?3)
-  AND (?4 IS NULL OR at >= ?4)
-  AND (?5 IS NULL OR at < ?5)
+SELECT id, at, actor_crew_id, override_crew_id, action, entity, entity_id, before_json, after_json, reason FROM audit_log
+WHERE ($1::text IS NULL OR entity = $1::text)
+  AND ($2::text IS NULL OR action LIKE $2::text || '%')
+  AND ($3::text IS NULL OR actor_crew_id = $3::text OR override_crew_id = $3::text)
+  AND ($4::bigint IS NULL OR at >= $4::bigint)
+  AND ($5::bigint IS NULL OR at < $5::bigint)
 ORDER BY at DESC
-LIMIT ?6
+LIMIT $6::bigint
 `
 
 type SearchAuditParams struct {
-	Entity       interface{}
-	ActionPrefix interface{}
-	Actor        interface{}
-	FromMs       interface{}
-	BeforeMs     interface{}
+	Entity       sql.NullString
+	ActionPrefix sql.NullString
+	Actor        sql.NullString
+	FromMs       sql.NullInt64
+	BeforeMs     sql.NullInt64
 	RowLimit     int64
 }
 
@@ -464,7 +441,7 @@ func (q *Queries) SearchAudit(ctx context.Context, arg SearchAuditParams) ([]Aud
 }
 
 const setCrewPIN = `-- name: SetCrewPIN :exec
-UPDATE crew SET pin_hash = ?, failed_attempts = 0, locked_until = NULL, updated_at = ? WHERE id = ?
+UPDATE crew SET pin_hash = $1, failed_attempts = 0, locked_until = NULL, updated_at = $2 WHERE id = $3
 `
 
 type SetCrewPINParams struct {
@@ -479,7 +456,7 @@ func (q *Queries) SetCrewPIN(ctx context.Context, arg SetCrewPINParams) error {
 }
 
 const updateCrew = `-- name: UpdateCrew :exec
-UPDATE crew SET full_name = ?, role = ?, image_key = ?, active = ?, updated_at = ? WHERE id = ?
+UPDATE crew SET full_name = $1, role = $2, image_key = $3, active = $4, updated_at = $5 WHERE id = $6
 `
 
 type UpdateCrewParams struct {
@@ -505,9 +482,9 @@ func (q *Queries) UpdateCrew(ctx context.Context, arg UpdateCrewParams) error {
 
 const updateDiscount = `-- name: UpdateDiscount :exec
 UPDATE discount
-SET name = ?, kind = ?, value = ?, scope = ?, trigger = ?, days_mask = ?, start_minute = ?, end_minute = ?,
-    valid_from = ?, valid_to = ?, min_subtotal = ?, active = ?, updated_at = ?
-WHERE id = ?
+SET name = $1, kind = $2, value = $3, scope = $4, trigger = $5, days_mask = $6, start_minute = $7, end_minute = $8,
+    valid_from = $9, valid_to = $10, min_subtotal = $11, active = $12, updated_at = $13
+WHERE id = $14
 `
 
 type UpdateDiscountParams struct {
@@ -549,8 +526,8 @@ func (q *Queries) UpdateDiscount(ctx context.Context, arg UpdateDiscountParams) 
 
 const updateOpsSetting = `-- name: UpdateOpsSetting :exec
 UPDATE ops_setting
-SET claim_renotify_seconds = ?, claim_escalate_seconds = ?, pickup_reminder_seconds = ?,
-    empty_bill_close_seconds = ?, auto_clock_out_grace_seconds = ?
+SET claim_renotify_seconds = $1, claim_escalate_seconds = $2, pickup_reminder_seconds = $3,
+    empty_bill_close_seconds = $4, auto_clock_out_grace_seconds = $5
 WHERE id = 1
 `
 
@@ -574,7 +551,7 @@ func (q *Queries) UpdateOpsSetting(ctx context.Context, arg UpdateOpsSettingPara
 }
 
 const updatePricingSetting = `-- name: UpdatePricingSetting :exec
-UPDATE pricing_setting SET service_rate_bp = ?, tax_rate_bp = ?, price_mode = ?, refund_cap = ? WHERE id = 1
+UPDATE pricing_setting SET service_rate_bp = $1, tax_rate_bp = $2, price_mode = $3, refund_cap = $4 WHERE id = 1
 `
 
 type UpdatePricingSettingParams struct {
@@ -595,11 +572,12 @@ func (q *Queries) UpdatePricingSetting(ctx context.Context, arg UpdatePricingSet
 }
 
 const updateTable = `-- name: UpdateTable :exec
-UPDATE dining_table SET number = ?, label = ?, active = ?, updated_at = ? WHERE id = ?
+UPDATE dining_table SET number = $1, code = $2, label = $3, active = $4, updated_at = $5 WHERE id = $6
 `
 
 type UpdateTableParams struct {
 	Number    int64
+	Code      string
 	Label     string
 	Active    int64
 	UpdatedAt int64
@@ -609,6 +587,7 @@ type UpdateTableParams struct {
 func (q *Queries) UpdateTable(ctx context.Context, arg UpdateTableParams) error {
 	_, err := q.db.ExecContext(ctx, updateTable,
 		arg.Number,
+		arg.Code,
 		arg.Label,
 		arg.Active,
 		arg.UpdatedAt,

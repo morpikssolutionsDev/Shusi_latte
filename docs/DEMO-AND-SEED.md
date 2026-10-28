@@ -2,7 +2,7 @@
 
 The prototype is a showcase. When it starts, every scenario from [OVERVIEW-AND-FLOWS.md](OVERVIEW-AND-FLOWS.md) should already be **live on screen**, so a presenter can walk through any flow without first creating data. This document defines the seed dataset, the time-relative scenarios, the demo helpers, and how the demo resets.
 
-Related: [BRD §11a](BRD.md#11a-prototype-and-demo) · [TRD](TRD.md) · [ADR-0005 (SQLite)](adr/0005-sqlite-for-demo.md) · [image catalogue](images/README.md)
+Related: [BRD §11a](BRD.md#11a-prototype-and-demo) · [TRD](TRD.md) · [ADR-0007 (PostgreSQL, clean start)](adr/0007-postgresql.md) · [image catalogue](images/README.md)
 
 ---
 
@@ -108,7 +108,7 @@ Crew without a suitable portrait can also use the initials avatar ([ICONOGRAPHY 
 
 | Setting | Value |
 |---|---|
-| Tables | Meja 1 – Meja 12 (Meja 12 inactive, its QR regenerated) |
+| Tables | Meja 1 – Meja 12 at `/table-01` … `/table-12` (static QR codes, ADR-0006; Meja 12 inactive) |
 | Tax (PB1) | 10 % |
 | Service charge | 5 % |
 | Price mode | Excluding tax and service |
@@ -156,7 +156,7 @@ Times are offsets from T0 (−3m = three minutes before the seed ran).
 | **Meja 8 + Meja 9** | Gilang, Nabila, Reza | **Merged** Bill (Meja 9 absorbed at −50m), **Settling** since −2m; cash Payment Rp 200.000 **Held by Waiter W002**; balance remaining | Merge, Settling blocks Customer ordering (G-04), Held by Waiter (G-20) |
 | **Meja 10** | Intan, Fikri | **Split by item** into 2 Sub-bills. Sub-bill 1 (Intan) paid by QRIS, closed, Receipts printed. Sub-bill 2 (Fikri) unpaid; its Yuzu Cheesecake **Voided** (A001, "Jatuh saat disajikan") | Split, Void only on unpaid Sub-bill (G-10, G-12: Split now blocked) |
 | **Meja 11** | Ayu | Item Cancelled by Ayu before Claim (Customer Request); Iced Hojicha **Cancelled by Kitchen, Out of Stock at −20m** (this set it Sold Out); Matcha Mille-Crêpe Cancelled by Kitchen from Confirmed (Wrong Order); Chicken Katsu Curry Preparing | Customer Cancel (G-03), Kitchen Cancel from Confirmed (G-07), Sold Out cascade origin (OP-08) |
-| **Meja 12** | — | Inactive, QR regenerated | Old QR in the launcher shows "please ask staff" |
+| **Meja 12** | — | Inactive | Its QR (`/table-12`) shows "please ask staff" |
 
 ### 6.2 Takeaway
 
@@ -230,10 +230,10 @@ About 18 closed Bills fill today's reports, including:
 Mechanics:
 
 1. The API announces `demo.resetting` on the public `demo` topic; every app shows "Menyiapkan ulang demo…" over its screen. The demo keeps running underneath; anything done now is discarded.
-2. The seed generator builds a **new** database file `data/sushi-latte.next.db` with T0 = now, and a new crypto-shredding key file `keys.next.json` beside it. It goes through the domain packages, so totals, statuses and audit entries are consistent. Image variants (WebP) are generated once and cached in `data/images/`; later resets reuse them.
-3. The swap: the API refuses new writes with `503 demo_resetting`, lets units of work in flight finish, closes its connection pools, renames `.next.db` over `sushi-latte.db` and `keys.next.json` over `keys.json`, reopens the pools and reloads the keys. Sessions live in the database, so they are gone with it.
-4. It broadcasts `demo.reset` on the `demo` topic: Staff screens return to sign-in, the Client Menu forgets every guest session and returns to the start (old QR codes no longer work), the Product Display restarts its playlist.
-5. Timing (decided 2026-10-27, measured on the reference laptop): the swap takes **under 50 ms**; the whole reset takes **about 8–10 s**, almost all of it building the 14-day history (~800 Bills played through the domain). The original "under 3 s end to end" target holds for the swap only: building ahead of time would freeze T0 and break every live timer, so the screens show the notice instead.
+2. The seed generator builds a **new** schema `app_next` in the PostgreSQL database with T0 = now, and a new crypto-shredding key file `keys.next.json` beside the live one. By default it builds the **clean start** — menu, Crew, Tables, discounts, Product Display and settings, nothing else; with the story option (`pnpm seed --story`, or "Muat cerita demo" on Reset demo) it adds everything in §5–§8. The nightly reset is always clean (decided 2026-10-28, ADR-0007). It goes through the domain packages, so totals, statuses and audit entries are consistent. Image variants (WebP) are generated once and cached in `data/images/`; later resets reuse them.
+3. The swap: the API refuses new writes with `503 demo_resetting`, lets units of work in flight finish, closes its connection pools, swaps the schemas in one transaction (`app` → `app_old`, `app_next` → `app`, drop `app_old`) and `keys.next.json` over `keys.json`, reopens the pools and reloads the keys. Sessions live in the database, so they are gone with it.
+4. It broadcasts `demo.reset` on the `demo` topic: Staff screens return to sign-in, the Client Menu forgets every guest session and returns to the start (the static QR codes keep working; the Customers on them are new), the Product Display restarts its playlist.
+5. Timing (measured on the reference laptop with PostgreSQL 18): the clean start builds in **about 1 s**, so the reset meets the "under 3 s end to end" target; with the story it takes **about 20–30 s**, almost all of it building the 14-day history (~800 Bills played through the domain), and the screens show the notice meanwhile. Building ahead of time would freeze T0 and break every live timer.
 
 ## 10. Guided demo tours
 

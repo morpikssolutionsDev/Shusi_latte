@@ -637,7 +637,7 @@ func (s *Service) PostOutage(ctx context.Context, p *auth.Principal, in OutageIn
 			return err
 		}
 		if in.TableID != "" {
-			if err := tx.Exec(ctx, "INSERT INTO bill_table (bill_id, table_id, is_open) VALUES (?, ?, 0)", billID, in.TableID); err != nil {
+			if err := tx.Exec(ctx, "INSERT INTO bill_table (bill_id, table_id, is_open) VALUES ($1, $2, 0)", billID, in.TableID); err != nil {
 				return err
 			}
 		}

@@ -8,11 +8,11 @@ export interface GuestSession {
   customerId: string;
   billId: string;
   name: string;
-  qr: string;
+  code: string;
 }
 
 const TAB_KEY = 'sl.guest';
-const deviceKey = (qr: string) => `sl.guest.${qr}`;
+const deviceKey = (code: string) => `sl.guest.${code}`;
 
 function read(storage: Storage, key: string): GuestSession | null {
   try {
@@ -37,9 +37,9 @@ const listeners = new Set<() => void>();
 const emit = () => listeners.forEach((l) => l());
 
 /** The tab's session for this Table, falling back to the device copy unless `fresh` (demo links). */
-export function resume(qr: string, fresh: boolean): GuestSession | null {
-  if (current?.qr === qr) return current;
-  const device = fresh ? null : read(localStorage, deviceKey(qr));
+export function resume(code: string, fresh: boolean): GuestSession | null {
+  if (current?.code === code) return current;
+  const device = fresh ? null : read(localStorage, deviceKey(code));
   setSession(device);
   return device;
 }
@@ -47,13 +47,13 @@ export function resume(qr: string, fresh: boolean): GuestSession | null {
 export function setSession(s: GuestSession | null) {
   current = s;
   write(sessionStorage, TAB_KEY, s);
-  if (s) write(localStorage, deviceKey(s.qr), s);
+  if (s) write(localStorage, deviceKey(s.code), s);
   emit();
 }
 
 /** Forget the session everywhere (Bill closed, or continued on another device). */
-export function clearSession(qr?: string) {
-  if (qr) write(localStorage, deviceKey(qr), null);
+export function clearSession(code?: string) {
+  if (code) write(localStorage, deviceKey(code), null);
   current = null;
   write(sessionStorage, TAB_KEY, null);
   emit();

@@ -46,10 +46,10 @@ export const menuQuery = queryOptions({
   staleTime: 30_000,
 });
 
-export const tableQuery = (qr: string) =>
+export const tableQuery = (code: string) =>
   queryOptions({
-    queryKey: ['table', qr],
-    queryFn: async () => unwrap(await api.GET('/public/tables/{qr}', { params: { path: { qr } } })),
+    queryKey: ['table', code],
+    queryFn: async () => unwrap(await api.GET('/public/tables/{code}', { params: { path: { code } } })),
     staleTime: 0,
   });
 

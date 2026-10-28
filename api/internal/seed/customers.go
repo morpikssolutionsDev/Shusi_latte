@@ -25,7 +25,7 @@ var TableScenarios = map[int64]string{
 	9:  "Digabung ke Meja 8",
 	10: "Intan & Fikri — split per item, Void",
 	11: "Ayu — batal sendiri, batal dapur (Habis)",
-	12: "Nonaktif — QR lama tidak berlaku",
+	12: "Nonaktif — QR-nya meminta tamu memanggil pelayan",
 }
 
 const m = time.Minute
@@ -40,7 +40,7 @@ func seedCustomers(ctx context.Context, db *dbx.DB, opts Options, ids catalogIDs
 	}
 	qr, tableIDs := map[int64]string{}, map[int64]string{}
 	for _, t := range tables {
-		qr[t.Number], tableIDs[t.Number] = t.QRToken, t.ID
+		qr[t.Number], tableIDs[t.Number] = t.Code, t.ID
 	}
 	base := ordering.NewService(db, fixedClock{opts.T0}, opts.Vault)
 	s := &liveSeeder{ctx: ctx, db: db, t0: opts.T0, base: base, ids: ids, qr: qr, tableIDs: tableIDs, crewIDs: crew}

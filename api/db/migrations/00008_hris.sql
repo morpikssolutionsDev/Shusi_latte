@@ -9,16 +9,16 @@ CREATE TABLE employee (
     joined_on         TEXT,          -- YYYY-MM-DD
     emergency_contact TEXT NOT NULL DEFAULT '',
     notes             TEXT NOT NULL DEFAULT '',
-    updated_at        INTEGER NOT NULL
+    updated_at        BIGINT NOT NULL
 );
 
 CREATE TABLE shift (
     id         TEXT PRIMARY KEY,
     crew_id    TEXT NOT NULL REFERENCES crew (id),
-    starts_at  INTEGER NOT NULL,
-    ends_at    INTEGER NOT NULL CHECK (ends_at > starts_at),
+    starts_at  BIGINT NOT NULL,
+    ends_at    BIGINT NOT NULL CHECK (ends_at > starts_at),
     created_by TEXT NOT NULL REFERENCES crew (id),
-    created_at INTEGER NOT NULL
+    created_at BIGINT NOT NULL
 );
 CREATE INDEX shift_crew_start ON shift (crew_id, starts_at);
 CREATE INDEX shift_start ON shift (starts_at);
@@ -28,11 +28,11 @@ CREATE TABLE attendance (
     id                TEXT PRIMARY KEY,
     crew_id           TEXT NOT NULL REFERENCES crew (id),
     shift_id          TEXT REFERENCES shift (id),
-    clock_in_at       INTEGER NOT NULL,
-    clock_out_at      INTEGER,
-    auto_clocked_out  INTEGER NOT NULL DEFAULT 0, -- BR-HR-06
+    clock_in_at       BIGINT NOT NULL,
+    clock_out_at      BIGINT,
+    auto_clocked_out  BIGINT NOT NULL DEFAULT 0, -- BR-HR-06
     corrected_by      TEXT REFERENCES crew (id),
-    corrected_at      INTEGER,
+    corrected_at      BIGINT,
     correction_reason TEXT
 );
 CREATE UNIQUE INDEX attendance_one_open ON attendance (crew_id) WHERE clock_out_at IS NULL;
@@ -47,9 +47,9 @@ CREATE TABLE leave_request (
     reason          TEXT NOT NULL DEFAULT '',
     status          TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
     decided_by      TEXT REFERENCES crew (id),
-    decided_at      INTEGER,
+    decided_at      BIGINT,
     decision_reason TEXT,
-    created_at      INTEGER NOT NULL
+    created_at      BIGINT NOT NULL
 );
 CREATE INDEX leave_request_dates ON leave_request (from_date, to_date);
 

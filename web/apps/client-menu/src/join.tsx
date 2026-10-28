@@ -14,22 +14,22 @@ import { LanguageToggle } from './shell';
 
 type GuestSession = { token: string; customerId: string; billId: string; name: string; firstScan: boolean };
 
-export function JoinFlow({ qr, onJoined }: { qr: string; onJoined: (firstScan: boolean) => void }) {
+export function JoinFlow({ code, onJoined }: { code: string; onJoined: (firstScan: boolean) => void }) {
   const { t } = useTranslation();
-  const table = useQuery(tableQuery(qr));
+  const table = useQuery(tableQuery(code));
   const [step, setStep] = useState<'prompt' | 'form' | 'not-mine'>('prompt');
 
   const done = (s: GuestSession) => {
-    setSession({ token: s.token, customerId: s.customerId, billId: s.billId, name: s.name, qr });
+    setSession({ token: s.token, customerId: s.customerId, billId: s.billId, name: s.name, code });
     onJoined(s.firstScan);
   };
   const rejoin = useMutation({
     mutationFn: async (customerId: string) =>
-      unwrap(await api.POST('/public/tables/{qr}/rejoin', { params: { path: { qr } }, body: { customerId } })),
+      unwrap(await api.POST('/public/tables/{code}/rejoin', { params: { path: { code } }, body: { customerId } })),
     onSuccess: done,
   });
   const notMine = useMutation({
-    mutationFn: async () => unwrap(await api.POST('/public/tables/{qr}/not-mine', { params: { path: { qr } } })),
+    mutationFn: async () => unwrap(await api.POST('/public/tables/{code}/not-mine', { params: { path: { code } } })),
     onSuccess: () => setStep('not-mine'),
   });
 
@@ -43,7 +43,7 @@ export function JoinFlow({ qr, onJoined }: { qr: string; onJoined: (firstScan: b
   const occupied = table.data.state === 'occupied' && step === 'prompt';
   return (
     <>
-      <NameForm qr={qr} tableLabel={label} onJoined={done} />
+      <NameForm code={code} tableLabel={label} onJoined={done} />
       {/* BR-CM-12: plain sheet, no decoration (M12, CONTENT.md rule 6). */}
       <BottomSheet open={occupied} onClose={() => setStep('form')} title={label}>
         <p className="mb-4 text-base">
@@ -64,7 +64,7 @@ export function JoinFlow({ qr, onJoined }: { qr: string; onJoined: (firstScan: b
   );
 }
 
-function NameForm({ qr, tableLabel, onJoined }: { qr: string; tableLabel: string; onJoined: (s: GuestSession) => void }) {
+function NameForm({ code, tableLabel, onJoined }: { code: string; tableLabel: string; onJoined: (s: GuestSession) => void }) {
   const { t } = useTranslation();
   const { of } = useName();
   const menu = useQuery(menuQuery);
@@ -78,8 +78,8 @@ function NameForm({ qr, tableLabel, onJoined }: { qr: string; tableLabel: string
   const wantsDietary = tags.length > 0 || note.trim() !== '';
   const join = useMutation({
     mutationFn: async () =>
-      unwrap(await api.POST('/public/tables/{qr}/join', {
-        params: { path: { qr } },
+      unwrap(await api.POST('/public/tables/{code}/join', {
+        params: { path: { code } },
         headers: { 'Idempotency-Key': key },
         body: { name, restrictionTagIds: tags, dietaryNote: note, consent },
       })),

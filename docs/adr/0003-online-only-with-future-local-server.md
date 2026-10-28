@@ -4,7 +4,7 @@ status: accepted
 
 # Online-only for the current version; local outlet server recorded as future architecture
 
-> **Demo note:** the prototype runs on a single local host with SQLite ([ADR-0005](0005-sqlite-for-demo.md)), so in the demo "online" means "on the host's local network". This ADR still describes the intended real deployment.
+> **Demo note:** the prototype runs on a single local host with PostgreSQL ([ADR-0007](0007-postgresql.md)), so in the demo "online" means "on the host's local network". This ADR still describes the intended real deployment.
 
 The current version runs entirely from one cloud deployment, and every Module except Receipt printing requires internet. During an outage, staff fall back to paper order notes. We chose this because it is the simplest design to build and operate for one outlet, and the Client Menu must be in the cloud anyway, since Customers reach it from their phones over mobile data.
 

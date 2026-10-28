@@ -44,7 +44,7 @@ flowchart LR
 
 ## 2. System at a glance
 
-One Business, one outlet, one host machine on the local network (SQLite), with printing done device-to-printer ([ADR-0001](adr/0001-single-business-single-outlet.md), [ADR-0003](adr/0003-online-only-with-future-local-server.md)). Every Module reads the same **Product catalog** and works on the same **Bills**. All cash ends up in one **Cash Drawer**.
+One Business, one outlet, one host machine on the local network (PostgreSQL), with printing done device-to-printer ([ADR-0001](adr/0001-single-business-single-outlet.md), [ADR-0003](adr/0003-online-only-with-future-local-server.md)). Every Module reads the same **Product catalog** and works on the same **Bills**. All cash ends up in one **Cash Drawer**.
 
 ```mermaid
 flowchart TB
@@ -113,8 +113,8 @@ Rules: BR-CM-01, BR-CM-02, BR-CM-12, BR-CM-13, BR-R-01, BR-R-26, BR-P-02, BR-P-0
 
 ```mermaid
 flowchart TD
-  A([Person scans Table QR]) --> C{"QR token valid<br/>and Table active?"}
-  C -->|No| C1["Show 'please ask staff'<br/>(QR regenerated or Table inactive)"]
+  A(["Person scans Table QR<br/>(opens /table-NN)"]) --> C{"Table exists<br/>and is active?"}
+  C -->|No| C1["Show 'please ask staff'<br/>(unknown code or Table inactive)"]
   C -->|Yes| D{"Table has an<br/>open Bill?"}
   D -->|No| F[Open new Bill for this Table]
   F --> G[Enter full name — required]
@@ -648,7 +648,7 @@ stateDiagram-v2
 sequenceDiagram
   participant D as Device
   participant API as Go API
-  participant DB as SQLite
+  participant DB as PostgreSQL
   D->>API: POST /auth/login (crew_id, pin)
   API->>DB: load crew row
   alt locked_until in the future
@@ -669,9 +669,9 @@ sequenceDiagram
   participant C as Client Menu (new device)
   participant O as Old device
   participant API as Go API
-  participant DB as SQLite
+  participant DB as PostgreSQL
   participant HUB as WebSocket hub
-  C->>API: GET /public/tables/{qr_token}
+  C->>API: GET /public/tables/{code}
   API->>DB: find open Bill for Table
   alt no open Bill
     API-->>C: free
@@ -706,11 +706,11 @@ sequenceDiagram
 sequenceDiagram
   participant C as Client Menu
   participant API as Go API
-  participant DB as SQLite
+  participant DB as PostgreSQL
   participant HUB as WebSocket hub
   participant W as Waiter devices
   C->>API: POST /public/orders (Idempotency-Key)
-  API->>DB: BEGIN IMMEDIATE
+  API->>DB: BEGIN (single write connection)
   API->>DB: verify Bill open and not settling
   API->>DB: verify Products Active, Variants not Sold Out
   API->>DB: INSERT orders (Pending), order_items with snapshots
@@ -731,7 +731,7 @@ sequenceDiagram
   participant W2 as Waiter B
   participant J as Escalation job
   participant API as Go API
-  participant DB as SQLite
+  participant DB as PostgreSQL
   participant HUB as WebSocket hub
   J->>DB: Orders unclaimed past 2 min / 5 min
   J->>HUB: publish waiters (re-notify) or outlet-admin (escalate)
@@ -758,7 +758,7 @@ sequenceDiagram
 sequenceDiagram
   participant W as Waiter
   participant API as Go API
-  participant DB as SQLite
+  participant DB as PostgreSQL
   participant HUB as WebSocket hub
   participant K as Prep Area display
   participant C as Client Menu
@@ -781,10 +781,10 @@ sequenceDiagram
 sequenceDiagram
   participant K as Kitchen or Waiter
   participant API as Go API
-  participant DB as SQLite
+  participant DB as PostgreSQL
   participant HUB as WebSocket hub
   K->>API: POST /order-items/{id}/cancel (reason out_of_stock)
-  API->>DB: BEGIN IMMEDIATE
+  API->>DB: BEGIN (single write connection)
   API->>DB: item → Cancelled (guarded by role and status)
   API->>DB: variant.sold_out = true, source cancel_out_of_stock
   API->>DB: flag open Pending/Confirmed items with same Variant
@@ -801,7 +801,7 @@ sequenceDiagram
   participant S as Staff device
   participant A as Approver (on same device)
   participant API as Go API
-  participant DB as SQLite
+  participant DB as PostgreSQL
   S->>A: hand device for approval
   A->>API: POST /auth/override (approver PIN, action)
   API->>DB: verify approver role allows action (and Refund cap)
@@ -817,7 +817,7 @@ sequenceDiagram
 sequenceDiagram
   participant S as Waiter/Cashier PWA
   participant API as Go API
-  participant DB as SQLite
+  participant DB as PostgreSQL
   participant P as Bluetooth printer
   S->>API: POST /bills/{id}/settle
   API->>DB: status → settling
@@ -847,7 +847,7 @@ sequenceDiagram
   participant W as Waiter
   participant C as Cashier
   participant API as Go API
-  participant DB as SQLite
+  participant DB as PostgreSQL
   C->>API: POST /drawer-sessions (opening_float)
   API->>DB: INSERT drawer_session
   W->>C: hands over cash

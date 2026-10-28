@@ -136,6 +136,12 @@ type CustomerEntry struct {
 	RejoinedAt         sql.NullInt64
 }
 
+type DemoSeed struct {
+	ID    int64
+	Story int64
+	T0    int64
+}
+
 type DietaryTag struct {
 	ID     string
 	Code   string
@@ -147,14 +153,13 @@ type DietaryTag struct {
 }
 
 type DiningTable struct {
-	ID              string
-	Number          int64
-	Label           string
-	QrToken         string
-	Active          int64
-	QrRegeneratedAt sql.NullInt64
-	CreatedAt       int64
-	UpdatedAt       int64
+	ID        string
+	Number    int64
+	Label     string
+	Code      string
+	Active    int64
+	CreatedAt int64
+	UpdatedAt int64
 }
 
 type Discount struct {

@@ -44,7 +44,7 @@ func run(cfg config.Config, log *slog.Logger) error {
 		return err
 	}
 	bus := realtime.NewBus()
-	db, err := dbx.Open(ctx, cfg.DatabasePath(), bus)
+	db, err := dbx.Open(ctx, cfg.DatabaseURL, dbx.LiveSchema, bus)
 	if err != nil {
 		return err
 	}
@@ -77,7 +77,7 @@ func run(cfg config.Config, log *slog.Logger) error {
 	reset := &demo.Resetter{Config: cfg, DB: db, Vault: keys, Log: log}
 	if cfg.DemoMode {
 		// The demo starts over every night with T0 = 03.00 (DEMO-AND-SEED §9).
-		all = append(all, jobs.DailyAt("demo.reset", 3, 0, func(ctx context.Context) error { return reset.Reset(ctx, "nightly") }))
+		all = append(all, jobs.DailyAt("demo.reset", 3, 0, func(ctx context.Context) error { return reset.Reset(ctx, "nightly", false) }))
 	}
 	sched := jobs.NewScheduler(log, all...)
 	sched.Start(ctx)

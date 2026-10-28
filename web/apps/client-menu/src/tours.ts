@@ -102,10 +102,10 @@ export const TOURS: Tour[] = [
 ];
 
 /** Where a screen link goes: staff paths open the Staff app, Tables a fresh Customer tab. */
-export function screenUrl(to: Screen['to'], qrOf: (n: number) => string | undefined, staffBase: string) {
+export function screenUrl(to: Screen['to'], codeOf: (n: number) => string | undefined, staffBase: string) {
   if (typeof to === 'object') {
-    const qr = qrOf(to.table);
-    return qr ? `/t/${qr}?fresh=1` : undefined;
+    const code = codeOf(to.table);
+    return code ? `/${code}?fresh=1` : undefined;
   }
   return `${staffBase.replace(/\/$/, '')}${to.slice('staff:'.length)}`;
 }

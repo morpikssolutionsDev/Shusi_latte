@@ -2,6 +2,7 @@ package catalog_test
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"testing"
 	"time"
@@ -105,7 +106,7 @@ func TestSaveProductArchivesRemovedChildrenAndAuditsPrice(t *testing.T) {
 	if err != nil || !v.ArchivedAt.Valid {
 		t.Fatalf("variant should be archived, not deleted: %+v %v", v, err)
 	}
-	rows, _ := f.db.Read().SearchAudit(ctx, store.SearchAuditParams{ActionPrefix: "variant.price_changed", RowLimit: 10})
+	rows, _ := f.db.Read().SearchAudit(ctx, store.SearchAuditParams{ActionPrefix: sql.NullString{String: "variant.price_changed", Valid: true}, RowLimit: 10})
 	if len(rows) != 1 || rows[0].BeforeJson.String != "48000" || rows[0].AfterJson.String != "50000" {
 		t.Fatalf("price change not audited: %+v", rows)
 	}
@@ -135,7 +136,7 @@ func TestSoldOutAndReenable(t *testing.T) {
 	if got.SoldOut() || !got.Orderable() {
 		t.Fatalf("re-enabled product should be orderable: %+v", got)
 	}
-	rows, _ := f.db.Read().SearchAudit(ctx, store.SearchAuditParams{ActionPrefix: "variant.sold_out.reenabled", RowLimit: 10})
+	rows, _ := f.db.Read().SearchAudit(ctx, store.SearchAuditParams{ActionPrefix: sql.NullString{String: "variant.sold_out.reenabled", Valid: true}, RowLimit: 10})
 	if len(rows) != 1 {
 		t.Fatalf("re-enable not audited: %d rows", len(rows))
 	}

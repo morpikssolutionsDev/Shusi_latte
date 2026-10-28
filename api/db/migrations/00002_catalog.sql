@@ -6,8 +6,8 @@ CREATE TABLE prep_area (
     code              TEXT NOT NULL UNIQUE,
     name_id           TEXT NOT NULL,
     name_en           TEXT NOT NULL,
-    parallel_capacity INTEGER NOT NULL DEFAULT 1 CHECK (parallel_capacity >= 1),
-    sort              INTEGER NOT NULL DEFAULT 0
+    parallel_capacity BIGINT NOT NULL DEFAULT 1 CHECK (parallel_capacity >= 1),
+    sort              BIGINT NOT NULL DEFAULT 0
 );
 
 CREATE TABLE category (
@@ -15,10 +15,10 @@ CREATE TABLE category (
     name_id      TEXT NOT NULL,
     name_en      TEXT NOT NULL,
     prep_area_id TEXT NOT NULL REFERENCES prep_area (id),
-    sort         INTEGER NOT NULL DEFAULT 0,
-    active       INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0, 1)),
-    created_at   INTEGER NOT NULL,
-    updated_at   INTEGER NOT NULL
+    sort         BIGINT NOT NULL DEFAULT 0,
+    active       BIGINT NOT NULL DEFAULT 1 CHECK (active IN (0, 1)),
+    created_at   BIGINT NOT NULL,
+    updated_at   BIGINT NOT NULL
 );
 
 CREATE TABLE product (
@@ -29,13 +29,13 @@ CREATE TABLE product (
     description_id    TEXT NOT NULL DEFAULT '',
     description_en    TEXT NOT NULL DEFAULT '',
     image_key         TEXT,
-    image_focus_x     INTEGER NOT NULL DEFAULT 50 CHECK (image_focus_x BETWEEN 0 AND 100),
-    image_focus_y     INTEGER NOT NULL DEFAULT 50 CHECK (image_focus_y BETWEEN 0 AND 100),
-    prep_time_seconds INTEGER NOT NULL CHECK (prep_time_seconds > 0),
+    image_focus_x     BIGINT NOT NULL DEFAULT 50 CHECK (image_focus_x BETWEEN 0 AND 100),
+    image_focus_y     BIGINT NOT NULL DEFAULT 50 CHECK (image_focus_y BETWEEN 0 AND 100),
+    prep_time_seconds BIGINT NOT NULL CHECK (prep_time_seconds > 0),
     status            TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'hidden', 'archived')),
-    sort              INTEGER NOT NULL DEFAULT 0,
-    created_at        INTEGER NOT NULL,
-    updated_at        INTEGER NOT NULL
+    sort              BIGINT NOT NULL DEFAULT 0,
+    created_at        BIGINT NOT NULL,
+    updated_at        BIGINT NOT NULL
 );
 CREATE INDEX product_category ON product (category_id, sort);
 
@@ -45,14 +45,14 @@ CREATE TABLE variant (
     product_id      TEXT NOT NULL REFERENCES product (id),
     name_id         TEXT NOT NULL,
     name_en         TEXT NOT NULL,
-    price           INTEGER NOT NULL CHECK (price >= 0),
-    is_default      INTEGER NOT NULL DEFAULT 0 CHECK (is_default IN (0, 1)),
-    sort            INTEGER NOT NULL DEFAULT 0,
-    sold_out        INTEGER NOT NULL DEFAULT 0 CHECK (sold_out IN (0, 1)),
-    sold_out_at     INTEGER,
+    price           BIGINT NOT NULL CHECK (price >= 0),
+    is_default      BIGINT NOT NULL DEFAULT 0 CHECK (is_default IN (0, 1)),
+    sort            BIGINT NOT NULL DEFAULT 0,
+    sold_out        BIGINT NOT NULL DEFAULT 0 CHECK (sold_out IN (0, 1)),
+    sold_out_at     BIGINT,
     sold_out_by     TEXT REFERENCES crew (id),
     sold_out_source TEXT CHECK (sold_out_source IN ('manual', 'cancel_out_of_stock')),
-    archived_at     INTEGER
+    archived_at     BIGINT
 );
 CREATE INDEX variant_product ON variant (product_id, sort);
 
@@ -61,10 +61,10 @@ CREATE TABLE modifier_group (
     product_id  TEXT NOT NULL REFERENCES product (id),
     name_id     TEXT NOT NULL,
     name_en     TEXT NOT NULL,
-    min_select  INTEGER NOT NULL DEFAULT 0 CHECK (min_select >= 0),
-    max_select  INTEGER NOT NULL DEFAULT 1 CHECK (max_select >= 1),
-    sort        INTEGER NOT NULL DEFAULT 0,
-    archived_at INTEGER,
+    min_select  BIGINT NOT NULL DEFAULT 0 CHECK (min_select >= 0),
+    max_select  BIGINT NOT NULL DEFAULT 1 CHECK (max_select >= 1),
+    sort        BIGINT NOT NULL DEFAULT 0,
+    archived_at BIGINT,
     CHECK (min_select <= max_select)
 );
 CREATE INDEX modifier_group_product ON modifier_group (product_id, sort);
@@ -74,9 +74,9 @@ CREATE TABLE modifier (
     modifier_group_id TEXT NOT NULL REFERENCES modifier_group (id),
     name_id           TEXT NOT NULL,
     name_en           TEXT NOT NULL,
-    price             INTEGER NOT NULL DEFAULT 0 CHECK (price >= 0),
-    sort              INTEGER NOT NULL DEFAULT 0,
-    archived_at       INTEGER
+    price             BIGINT NOT NULL DEFAULT 0 CHECK (price >= 0),
+    sort              BIGINT NOT NULL DEFAULT 0,
+    archived_at       BIGINT
 );
 CREATE INDEX modifier_group_sort ON modifier (modifier_group_id, sort);
 
@@ -86,8 +86,8 @@ CREATE TABLE dietary_tag (
     name_id TEXT NOT NULL,
     name_en TEXT NOT NULL,
     icon    TEXT NOT NULL DEFAULT '',
-    sort    INTEGER NOT NULL DEFAULT 0,
-    active  INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0, 1))
+    sort    BIGINT NOT NULL DEFAULT 0,
+    active  BIGINT NOT NULL DEFAULT 1 CHECK (active IN (0, 1))
 );
 
 CREATE TABLE product_dietary_tag (
@@ -104,11 +104,11 @@ CREATE TABLE modifier_dietary_tag (
 
 -- Tax, service charge, price mode and Refund cap (BR-ADM-04, BR-ADM-06). Rates are basis points.
 CREATE TABLE pricing_setting (
-    id              INTEGER PRIMARY KEY CHECK (id = 1),
-    service_rate_bp INTEGER NOT NULL DEFAULT 500 CHECK (service_rate_bp BETWEEN 0 AND 10000),
-    tax_rate_bp     INTEGER NOT NULL DEFAULT 1000 CHECK (tax_rate_bp BETWEEN 0 AND 10000),
+    id              BIGINT PRIMARY KEY CHECK (id = 1),
+    service_rate_bp BIGINT NOT NULL DEFAULT 500 CHECK (service_rate_bp BETWEEN 0 AND 10000),
+    tax_rate_bp     BIGINT NOT NULL DEFAULT 1000 CHECK (tax_rate_bp BETWEEN 0 AND 10000),
     price_mode      TEXT NOT NULL DEFAULT 'exclusive' CHECK (price_mode IN ('exclusive', 'inclusive')),
-    refund_cap      INTEGER NOT NULL DEFAULT 500000 CHECK (refund_cap >= 0)
+    refund_cap      BIGINT NOT NULL DEFAULT 500000 CHECK (refund_cap >= 0)
 );
 INSERT INTO pricing_setting (id) VALUES (1);
 
@@ -119,18 +119,18 @@ CREATE TABLE discount (
     id           TEXT PRIMARY KEY,
     name         TEXT NOT NULL,
     kind         TEXT NOT NULL CHECK (kind IN ('percent', 'nominal')),
-    value        INTEGER NOT NULL CHECK (value > 0),
+    value        BIGINT NOT NULL CHECK (value > 0),
     scope        TEXT NOT NULL CHECK (scope IN ('item', 'bill')),
     trigger      TEXT NOT NULL CHECK (trigger IN ('auto', 'manual')),
-    days_mask    INTEGER NOT NULL DEFAULT 127 CHECK (days_mask BETWEEN 1 AND 127),
-    start_minute INTEGER CHECK (start_minute BETWEEN 0 AND 1439),
-    end_minute   INTEGER CHECK (end_minute BETWEEN 0 AND 1440),
-    valid_from   INTEGER,
-    valid_to     INTEGER,
-    min_subtotal INTEGER CHECK (min_subtotal >= 0),
-    active       INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0, 1)),
-    created_at   INTEGER NOT NULL,
-    updated_at   INTEGER NOT NULL,
+    days_mask    BIGINT NOT NULL DEFAULT 127 CHECK (days_mask BETWEEN 1 AND 127),
+    start_minute BIGINT CHECK (start_minute BETWEEN 0 AND 1439),
+    end_minute   BIGINT CHECK (end_minute BETWEEN 0 AND 1440),
+    valid_from   BIGINT,
+    valid_to     BIGINT,
+    min_subtotal BIGINT CHECK (min_subtotal >= 0),
+    active       BIGINT NOT NULL DEFAULT 1 CHECK (active IN (0, 1)),
+    created_at   BIGINT NOT NULL,
+    updated_at   BIGINT NOT NULL,
     CHECK (kind = 'nominal' OR value <= 10000)
 );
 
@@ -144,13 +144,13 @@ CREATE TABLE discount_target (
 
 CREATE TABLE dining_table (
     id                TEXT PRIMARY KEY,
-    number            INTEGER NOT NULL UNIQUE CHECK (number > 0),
+    number            BIGINT NOT NULL UNIQUE CHECK (number > 0),
     label             TEXT NOT NULL,
     qr_token          TEXT NOT NULL UNIQUE,
-    active            INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0, 1)),
-    qr_regenerated_at INTEGER,
-    created_at        INTEGER NOT NULL,
-    updated_at        INTEGER NOT NULL
+    active            BIGINT NOT NULL DEFAULT 1 CHECK (active IN (0, 1)),
+    qr_regenerated_at BIGINT,
+    created_at        BIGINT NOT NULL,
+    updated_at        BIGINT NOT NULL
 );
 
 -- +goose Down

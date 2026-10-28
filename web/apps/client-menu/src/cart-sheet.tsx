@@ -55,7 +55,7 @@ export function CartBar({ onOpen }: { onOpen: () => void }) {
   );
 }
 
-export function CartSheet({ open, onClose, qr, menu, me }: { open: boolean; onClose: () => void; qr: string; menu: Menu; me: CustomerView }) {
+export function CartSheet({ open, onClose, code, menu, me }: { open: boolean; onClose: () => void; code: string; menu: Menu; me: CustomerView }) {
   const { t } = useTranslation();
   const { of } = useName();
   const qc = useQueryClient();
@@ -192,7 +192,7 @@ export function CartSheet({ open, onClose, qr, menu, me }: { open: boolean; onCl
           </ul>
         )}
       </BottomSheet>
-      <SentCelebration open={sent} onDone={() => { setSent(false); void navigate({ to: '/t/$qr/orders', params: { qr } }); }} />
+      <SentCelebration open={sent} onDone={() => { setSent(false); void navigate({ to: '/$code/orders', params: { code } }); }} />
     </>
   );
 }

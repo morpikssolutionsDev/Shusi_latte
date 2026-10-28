@@ -123,7 +123,7 @@ func (s *Service) Create(ctx context.Context, actor string, in Input) (Member, e
 		id, err = auth.CreateCrew(ctx, tx, s.clock.Now(), auth.NewCrew{CrewID: in.CrewID, FullName: in.FullName, Role: in.Role,
 			Stations: in.Stations, PIN: in.PIN, ImageKey: in.ImageKey})
 		if err != nil {
-			if strings.Contains(err.Error(), "UNIQUE") {
+			if dbx.IsUniqueViolation(err) {
 				return invalid("Crew ID sudah dipakai")
 			}
 			return err

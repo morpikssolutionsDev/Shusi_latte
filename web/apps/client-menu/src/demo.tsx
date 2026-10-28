@@ -16,6 +16,7 @@ const displayUrl = import.meta.env.VITE_DISPLAY_URL ?? '/display/';
 export function DemoLauncher() {
   const { t } = useTranslation();
   const tables = useQuery({ queryKey: ['demo-tables'], queryFn: async () => unwrap(await api.GET('/demo/tables')) });
+  const state = useQuery({ queryKey: ['demo-state'], queryFn: async () => unwrap(await api.GET('/demo/state')) });
   return (
     <main className="mx-auto max-w-5xl px-4 py-8">
       <header className="flex flex-wrap items-center gap-4">
@@ -36,17 +37,22 @@ export function DemoLauncher() {
           {t('demo.display')}
         </a>
       </nav>
-      <Tours qrOf={(n) => tables.data?.find((tb) => tb.number === n)?.qrToken} />
+      {state.data?.story ? (
+        <Tours codeOf={(n) => tables.data?.find((tb) => tb.number === n)?.code} />
+      ) : (
+        state.data && <p className="mt-8 rounded-[20px] bg-sunken p-4 text-sm text-text-secondary" data-testid="clean-start">{t('demo.cleanStart')}</p>
+      )}
       <h2 className="mt-8 font-display text-xl font-bold">{t('demo.tables')}</h2>
       <ul className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {tables.data?.map((tb) => (
           <li key={tb.number} className={cn('flex gap-4 rounded-[20px] bg-card p-4 shadow-[var(--sl-product-card-shadow)]', !tb.active && 'border border-dashed border-border')} data-table={tb.number}>
-            <Qr value={`${location.origin}/t/${tb.qrToken}`} />
+            <Qr value={`${location.origin}/${tb.code}`} />
             <div className="flex min-w-0 flex-1 flex-col gap-2">
               <h2 className="font-display text-lg font-bold">{tb.label}{!tb.active && <span className="ml-2 text-xs font-semibold text-text-secondary">{t('demo.inactive')}</span>}</h2>
-              <p className="text-xs text-text-secondary">{tb.scenario}</p>
+              <p className="font-mono text-xs">/{tb.code}</p>
+              {tb.scenario && <p className="text-xs text-text-secondary">{tb.scenario}</p>}
               <a
-                href={`/t/${tb.qrToken}?fresh=1`}
+                href={`/${tb.code}?fresh=1`}
                 target="_blank"
                 rel="noreferrer"
                 className="mt-auto inline-flex h-10 items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-primary px-3 text-[13px] font-semibold text-primary-foreground"
@@ -62,7 +68,7 @@ export function DemoLauncher() {
   );
 }
 
-function Tours({ qrOf }: { qrOf: (n: number) => string | undefined }) {
+function Tours({ codeOf }: { codeOf: (n: number) => string | undefined }) {
   const { t, i18n } = useTranslation();
   const lang = i18n.language.startsWith('en') ? 'en' : 'id';
   return (
@@ -83,7 +89,7 @@ function Tours({ qrOf }: { qrOf: (n: number) => string | undefined }) {
               </summary>
               <div className="mt-3 flex flex-wrap gap-2">
                 {tour.screens.map((s) => {
-                  const href = screenUrl(s.to, qrOf, staffUrl);
+                  const href = screenUrl(s.to, codeOf, staffUrl);
                   return href ? (
                     <a key={s.label.en} href={href} target="_blank" rel="noreferrer"
                       className="inline-flex h-9 items-center gap-1.5 rounded-full bg-sunken px-3 text-xs font-semibold">

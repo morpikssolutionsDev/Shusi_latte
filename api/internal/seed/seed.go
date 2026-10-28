@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"sushilatte/api/internal/auth"
+	"sushilatte/api/internal/catalog"
 	"sushilatte/api/internal/config"
 	"sushilatte/api/internal/dbx"
 	"sushilatte/api/internal/media"
@@ -60,21 +61,26 @@ const lockedOutCrew = "W005"
 
 // Options locate the seed's inputs and outputs.
 type Options struct {
-	DBPath    string    // database file to create
-	ImagesDir string    // served images (data/images); processed variants are cached here
-	AssetsDir string    // demo photos (docs/images)
-	T0        time.Time // anchor for every live timestamp
+	DatabaseURL string    // the PostgreSQL database (POSTGRE_URL)
+	Schema      string    // schema to build into; it is dropped and recreated
+	ImagesDir   string    // served images (data/images); processed variants are cached here
+	AssetsDir   string    // demo photos (docs/images)
+	T0          time.Time // anchor for every live timestamp
 	// Vault encrypts seeded Customer data. Its key file is built next to the database and
 	// installed with it, so a reset also rotates the data keys (DEMO-AND-SEED §9).
 	Vault *vault.Vault
+	// Story adds the scripted demo: busy Tables, Takeaways, today's and 14 days of Bills, the
+	// Cash Drawer, HRIS records and the W005 lockout. Without it the demo starts clean: menu,
+	// Crew, Tables, discounts, Product Display and settings only.
+	Story bool
 }
 
-// Build creates a fresh demo database, anchored at opts.T0.
+// Build creates a fresh demo database in opts.Schema, anchored at opts.T0.
 func Build(ctx context.Context, opts Options) error {
-	if err := removeDatabase(opts.DBPath); err != nil {
+	if err := dbx.DropSchema(ctx, opts.DatabaseURL, opts.Schema); err != nil {
 		return err
 	}
-	db, err := dbx.Open(ctx, opts.DBPath, nil)
+	db, err := dbx.OpenBuild(ctx, opts.DatabaseURL, opts.Schema)
 	if err != nil {
 		return err
 	}
@@ -94,16 +100,37 @@ func Build(ctx context.Context, opts Options) error {
 	if err := seedDisplay(ctx, db, opts, crewIDs["M001"], ids); err != nil {
 		return err
 	}
-	if err := seedHRIS(ctx, db, opts, crewIDs); err != nil {
+	if opts.Story {
+		if err := seedHRIS(ctx, db, opts, crewIDs); err != nil {
+			return err
+		}
+		if err := seedCustomers(ctx, db, opts, ids, crewIDs); err != nil {
+			return err
+		}
+		if err := lockOut(ctx, db, opts, crewIDs[lockedOutCrew]); err != nil {
+			return err
+		}
+	} else if err := retire(ctx, db, opts, crewIDs["M001"], ids.products["ebi-tempura"]); err != nil {
 		return err
 	}
-	if err := seedCustomers(ctx, db, opts, ids, crewIDs); err != nil {
-		return err
+	return db.Write(ctx, func(tx *dbx.Tx) error {
+		return tx.SetDemoSeed(ctx, store.SetDemoSeedParams{Story: boolInt(opts.Story), T0: platform.Millis(opts.T0)})
+	})
+}
+
+// retire archives the Ebi Tempura Roll, which the story's history does a week back: it is a
+// retired Product in every demo (DEMO-AND-SEED §7).
+func retire(ctx context.Context, db *dbx.DB, opts Options, managementID string, p catalog.Product) error {
+	p.Status = catalog.StatusArchived
+	_, err := catalog.NewService(db, fixedClock{opts.T0}).SaveProduct(ctx, managementID, p)
+	return err
+}
+
+func boolInt(b bool) int64 {
+	if b {
+		return 1
 	}
-	if err := lockOut(ctx, db, opts, crewIDs[lockedOutCrew]); err != nil {
-		return err
-	}
-	return db.Checkpoint(ctx)
+	return 0
 }
 
 // lockOut shows the PIN lockout on W005 until T0 +15m (DEMO-AND-SEED §4). It comes last: a
@@ -148,43 +175,19 @@ func seedCrew(ctx context.Context, db *dbx.DB, opts Options) (map[string]string,
 	return ids, err
 }
 
-// Install replaces the live database and key file with freshly built ones. The API must not
-// hold the live file open (stop the server, or use the in-app reset once it exists).
-func Install(next, live, nextKeys, liveKeys string) error {
-	if err := removeDatabase(live); err != nil {
-		return fmt.Errorf("remove live database (is the API still running?): %w", err)
-	}
-	for _, suffix := range []string{"-wal", "-shm"} {
-		_ = os.Remove(next + suffix)
-	}
-	if err := os.Rename(next, live); err != nil {
-		return err
-	}
-	if _, err := os.Stat(nextKeys); errors.Is(err, os.ErrNotExist) {
-		return os.Remove(liveKeys) // nothing was encrypted; old keys are useless anyway
-	}
-	return os.Rename(nextKeys, liveKeys)
-}
+// NextSchema is where a demo reset builds before it is swapped in.
+const NextSchema = dbx.LiveSchema + "_next"
 
-func removeDatabase(path string) error {
-	for _, p := range []string{path, path + "-wal", path + "-shm"} {
-		if err := os.Remove(p); err != nil && !errors.Is(err, os.ErrNotExist) {
-			return err
-		}
-	}
-	return nil
-}
+// Next is a freshly built demo database and key file waiting beside the live ones.
+type Next struct{ Schema, Keys string }
 
-// Next is a freshly built demo database and key file waiting next to the live ones.
-type Next struct{ DB, Keys string }
-
-// BuildNext builds the demo database anchored at t0 into data/sushi-latte.next.db with its own
-// key file (DEMO-AND-SEED §9 step 1). The live files are untouched until Install.
-func BuildNext(ctx context.Context, cfg config.Config, t0 time.Time) (Next, error) {
+// BuildNext builds the demo anchored at t0 into the app_next schema with its own key file
+// (DEMO-AND-SEED §9 step 1); story adds the scripted demo. The live data is untouched until Install.
+func BuildNext(ctx context.Context, cfg config.Config, t0 time.Time, story bool) (Next, error) {
 	if err := os.MkdirAll(cfg.DataDir, 0o755); err != nil {
 		return Next{}, err
 	}
-	n := Next{DB: filepath.Join(cfg.DataDir, "sushi-latte.next.db"), Keys: filepath.Join(cfg.DataDir, "keys.next.json")}
+	n := Next{Schema: NextSchema, Keys: filepath.Join(cfg.DataDir, "keys.next.json")}
 	if err := os.Remove(n.Keys); err != nil && !errors.Is(err, os.ErrNotExist) {
 		return Next{}, err
 	}
@@ -196,11 +199,21 @@ func BuildNext(ctx context.Context, cfg config.Config, t0 time.Time) (Next, erro
 	if err != nil {
 		return Next{}, err
 	}
-	opts := Options{DBPath: n.DB, ImagesDir: cfg.ImagesDir(), AssetsDir: cfg.AssetsDir, T0: t0, Vault: keys}
+	opts := Options{DatabaseURL: cfg.DatabaseURL, Schema: n.Schema, ImagesDir: cfg.ImagesDir(), AssetsDir: cfg.AssetsDir, T0: t0, Vault: keys, Story: story}
 	return n, Build(ctx, opts)
 }
 
-// Install moves the built files over the live ones.
+// Install swaps the built schema in for the live one and the new key file for the old. A running
+// API must reload its keys afterwards (the in-app reset does), so use Reset demo while it runs.
 func (n Next) Install(cfg config.Config) error {
-	return Install(n.DB, cfg.DatabasePath(), n.Keys, cfg.KeysPath())
+	if err := dbx.SwapSchemas(context.Background(), cfg.DatabaseURL, n.Schema, dbx.LiveSchema); err != nil {
+		return err
+	}
+	if _, err := os.Stat(n.Keys); errors.Is(err, os.ErrNotExist) {
+		if err := os.Remove(cfg.KeysPath()); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return err
+		}
+		return nil // nothing was encrypted; old keys are useless anyway
+	}
+	return os.Rename(n.Keys, cfg.KeysPath())
 }

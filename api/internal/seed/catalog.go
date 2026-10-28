@@ -247,6 +247,9 @@ func seedCatalog(ctx context.Context, db *dbx.DB, opts Options, managementID, ou
 	}
 
 	// Unagi 4 pcs is Sold Out manually by the Outlet Admin (DEMO-AND-SEED §3.2).
+	if !opts.Story {
+		return ids, nil // the clean start has everything available
+	}
 	if _, err := svc.SetSoldOut(ctx, outletAdminID, ids.products["unagi"].Variants[1].ID, true); err != nil {
 		return ids, err
 	}
@@ -295,10 +298,7 @@ func seedOutlet(ctx context.Context, db *dbx.DB, opts Options, managementID stri
 			return err
 		}
 		if n == 12 {
-			// Meja 12: inactive with a regenerated QR, so its old printed code is invalid.
-			if _, err := svc.RegenerateQR(ctx, managementID, t.ID); err != nil {
-				return err
-			}
+			// Meja 12: inactive, so its QR shows "please ask staff".
 			t.Active = false
 			if _, err := svc.SaveTable(ctx, managementID, t); err != nil {
 				return err

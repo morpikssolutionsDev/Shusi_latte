@@ -15,7 +15,7 @@ Domain terms follow [GLOSSARY.md](../GLOSSARY.md). Requirement IDs `BR-*` refer 
 
 ## 1. Architecture overview
 
-The prototype runs on **one machine** (the demo host, e.g. a laptop) on the outlet's or presenter's Wi-Fi. One Go binary serves the API, the WebSocket hub, scheduled jobs and the three browser apps; data lives in a single SQLite file ([ADR-0005](adr/0005-sqlite-for-demo.md)). Phones, tablets and screens connect over the local network. Receipt printing goes from each staff device straight to its paired Bluetooth printer.
+The prototype runs on **one machine** (the demo host, e.g. a laptop) on the outlet's or presenter's Wi-Fi. One Go binary serves the API, the WebSocket hub, scheduled jobs and the three browser apps; data lives in a local PostgreSQL database named by `POSTGRE_URL` ([ADR-0007](adr/0007-postgresql.md)). Phones, tablets and screens connect over the local network. Receipt printing goes from each staff device straight to its paired Bluetooth printer.
 
 ```
                      ┌──────────────────────── Demo host (one machine, LAN) ─────────────────────────┐
@@ -27,16 +27,16 @@ The prototype runs on **one machine** (the demo host, e.g. a laptop) on the outl
         │            │     ├── /api/v1      → Go API ──┐                                              │
         │ Bluetooth  │     └── /ws          → Go API ──┤  in-process event bus → WebSocket hub       │
         ▼            │                                 ▼                                              │
-  58 mm printer      │                        SQLite file (WAL)  ·  key file (crypto-shredding)       │
+  58 mm printer      │                        PostgreSQL (schema app) · key file (crypto-shredding)  │
                      │                        In-process scheduler (escalations, jobs, nightly reset)  │
  Kitchen / TV ─────▶ │                                                                                │
                      └────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 - **TR-ARC-01** One Go binary hosts the REST API, the WebSocket hub, the event bus and scheduled jobs. It is the only process that opens the database file.
-- **TR-ARC-02** SQLite (WAL mode) is the single source of truth; no cache or message broker is needed at the BRD-NF-01 scale.
+- **TR-ARC-02** PostgreSQL (schema `app` of the `POSTGRE_URL` database) is the single source of truth; no cache or message broker is needed at the BRD-NF-01 scale.
 - **TR-ARC-03** Every state change that other screens must see is committed first, then published on the **in-process event bus**; the WebSocket hub fans it out to subscribed clients. Events are never published for a rolled-back transaction.
-- **TR-ARC-04** The system needs the local network for everything except printing; it does not need the internet ([ADR-0003](adr/0003-online-only-with-future-local-server.md), [ADR-0005](adr/0005-sqlite-for-demo.md)).
+- **TR-ARC-04** The system needs the local network for everything except printing; it does not need the internet ([ADR-0003](adr/0003-online-only-with-future-local-server.md), [ADR-0007](adr/0007-postgresql.md)).
 - **TR-ARC-05** All devices reach the host over **HTTPS**, because Web Bluetooth, PWA install and the Service Worker require a secure context. Caddy issues certificates from its internal CA (`tls internal`); the CA root is installed once on each demo device, or the host is exposed through an HTTPS tunnel when devices cannot be configured.
 
 ## 2. Technology stack
@@ -45,10 +45,10 @@ The prototype runs on **one machine** (the demo host, e.g. a laptop) on the outl
 |---|---|---|
 | Backend language | Go (current stable) | Fast, single static binary, strong concurrency for WebSockets |
 | HTTP router | `go-chi/chi` | Thin, idiomatic `net/http` |
-| DB access | `sqlc` (SQLite engine) + `database/sql` | Type-safe SQL without an ORM |
+| DB access | `sqlc` (PostgreSQL engine) + `database/sql` | Type-safe SQL without an ORM |
 | Migrations | `goose` | Plain SQL migrations, embeddable |
 | WebSocket | `coder/websocket` | Maintained, context-aware |
-| Database | SQLite (WAL) via `modernc.org/sqlite` | One file, pure Go (no CGO on Windows), transactions, partial unique indexes, JSON functions ([ADR-0005](adr/0005-sqlite-for-demo.md)) |
+| Database | PostgreSQL 17+ via `pgx/v5` (`database/sql` adapter) | Local server, transactional DDL for the demo reset's schema swap, partial unique indexes ([ADR-0007](adr/0007-postgresql.md)) |
 | Event bus | In-process publish/subscribe (Go channels) | Replaces Postgres `LISTEN/NOTIFY` in a single-process deployment |
 | Images | `gen2brain/webp` (no cgo) + `golang.org/x/image/draw` | WebP variants 320/640/1024 px and 16:9 display crops, generated in the API on upload and at seed time |
 | Frontend | React + Vite + TypeScript 5.9 | Fast SPA builds; no server rendering needed for QR menu or kiosk screens. TypeScript is pinned to 5.9: TypeScript 7 has no JavaScript compiler API, which `openapi-typescript` needs |
@@ -98,21 +98,22 @@ Next.js was considered and not chosen: none of the apps need server rendering or
 │       ├── api-client/       generated from OpenAPI
 │       └── printing/         ESC/POS encoder + Web Bluetooth transport
 ├── deploy/                   Caddyfile, demo start script, backup script
-└── data/                     (git-ignored) sushi-latte.db, keys file, uploaded and processed images
+└── data/                     (git-ignored) keys file, uploaded and processed images (the database is PostgreSQL)
 ```
 
 ## 4. Data model
 
-Types follow SQLite ([ADR-0005](adr/0005-sqlite-for-demo.md)):
+Types follow PostgreSQL ([ADR-0007](adr/0007-postgresql.md)):
 
-- Money: `INTEGER` whole Rupiah.
-- Timestamps: `INTEGER` UTC Unix milliseconds, converted to Asia/Jakarta for display in Go.
+- Money: `BIGINT` whole Rupiah.
+- Timestamps: `BIGINT` UTC Unix milliseconds, converted to Asia/Jakarta for display in Go.
+- Flags: `BIGINT` 0/1 with a `CHECK`; encrypted fields `BYTEA`.
 - Primary keys: UUIDv7 generated in Go, stored as `TEXT`.
 - Enumerations: `TEXT` with `CHECK (… IN (…))` constraints.
-- JSON: `TEXT` with SQLite JSON functions.
-- Foreign keys: enforced (`PRAGMA foreign_keys = ON` on every connection).
+- JSON: `TEXT` (encoded and decoded in Go).
+- Foreign keys: enforced.
 - Table names are singular, except `orders`: `ORDER` is a reserved SQL keyword. The domain term stays **Order**.
-- Query parameters use SQLite `?` placeholders.
+- Query parameters use `$1` placeholders; sums are cast to `bigint` so Go keeps `int64`.
 
 There is no tenant or outlet column ([ADR-0001](adr/0001-single-business-single-outlet.md)).
 
@@ -159,7 +160,7 @@ Rules:
 
 | Table | Key columns |
 |---|---|
-| `dining_table` | id, label, qr_token (random, regenerable), active |
+| `dining_table` | id, number, label, code (`table-01`, from the number; the path its static QR opens, ADR-0006), active |
 | `bill` | id, business_date + number (daily sequence shown as `B-0427`; the business day turns over at 04:00 WIB), type (`dine_in`, `takeaway`), source (`live`, `post_outage`), status (`open`, `settling`, `closed`, `unpaid`, `merged`), key_id + takeaway_name_enc, pay_now_serve_later_by, unpaid_reason, unpaid_override_by, merged_into_id, opened_at, closed_at, anonymised_at |
 | `bill_table` | bill_id, table_id, is_open (many tables per Bill after Merge) |
 | `customer_entry` | id, bill_id, key_id, name_enc, dietary_note_enc, restriction_tags_enc (Dietary Restriction tag ids), consent_at, active_device_id (the current `guest_token`), joined_at, rejoined_at — one per person at the Table, bound to the Bill not the device |
@@ -173,7 +174,7 @@ Rules:
 | `sub_bill` | id, bill_id, method (`by_item`, `equal`), share_index, share_count, status (`open`, `closed`), frozen subtotal / item_discount / bill_discount / service / tax / total, created_at, closed_at — Order Items carry `sub_bill_id` when split by item |
 
 Constraints:
-- **TR-DM-01** One open Bill per Table: `bill_table` carries a denormalised `is_open` flag kept in step with `bill.status` and a partial unique index `UNIQUE (table_id) WHERE is_open = 1`. The open/join runs inside `BEGIN IMMEDIATE`, which takes SQLite's write lock up front so two scans of the same QR cannot both open a Bill.
+- **TR-DM-01** One open Bill per Table: `bill_table` carries a denormalised `is_open` flag kept in step with `bill.status` and a partial unique index `UNIQUE (table_id) WHERE is_open = 1`. The open/join runs on the single write connection (ADR-0007), so units of work never interleave and two scans of the same QR cannot both open a Bill; the partial unique index backs it up.
 - **TR-DM-02** `order_item.unit_price`, modifier prices and Product/Variant/Modifier names are copied at order time; later catalog changes never alter existing Orders (BR-PC-08).
 - **TR-DM-05** Dietary Warnings are computed server-side when an Order Item is created: (Product tags ∪ chosen Modifier tags) ∩ applicable Dietary Restriction, where the applicable restriction is the ordering Customer's `restriction_tags_enc` or the Order's `restriction_tags_enc` (decrypted in memory). Each matching tag becomes an `order_item_dietary_warning` row. The Client Menu computes the same match locally for badges, but the server result is authoritative: a Customer Order line whose warnings are not all in its `acknowledgedTagIds` is rejected with `dietary_ack_required` naming the tags (BR-CM-11), and nothing in that Order is saved. Every failing line of an Order is reported at once (`409 order_rejected` with per-line codes `unavailable`, `sold_out`, `modifier_rule`, …).
 - **TR-DM-03** Merge re-points `bill_table` and `orders` rows to the surviving Bill and closes the absorbed Bill as `merged`; there is no unmerge operation.
@@ -272,9 +273,9 @@ REST, JSON, under `/api/v1`, described in an OpenAPI 3 spec from which the TypeS
 | Area | Endpoint |
 |---|---|
 | Auth | `POST /auth/login` (crew_id, pin) · `POST /auth/logout` · `POST /auth/override` (pin, action) → short-lived override token |
-| Client Menu | `GET /public/tables/{qr_token}` → `free`, `occupied` with Customer names, or `unavailable` · `POST /public/tables/{qr_token}/join` (name, Dietary Restriction tag ids, Dietary Note, consent) → guest token for a new Customer; opens the Bill if the Table has none · `POST /public/tables/{qr_token}/rejoin` (customerId) → guest token, previous device revoked · `POST /public/tables/{qr_token}/not-mine` → notify Waiters · `GET /public/catalog` (Active Products, Sold Out Variants, current promo prices, price display settings; ETag) · `GET /public/bills/me` (Bill, own profile, own Orders with derived status and Estimated Wait) · `POST /public/cart/quote` (prices a cart and reports warnings and unavailable lines without saving) · `POST /public/orders` · `PATCH`/`DELETE /public/orders/{id}` (before Claim; lines left out of a PATCH are Cancelled with Customer Request) · `POST /public/waiter-calls` · Demo mode: `GET /demo/tables` (launcher), `GET /demo/accounts`, `POST /demo/reset` (Management + PIN Override `demo_reset`; 202, then `demo.resetting` and `demo.reset` on the `demo` topic) |
+| Client Menu | `GET /public/tables/{code}` (`table-01`; `table-1` accepted) → `free`, `occupied` with Customer names, or `unavailable` · `POST /public/tables/{code}/join` (name, Dietary Restriction tag ids, Dietary Note, consent) → guest token for a new Customer; opens the Bill if the Table has none · `POST /public/tables/{code}/rejoin` (customerId) → guest token, previous device revoked · `POST /public/tables/{code}/not-mine` → notify Waiters · `GET /public/catalog` (Active Products, Sold Out Variants, current promo prices, price display settings; ETag) · `GET /public/bills/me` (Bill, own profile, own Orders with derived status and Estimated Wait) · `POST /public/cart/quote` (prices a cart and reports warnings and unavailable lines without saving) · `POST /public/orders` · `PATCH`/`DELETE /public/orders/{id}` (before Claim; lines left out of a PATCH are Cancelled with Customer Request) · `POST /public/waiter-calls` · Demo mode: `GET /demo/tables` (launcher), `GET /demo/accounts`, `POST /demo/reset` (Management + PIN Override `demo_reset`; 202, then `demo.resetting` and `demo.reset` on the `demo` topic) |
 | Catalog | `GET /catalog` (staff; `?archived=true` includes Archived) · `POST /catalog/products`, `PUT /catalog/products/{id}` — the whole Product document (details, Dietary Tags, Variants, Modifier groups) in one transaction; children left out are archived · `POST`/`PUT /catalog/categories`, `/catalog/dietary-tags` · `PUT /catalog/prep-areas/{id}/capacity` · `PUT /catalog/variants/{id}/sold-out` · `POST /images` (multipart upload) |
-| Admin | `GET /settings`, `PUT /settings/pricing`, `PUT /settings/ops` · `GET`/`POST /discounts`, `PUT /discounts/{id}` · `GET`/`POST /tables`, `PUT /tables/{id}`, `POST /tables/{id}/regenerate-qr` · `GET`/`POST /crew`, `PUT /crew/{id}`, `POST /crew/{id}/reset-pin` · `GET /audit` |
+| Admin | `GET /settings`, `PUT /settings/pricing`, `PUT /settings/ops` · `GET`/`POST /discounts`, `PUT /discounts/{id}` · `GET`/`POST /tables`, `PUT /tables/{id}` · `GET`/`POST /crew`, `PUT /crew/{id}`, `POST /crew/{id}/reset-pin` · `GET /audit` |
 | Ordering | `GET /waiter/feed` (unclaimed Orders and Waiter Calls; the caller's own Orders) · `GET /floor` (TableMap) · `POST /orders` (direct entry, created Confirmed) · `POST /orders/{id}/claim` · `POST /orders/{id}/takeover` · `POST /orders/{id}/reassign` · `POST /orders/{id}/items` (add lines before confirming) · `POST /orders/{id}/confirm` · `POST /order-items/{id}/cancel` · `POST /order-items/serve` · `POST /order-items/{id}/void` · `POST /order-items/{id}/remake` · `POST /waiter-calls/{id}/answer` |
 | Bills | `GET /cashier/bills` (open Bills and those closed this business day) · `POST /bills` (Takeaway: Customer name, held Order) · `GET /bills/{id}` (BillSummary with billing, type, source, refunded so far) · `GET /bills/{id}/billing` · `POST /bills/{id}/move` · `POST /bills/merge` · `POST /bills/{id}/split` · `POST /bills/{id}/settle` · `POST /bills/{id}/unlock` · `POST /bills/{id}/discount` (manual, Management PIN) · `POST /bills/{id}/unpaid` · `POST /post-outage/bills` (paper Bill: Table or Takeaway name, original times, items, Payments, `servedBy` as crew id or Crew ID; `422` with `extra.total` when the Payments fall short) |
 | Payment | `POST /bills/{id}/payments` · `POST /payments/{id}/verify` · `POST /payments/{id}/write-off` (reason) · `POST /bills/{id}/close` (Bill or Sub-bill; `payNowServeLater`) · `POST /bills/{id}/refunds` · `POST /bills/{id}/receipts` (one copy; the first print of a copy is the original, every later one a REPRINT) |
@@ -306,8 +307,8 @@ REST, JSON, under `/api/v1`, described in an OpenAPI 3 spec from which the TypeS
 - **TR-AUTH-04** Management sessions expire after 30 minutes of inactivity (BR-R-25).
 - **TR-AUTH-05** Authorisation is checked server-side per endpoint against role and Stations, following the BRD §5.1 permission matrix. The UI hides what a user cannot do but is never the enforcement point.
 - **TR-AUTH-06** PIN Override: the authorising person enters their PIN on the requesting device; the server verifies their role permits the action (manual discount → Management; Void, Remake, Unpaid Bill, unverified QRIS, Refund ≤ cap → Outlet Admin or Management; Refund > cap → Management) and records both actor and approver in `audit_log`.
-- **TR-AUTH-07** Customers are bound to the Bill, not the device (BR-CM-13). Guest tokens travel in the `X-Guest-Token` header (and `?guest=` on `/ws`), not in a cookie, so each browser tab can be a different Customer; the Client Menu keeps the token in `sessionStorage`, with a per-Table copy in `localStorage` so a phone resumes after closing its tab. `join` creates a `customer_entry` and issues a guest token for it; `rejoin` issues a new token for an existing `customer_entry`, stores the new device in `active_device_id`, revokes the previous token and pushes `customer:{id}` so the old device shows "You continued on another device". Tokens expire when the Bill closes. No verification is required to Rejoin (owner decision, BRD §11). Regenerating a Table's `qr_token` invalidates printed QR codes for that Table.
-- **TR-AUTH-08** The Kitchen and shared HRIS clock-in screens are signed in once per day by an Outlet Admin (Crew ID + PIN) into a screen-mode session limited to that screen, so no one types a PIN on a wall-mounted display. `POST /attendance/clock` is accepted only from an HRIS screen-mode session (BR-HR-03). The Product Display needs no session: it reads only public content (`/public/display/playlist`, the `menu` and `display` topics), so a TV that reboots overnight comes back without anyone signing it in. A `display` screen mode still exists for a future private screen.
+- **TR-AUTH-07** Customers are bound to the Bill, not the device (BR-CM-13). Guest tokens travel in the `X-Guest-Token` header (and `?guest=` on `/ws`), not in a cookie, so each browser tab can be a different Customer; the Client Menu keeps the token in `sessionStorage`, with a per-Table copy in `localStorage` so a phone resumes after closing its tab. `join` creates a `customer_entry` and issues a guest token for it; `rejoin` issues a new token for an existing `customer_entry`, stores the new device in `active_device_id`, revokes the previous token and pushes `customer:{id}` so the old device shows "You continued on another device". Tokens expire when the Bill closes. No verification is required to Rejoin (owner decision, BRD §11). Table QR codes are static (`/table-01`, ADR-0006): they cannot be regenerated, and an inactive Table answers `unavailable`.
+- **TR-AUTH-08** The Kitchen and shared HRIS clock-in screens are signed in once per day by an Outlet Admin (Crew ID + PIN) into a screen-mode session limited to that screen, so no one types a PIN on a wall-mounted display. The session lasts until the end of the business day, or until someone taps **Keluar mode layar** on the screen (a confirmation, no PIN; owner decision 2026-10-29), which ends it with `POST /auth/logout` and returns the device to sign-in. `POST /attendance/clock` is accepted only from an HRIS screen-mode session (BR-HR-03). The Product Display needs no session: it reads only public content (`/public/display/playlist`, the `menu` and `display` topics), so a TV that reboots overnight comes back without anyone signing it in. A `display` screen mode still exists for a future private screen.
 - **TR-AUTH-09** Waiter and Cashier sessions end at the scheduled shift end or after 12 hours, whichever comes first; switching user on a shared device is a PIN re-entry (BR-R-38).
 
 ## 9. Pricing engine
@@ -378,21 +379,21 @@ See [ADR-0002](adr/0002-two-day-customer-data-retention.md).
 ## 16. Deployment
 
 - **TR-DEP-01** The demo host (Windows, macOS or Linux) runs two native processes started by one script: Caddy (HTTPS, static files, reverse proxy) and the Go API (with `DEMO_MODE=true`). Data lives in `data/`.
-- **TR-DEP-02** Environments: `dev` (Vite dev servers + API, fresh seed), `demo` (built apps, Demo mode, nightly reset). A future production deployment would follow ADR-0005's PostgreSQL path.
+- **TR-DEP-02** Environments: `dev` (Vite dev servers + API, fresh seed), `demo` (built apps, Demo mode, nightly reset). Both use a local PostgreSQL database (`POSTGRE_URL`, ADR-0007); a production deployment would point it at a managed PostgreSQL in Jakarta.
 - **TR-DEP-03** CI builds the Go binary and the three web apps and runs all tests; a release is a zip with the binaries, built apps, Caddyfile and start script.
 - **TR-DEP-04** Migrations run automatically on API start, are forward-only, and must be backward compatible with the previous release.
 
 ## 17. Testing
 
 - **TR-TST-01** Unit tests for `pricing`, Estimated Wait, Dietary Warning matching and state-transition guards, table-driven, covering every BRD pricing and dietary rule.
-- **TR-TST-02** Integration tests against real SQLite databases in temporary files (WAL, foreign keys on, same migrations) for concurrent writers (`BEGIN IMMEDIATE` contention), Claim races and takeovers, one-open-Bill-per-Table, Rejoin device revocation, Settling lock, Move onto occupied Table, Split after Payment, Merge, Sold Out on Out of Stock Cancel, Product Status visibility, Dietary Warnings carried onto Order Items, Remake, Unpaid Bill, Cash Handover and drawer expected cash, pending QRIS blocking Shift Closing, auto clock-out, Anonymisation and key destruction.
+- **TR-TST-02** Integration tests against the real PostgreSQL database in throwaway schemas (`test_…`, same migrations, dropped after each test; `POSTGRE_URL` must be set) for concurrent writers (serialised on the write connection), Claim races and takeovers, one-open-Bill-per-Table, Rejoin device revocation, Settling lock, Move onto occupied Table, Split after Payment, Merge, Sold Out on Out of Stock Cancel, Product Status visibility, Dietary Warnings carried onto Order Items, Remake, Unpaid Bill, Cash Handover and drawer expected cash, pending QRIS blocking Shift Closing, auto clock-out, Anonymisation and key destruction.
 - **TR-TST-03** Frontend component tests with Vitest; end-to-end flows with Playwright: QR scan → Order → Claim → Kitchen → Ready → Payment → Receipt.
 - **TR-TST-04** Printer spike with the shortlisted 58 mm printer models on an Android tablet and a Windows PC before procurement.
 - **TR-TST-05** Load test at 2× peak (300 Orders/hour) before the Waiter module goes live.
 
 ## 18. Future architecture
 
-The local outlet server model, which would keep all staff Modules working during internet outages, is recorded in [ADR-0003](adr/0003-online-only-with-future-local-server.md). The current design keeps that door open by: keeping the Go API as one binary with a file database that already runs on a mini-PC (ADR-0005), using no managed cloud-specific services, and using idempotent mutations that can later be replayed by a sync agent.
+The local outlet server model, which would keep all staff Modules working during internet outages, is recorded in [ADR-0003](adr/0003-online-only-with-future-local-server.md). The current design keeps that door open by: keeping the Go API as one binary with a PostgreSQL server that already runs on a mini-PC (ADR-0007), using no managed cloud-specific services, and using idempotent mutations that can later be replayed by a sync agent.
 
 ## 19. Scheduled jobs
 

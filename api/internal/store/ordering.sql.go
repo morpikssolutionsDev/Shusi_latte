@@ -11,7 +11,7 @@ import (
 )
 
 const addBillTable = `-- name: AddBillTable :exec
-INSERT INTO bill_table (bill_id, table_id, is_open) VALUES (?, ?, 1)
+INSERT INTO bill_table (bill_id, table_id, is_open) VALUES ($1, $2, 1)
 `
 
 type AddBillTableParams struct {
@@ -25,7 +25,7 @@ func (q *Queries) AddBillTable(ctx context.Context, arg AddBillTableParams) erro
 }
 
 const anonymiseCustomers = `-- name: AnonymiseCustomers :exec
-UPDATE customer_entry SET name_enc = NULL, dietary_note_enc = NULL, restriction_tags_enc = NULL WHERE bill_id = ?
+UPDATE customer_entry SET name_enc = NULL, dietary_note_enc = NULL, restriction_tags_enc = NULL WHERE bill_id = $1
 `
 
 func (q *Queries) AnonymiseCustomers(ctx context.Context, billID string) error {
@@ -34,7 +34,7 @@ func (q *Queries) AnonymiseCustomers(ctx context.Context, billID string) error {
 }
 
 const anonymiseOrders = `-- name: AnonymiseOrders :exec
-UPDATE orders SET restriction_tags_enc = NULL WHERE bill_id = ?
+UPDATE orders SET restriction_tags_enc = NULL WHERE bill_id = $1
 `
 
 func (q *Queries) AnonymiseOrders(ctx context.Context, billID string) error {
@@ -44,8 +44,8 @@ func (q *Queries) AnonymiseOrders(ctx context.Context, billID string) error {
 
 const cancelItem = `-- name: CancelItem :execrows
 UPDATE order_item
-SET status = 'cancelled', cancel_reason = ?, cancel_note = ?, cancelled_by = ?, cancelled_at = ?, updated_at = ?
-WHERE id = ? AND status = ?
+SET status = 'cancelled', cancel_reason = $1, cancel_note = $2, cancelled_by = $3, cancelled_at = $4, updated_at = $5
+WHERE id = $6 AND status = $7
 `
 
 type CancelItemParams struct {
@@ -76,7 +76,7 @@ func (q *Queries) CancelItem(ctx context.Context, arg CancelItemParams) (int64, 
 
 const createBill = `-- name: CreateBill :exec
 INSERT INTO bill (id, business_date, number, type, source, status, key_id, takeaway_name_enc, opened_at, updated_at)
-VALUES (?, ?, ?, ?, ?, 'open', ?, ?, ?, ?)
+VALUES ($1, $2, $3, $4, $5, 'open', $6, $7, $8, $9)
 `
 
 type CreateBillParams struct {
@@ -109,7 +109,7 @@ func (q *Queries) CreateBill(ctx context.Context, arg CreateBillParams) error {
 const createCustomerEntry = `-- name: CreateCustomerEntry :exec
 
 INSERT INTO customer_entry (id, bill_id, key_id, name_enc, dietary_note_enc, restriction_tags_enc, consent_at, active_device_id, joined_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 `
 
 type CreateCustomerEntryParams struct {
@@ -141,7 +141,7 @@ func (q *Queries) CreateCustomerEntry(ctx context.Context, arg CreateCustomerEnt
 }
 
 const createDietaryWarning = `-- name: CreateDietaryWarning :exec
-INSERT INTO order_item_dietary_warning (order_item_id, dietary_tag_id, acknowledged_at) VALUES (?, ?, ?)
+INSERT INTO order_item_dietary_warning (order_item_id, dietary_tag_id, acknowledged_at) VALUES ($1, $2, $3)
 `
 
 type CreateDietaryWarningParams struct {
@@ -156,7 +156,7 @@ func (q *Queries) CreateDietaryWarning(ctx context.Context, arg CreateDietaryWar
 }
 
 const createGuestToken = `-- name: CreateGuestToken :exec
-INSERT INTO guest_token (id, customer_entry_id, token_hash, created_at) VALUES (?, ?, ?, ?)
+INSERT INTO guest_token (id, customer_entry_id, token_hash, created_at) VALUES ($1, $2, $3, $4)
 `
 
 type CreateGuestTokenParams struct {
@@ -178,7 +178,7 @@ func (q *Queries) CreateGuestToken(ctx context.Context, arg CreateGuestTokenPara
 
 const createOrder = `-- name: CreateOrder :exec
 INSERT INTO orders (id, bill_id, seq, customer_entry_id, source, status, placed_by, key_id, restriction_tags_enc, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 `
 
 type CreateOrderParams struct {
@@ -215,7 +215,7 @@ func (q *Queries) CreateOrder(ctx context.Context, arg CreateOrderParams) error 
 const createOrderItem = `-- name: CreateOrderItem :exec
 INSERT INTO order_item (id, order_id, sort, product_id, variant_id, category_id, prep_area_id, product_name_id, product_name_en,
                         variant_name_id, variant_name_en, unit_price, prep_time_seconds, quantity, note, status, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
 `
 
 type CreateOrderItemParams struct {
@@ -264,7 +264,7 @@ func (q *Queries) CreateOrderItem(ctx context.Context, arg CreateOrderItemParams
 }
 
 const createOrderItemModifier = `-- name: CreateOrderItemModifier :exec
-INSERT INTO order_item_modifier (order_item_id, modifier_id, name_id, name_en, price) VALUES (?, ?, ?, ?, ?)
+INSERT INTO order_item_modifier (order_item_id, modifier_id, name_id, name_en, price) VALUES ($1, $2, $3, $4, $5)
 `
 
 type CreateOrderItemModifierParams struct {
@@ -288,7 +288,7 @@ func (q *Queries) CreateOrderItemModifier(ctx context.Context, arg CreateOrderIt
 
 const createWaiterCall = `-- name: CreateWaiterCall :exec
 
-INSERT INTO waiter_call (id, kind, table_id, bill_id, customer_entry_id, created_at) VALUES (?, ?, ?, ?, ?, ?)
+INSERT INTO waiter_call (id, kind, table_id, bill_id, customer_entry_id, created_at) VALUES ($1, $2, $3, $4, $5, $6)
 `
 
 type CreateWaiterCallParams struct {
@@ -314,7 +314,7 @@ func (q *Queries) CreateWaiterCall(ctx context.Context, arg CreateWaiterCallPara
 }
 
 const getBill = `-- name: GetBill :one
-SELECT id, business_date, number, type, source, status, key_id, takeaway_name_enc, pay_now_serve_later_by, unpaid_reason, unpaid_override_by, merged_into_id, opened_at, closed_at, anonymised_at, updated_at, priced_at, manual_discount_id, manual_discount_by, subtotal, item_discount, bill_discount, service, tax, total FROM bill WHERE id = ?
+SELECT id, business_date, number, type, source, status, key_id, takeaway_name_enc, pay_now_serve_later_by, unpaid_reason, unpaid_override_by, merged_into_id, opened_at, closed_at, anonymised_at, updated_at, priced_at, manual_discount_id, manual_discount_by, subtotal, item_discount, bill_discount, service, tax, total FROM bill WHERE id = $1
 `
 
 func (q *Queries) GetBill(ctx context.Context, id string) (Bill, error) {
@@ -351,7 +351,7 @@ func (q *Queries) GetBill(ctx context.Context, id string) (Bill, error) {
 }
 
 const getCustomerEntry = `-- name: GetCustomerEntry :one
-SELECT id, bill_id, key_id, name_enc, dietary_note_enc, restriction_tags_enc, consent_at, active_device_id, joined_at, rejoined_at FROM customer_entry WHERE id = ?
+SELECT id, bill_id, key_id, name_enc, dietary_note_enc, restriction_tags_enc, consent_at, active_device_id, joined_at, rejoined_at FROM customer_entry WHERE id = $1
 `
 
 func (q *Queries) GetCustomerEntry(ctx context.Context, id string) (CustomerEntry, error) {
@@ -377,7 +377,7 @@ SELECT g.id AS token_id, g.revoked_at, c.id AS customer_entry_id, c.bill_id, b.s
 FROM guest_token g
 JOIN customer_entry c ON c.id = g.customer_entry_id
 JOIN bill b ON b.id = c.bill_id
-WHERE g.token_hash = ?
+WHERE g.token_hash = $1
 `
 
 type GetGuestByTokenHashRow struct {
@@ -403,7 +403,7 @@ func (q *Queries) GetGuestByTokenHash(ctx context.Context, tokenHash string) (Ge
 
 const getOpenBillForTable = `-- name: GetOpenBillForTable :one
 SELECT b.id, b.business_date, b.number, b.type, b.source, b.status, b.key_id, b.takeaway_name_enc, b.pay_now_serve_later_by, b.unpaid_reason, b.unpaid_override_by, b.merged_into_id, b.opened_at, b.closed_at, b.anonymised_at, b.updated_at, b.priced_at, b.manual_discount_id, b.manual_discount_by, b.subtotal, b.item_discount, b.bill_discount, b.service, b.tax, b.total FROM bill b JOIN bill_table bt ON bt.bill_id = b.id
-WHERE bt.table_id = ? AND bt.is_open = 1
+WHERE bt.table_id = $1 AND bt.is_open = 1
 `
 
 func (q *Queries) GetOpenBillForTable(ctx context.Context, tableID string) (Bill, error) {
@@ -440,7 +440,7 @@ func (q *Queries) GetOpenBillForTable(ctx context.Context, tableID string) (Bill
 }
 
 const getOpenWaiterCall = `-- name: GetOpenWaiterCall :one
-SELECT id, kind, table_id, bill_id, customer_entry_id, created_at, renotified_at, escalated_at, answered_by, answered_at FROM waiter_call WHERE customer_entry_id = ? AND kind = 'call' AND answered_at IS NULL
+SELECT id, kind, table_id, bill_id, customer_entry_id, created_at, renotified_at, escalated_at, answered_by, answered_at FROM waiter_call WHERE customer_entry_id = $1 AND kind = 'call' AND answered_at IS NULL
 ORDER BY created_at DESC LIMIT 1
 `
 
@@ -463,7 +463,7 @@ func (q *Queries) GetOpenWaiterCall(ctx context.Context, customerEntryID sql.Nul
 }
 
 const getOrder = `-- name: GetOrder :one
-SELECT id, bill_id, seq, customer_entry_id, source, status, placed_by, claimed_by, claimed_at, confirmed_by, confirmed_at, key_id, restriction_tags_enc, renotified_at, escalated_at, created_at, updated_at FROM orders WHERE id = ?
+SELECT id, bill_id, seq, customer_entry_id, source, status, placed_by, claimed_by, claimed_at, confirmed_by, confirmed_at, key_id, restriction_tags_enc, renotified_at, escalated_at, created_at, updated_at FROM orders WHERE id = $1
 `
 
 func (q *Queries) GetOrder(ctx context.Context, id string) (Order, error) {
@@ -491,22 +491,21 @@ func (q *Queries) GetOrder(ctx context.Context, id string) (Order, error) {
 	return i, err
 }
 
-const getTableByQR = `-- name: GetTableByQR :one
+const getTableByCode = `-- name: GetTableByCode :one
 
-SELECT id, number, label, qr_token, active, qr_regenerated_at, created_at, updated_at FROM dining_table WHERE qr_token = ?
+SELECT id, number, label, code, active, created_at, updated_at FROM dining_table WHERE code = $1
 `
 
 // ---------------------------------------------------------------- Tables and Bills
-func (q *Queries) GetTableByQR(ctx context.Context, qrToken string) (DiningTable, error) {
-	row := q.db.QueryRowContext(ctx, getTableByQR, qrToken)
+func (q *Queries) GetTableByCode(ctx context.Context, code string) (DiningTable, error) {
+	row := q.db.QueryRowContext(ctx, getTableByCode, code)
 	var i DiningTable
 	err := row.Scan(
 		&i.ID,
 		&i.Number,
 		&i.Label,
-		&i.QrToken,
+		&i.Code,
 		&i.Active,
-		&i.QrRegeneratedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -515,7 +514,7 @@ func (q *Queries) GetTableByQR(ctx context.Context, qrToken string) (DiningTable
 
 const listBillTables = `-- name: ListBillTables :many
 SELECT t.id, t.number, t.label FROM bill_table bt JOIN dining_table t ON t.id = bt.table_id
-WHERE bt.bill_id = ? ORDER BY t.number
+WHERE bt.bill_id = $1 ORDER BY t.number
 `
 
 type ListBillTablesRow struct {
@@ -548,7 +547,7 @@ func (q *Queries) ListBillTables(ctx context.Context, billID string) ([]ListBill
 }
 
 const listBillsToAnonymise = `-- name: ListBillsToAnonymise :many
-SELECT id FROM bill WHERE status IN ('closed', 'unpaid', 'merged') AND anonymised_at IS NULL AND closed_at < ?
+SELECT id FROM bill WHERE status IN ('closed', 'unpaid', 'merged') AND anonymised_at IS NULL AND closed_at < $1
 `
 
 func (q *Queries) ListBillsToAnonymise(ctx context.Context, closedAt sql.NullInt64) ([]string, error) {
@@ -575,7 +574,7 @@ func (q *Queries) ListBillsToAnonymise(ctx context.Context, closedAt sql.NullInt
 }
 
 const listCustomerEntries = `-- name: ListCustomerEntries :many
-SELECT id, bill_id, key_id, name_enc, dietary_note_enc, restriction_tags_enc, consent_at, active_device_id, joined_at, rejoined_at FROM customer_entry WHERE bill_id = ? ORDER BY joined_at, id
+SELECT id, bill_id, key_id, name_enc, dietary_note_enc, restriction_tags_enc, consent_at, active_device_id, joined_at, rejoined_at FROM customer_entry WHERE bill_id = $1 ORDER BY joined_at, id
 `
 
 func (q *Queries) ListCustomerEntries(ctx context.Context, billID string) ([]CustomerEntry, error) {
@@ -615,7 +614,7 @@ func (q *Queries) ListCustomerEntries(ctx context.Context, billID string) ([]Cus
 const listDietaryWarningsByBill = `-- name: ListDietaryWarningsByBill :many
 SELECT w.order_item_id, w.dietary_tag_id, w.acknowledged_at FROM order_item_dietary_warning w
 JOIN order_item i ON i.id = w.order_item_id JOIN orders o ON o.id = i.order_id
-WHERE o.bill_id = ?
+WHERE o.bill_id = $1
 `
 
 func (q *Queries) ListDietaryWarningsByBill(ctx context.Context, billID string) ([]OrderItemDietaryWarning, error) {
@@ -644,8 +643,8 @@ func (q *Queries) ListDietaryWarningsByBill(ctx context.Context, billID string) 
 const listEmptyBillsBefore = `-- name: ListEmptyBillsBefore :many
 
 SELECT b.id FROM bill b
-WHERE b.status = 'open' AND b.type = 'dine_in' AND b.opened_at < ?1
-  AND NOT EXISTS (SELECT 1 FROM orders o WHERE o.bill_id = b.id AND (o.status <> 'cancelled' OR o.updated_at >= ?1))
+WHERE b.status = 'open' AND b.type = 'dine_in' AND b.opened_at < $1
+  AND NOT EXISTS (SELECT 1 FROM orders o WHERE o.bill_id = b.id AND (o.status <> 'cancelled' OR o.updated_at >= $1))
 `
 
 // ---------------------------------------------------------------- Jobs
@@ -676,7 +675,7 @@ func (q *Queries) ListEmptyBillsBefore(ctx context.Context, cutoff int64) ([]str
 const listOrderItemModifiersByBill = `-- name: ListOrderItemModifiersByBill :many
 SELECT m.order_item_id, m.modifier_id, m.name_id, m.name_en, m.price FROM order_item_modifier m
 JOIN order_item i ON i.id = m.order_item_id JOIN orders o ON o.id = i.order_id
-WHERE o.bill_id = ? ORDER BY m.order_item_id, m.price DESC, m.name_id
+WHERE o.bill_id = $1 ORDER BY m.order_item_id, m.price DESC, m.name_id
 `
 
 func (q *Queries) ListOrderItemModifiersByBill(ctx context.Context, billID string) ([]OrderItemModifier, error) {
@@ -709,7 +708,7 @@ func (q *Queries) ListOrderItemModifiersByBill(ctx context.Context, billID strin
 }
 
 const listOrderItemsByBill = `-- name: ListOrderItemsByBill :many
-SELECT i.id, i.order_id, i.sort, i.product_id, i.variant_id, i.category_id, i.prep_area_id, i.product_name_id, i.product_name_en, i.variant_name_id, i.variant_name_en, i.unit_price, i.prep_time_seconds, i.quantity, i.note, i.status, i.cancel_reason, i.cancel_note, i.cancelled_by, i.cancelled_at, i.void_reason, i.voided_by, i.voided_override_by, i.voided_at, i.remake_of_id, i.remake_reason, i.remake_override_by, i.preparing_at, i.ready_at, i.served_at, i.served_by, i.sold_out_flag, i.unavailable_flag, i.created_at, i.updated_at, i.pickup_reminded_at, i.sub_bill_id FROM order_item i JOIN orders o ON o.id = i.order_id WHERE o.bill_id = ? ORDER BY o.seq, i.sort
+SELECT i.id, i.order_id, i.sort, i.product_id, i.variant_id, i.category_id, i.prep_area_id, i.product_name_id, i.product_name_en, i.variant_name_id, i.variant_name_en, i.unit_price, i.prep_time_seconds, i.quantity, i.note, i.status, i.cancel_reason, i.cancel_note, i.cancelled_by, i.cancelled_at, i.void_reason, i.voided_by, i.voided_override_by, i.voided_at, i.remake_of_id, i.remake_reason, i.remake_override_by, i.preparing_at, i.ready_at, i.served_at, i.served_by, i.sold_out_flag, i.unavailable_flag, i.created_at, i.updated_at, i.pickup_reminded_at, i.sub_bill_id FROM order_item i JOIN orders o ON o.id = i.order_id WHERE o.bill_id = $1 ORDER BY o.seq, i.sort
 `
 
 func (q *Queries) ListOrderItemsByBill(ctx context.Context, billID string) ([]OrderItem, error) {
@@ -774,7 +773,7 @@ func (q *Queries) ListOrderItemsByBill(ctx context.Context, billID string) ([]Or
 }
 
 const listOrderItemsByOrder = `-- name: ListOrderItemsByOrder :many
-SELECT id, order_id, sort, product_id, variant_id, category_id, prep_area_id, product_name_id, product_name_en, variant_name_id, variant_name_en, unit_price, prep_time_seconds, quantity, note, status, cancel_reason, cancel_note, cancelled_by, cancelled_at, void_reason, voided_by, voided_override_by, voided_at, remake_of_id, remake_reason, remake_override_by, preparing_at, ready_at, served_at, served_by, sold_out_flag, unavailable_flag, created_at, updated_at, pickup_reminded_at, sub_bill_id FROM order_item WHERE order_id = ? ORDER BY sort
+SELECT id, order_id, sort, product_id, variant_id, category_id, prep_area_id, product_name_id, product_name_en, variant_name_id, variant_name_en, unit_price, prep_time_seconds, quantity, note, status, cancel_reason, cancel_note, cancelled_by, cancelled_at, void_reason, voided_by, voided_override_by, voided_at, remake_of_id, remake_reason, remake_override_by, preparing_at, ready_at, served_at, served_by, sold_out_flag, unavailable_flag, created_at, updated_at, pickup_reminded_at, sub_bill_id FROM order_item WHERE order_id = $1 ORDER BY sort
 `
 
 func (q *Queries) ListOrderItemsByOrder(ctx context.Context, orderID string) ([]OrderItem, error) {
@@ -839,7 +838,7 @@ func (q *Queries) ListOrderItemsByOrder(ctx context.Context, orderID string) ([]
 }
 
 const listOrdersByBill = `-- name: ListOrdersByBill :many
-SELECT id, bill_id, seq, customer_entry_id, source, status, placed_by, claimed_by, claimed_at, confirmed_by, confirmed_at, key_id, restriction_tags_enc, renotified_at, escalated_at, created_at, updated_at FROM orders WHERE bill_id = ? ORDER BY seq
+SELECT id, bill_id, seq, customer_entry_id, source, status, placed_by, claimed_by, claimed_at, confirmed_by, confirmed_at, key_id, restriction_tags_enc, renotified_at, escalated_at, created_at, updated_at FROM orders WHERE bill_id = $1 ORDER BY seq
 `
 
 func (q *Queries) ListOrdersByBill(ctx context.Context, billID string) ([]Order, error) {
@@ -938,7 +937,7 @@ func (q *Queries) ListQueueItems(ctx context.Context) ([]ListQueueItemsRow, erro
 }
 
 const markBillAnonymised = `-- name: MarkBillAnonymised :exec
-UPDATE bill SET takeaway_name_enc = NULL, anonymised_at = ?, updated_at = ? WHERE id = ?
+UPDATE bill SET takeaway_name_enc = NULL, anonymised_at = $1, updated_at = $2 WHERE id = $3
 `
 
 type MarkBillAnonymisedParams struct {
@@ -953,7 +952,7 @@ func (q *Queries) MarkBillAnonymised(ctx context.Context, arg MarkBillAnonymised
 }
 
 const nextBillNumber = `-- name: NextBillNumber :one
-SELECT CAST(COALESCE(MAX(number), 0) + 1 AS INTEGER) FROM bill WHERE business_date = ?
+SELECT CAST(COALESCE(MAX(number), 0) + 1 AS BIGINT) FROM bill WHERE business_date = $1
 `
 
 func (q *Queries) NextBillNumber(ctx context.Context, businessDate string) (int64, error) {
@@ -965,7 +964,7 @@ func (q *Queries) NextBillNumber(ctx context.Context, businessDate string) (int6
 
 const nextOrderSeq = `-- name: NextOrderSeq :one
 
-SELECT CAST(COALESCE(MAX(seq), 0) + 1 AS INTEGER) FROM orders WHERE bill_id = ?
+SELECT CAST(COALESCE(MAX(seq), 0) + 1 AS BIGINT) FROM orders WHERE bill_id = $1
 `
 
 // ---------------------------------------------------------------- Orders
@@ -977,7 +976,7 @@ func (q *Queries) NextOrderSeq(ctx context.Context, billID string) (int64, error
 }
 
 const revokeGuestTokens = `-- name: RevokeGuestTokens :exec
-UPDATE guest_token SET revoked_at = ? WHERE customer_entry_id = ? AND revoked_at IS NULL
+UPDATE guest_token SET revoked_at = $1 WHERE customer_entry_id = $2 AND revoked_at IS NULL
 `
 
 type RevokeGuestTokensParams struct {
@@ -991,7 +990,7 @@ func (q *Queries) RevokeGuestTokens(ctx context.Context, arg RevokeGuestTokensPa
 }
 
 const setBillStatus = `-- name: SetBillStatus :exec
-UPDATE bill SET status = ?, closed_at = ?, updated_at = ? WHERE id = ?
+UPDATE bill SET status = $1, closed_at = $2, updated_at = $3 WHERE id = $4
 `
 
 type SetBillStatusParams struct {
@@ -1012,7 +1011,7 @@ func (q *Queries) SetBillStatus(ctx context.Context, arg SetBillStatusParams) er
 }
 
 const setBillTablesOpen = `-- name: SetBillTablesOpen :exec
-UPDATE bill_table SET is_open = ? WHERE bill_id = ?
+UPDATE bill_table SET is_open = $1 WHERE bill_id = $2
 `
 
 type SetBillTablesOpenParams struct {
@@ -1026,7 +1025,7 @@ func (q *Queries) SetBillTablesOpen(ctx context.Context, arg SetBillTablesOpenPa
 }
 
 const setCustomerDevice = `-- name: SetCustomerDevice :exec
-UPDATE customer_entry SET active_device_id = ?, rejoined_at = ? WHERE id = ?
+UPDATE customer_entry SET active_device_id = $1, rejoined_at = $2 WHERE id = $3
 `
 
 type SetCustomerDeviceParams struct {
@@ -1041,7 +1040,7 @@ func (q *Queries) SetCustomerDevice(ctx context.Context, arg SetCustomerDevicePa
 }
 
 const setOrderStatus = `-- name: SetOrderStatus :exec
-UPDATE orders SET status = ?, updated_at = ? WHERE id = ?
+UPDATE orders SET status = $1, updated_at = $2 WHERE id = $3
 `
 
 type SetOrderStatusParams struct {
@@ -1056,7 +1055,7 @@ func (q *Queries) SetOrderStatus(ctx context.Context, arg SetOrderStatusParams) 
 }
 
 const touchOrder = `-- name: TouchOrder :exec
-UPDATE orders SET updated_at = ? WHERE id = ?
+UPDATE orders SET updated_at = $1 WHERE id = $2
 `
 
 type TouchOrderParams struct {
@@ -1070,7 +1069,7 @@ func (q *Queries) TouchOrder(ctx context.Context, arg TouchOrderParams) error {
 }
 
 const updatePendingItem = `-- name: UpdatePendingItem :execrows
-UPDATE order_item SET quantity = ?, note = ?, updated_at = ? WHERE id = ? AND status = 'pending'
+UPDATE order_item SET quantity = $1, note = $2, updated_at = $3 WHERE id = $4 AND status = 'pending'
 `
 
 type UpdatePendingItemParams struct {

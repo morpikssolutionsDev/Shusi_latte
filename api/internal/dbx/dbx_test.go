@@ -3,8 +3,6 @@ package dbx_test
 import (
 	"context"
 	"errors"
-	"os"
-	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -51,7 +49,7 @@ func TestEventsPublishedOnlyAfterCommit(t *testing.T) {
 	}
 }
 
-// ADR-0005: concurrent writers serialise on BEGIN IMMEDIATE instead of failing with SQLITE_BUSY.
+// ADR-0007: concurrent units of work serialise on the single write connection; none fails.
 func TestConcurrentWritersSerialise(t *testing.T) {
 	db, _ := testutil.NewDB(t)
 	ctx := context.Background()
@@ -99,15 +97,16 @@ func TestAuditLogIsAppendOnly(t *testing.T) {
 	}
 }
 
-// DEMO-AND-SEED §9: the demo reset swaps the database file under a running API; writes during
-// the swap are refused with demo_resetting, and afterwards reads and writes use the new file.
-func TestReplaceSwapsTheFile(t *testing.T) {
+// DEMO-AND-SEED §9: the demo reset swaps the next schema in under a running API; writes during
+// the swap are refused with demo_resetting, and afterwards reads and writes use the new data.
+func TestReplaceSwapsTheSchema(t *testing.T) {
 	ctx := context.Background()
-	dir := t.TempDir()
-	live, next := filepath.Join(dir, "live.db"), filepath.Join(dir, "next.db")
+	url, live := testutil.NewSchema(t)
+	next := live + "_next"
+	t.Cleanup(func() { _ = dbx.DropSchema(ctx, url, next) })
 	mark := func(db *dbx.DB, label string) {
 		if err := db.Write(ctx, func(tx *dbx.Tx) error {
-			return tx.Exec(ctx, "INSERT INTO cash_drawer (id, label) VALUES (?, ?)", label, label)
+			return tx.Exec(ctx, "INSERT INTO cash_drawer (id, label) VALUES ($1, $2)", label, label)
 		}); err != nil {
 			t.Fatal(err)
 		}
@@ -118,25 +117,25 @@ func TestReplaceSwapsTheFile(t *testing.T) {
 		}
 		var n int
 		err := db.Write(ctx, func(tx *dbx.Tx) error {
-			return tx.QueryRow(ctx, "SELECT COUNT(*) FROM cash_drawer WHERE id = ?", label).Scan(&n)
+			return tx.QueryRow(ctx, "SELECT COUNT(*) FROM cash_drawer WHERE id = $1", label).Scan(&n)
 		})
 		if err != nil {
 			t.Fatal(err)
 		}
 		return n == 1
 	}
-	db, err := dbx.Open(ctx, live, nil)
+	db, err := dbx.Open(ctx, url, live, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer db.Close()
 	mark(db, "old")
-	built, err := dbx.Open(ctx, next, nil)
+	built, err := dbx.Open(ctx, url, next, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	mark(built, "new")
-	if err := errors.Join(built.Checkpoint(ctx), built.Close()); err != nil {
+	if err := built.Close(); err != nil {
 		t.Fatal(err)
 	}
 
@@ -144,16 +143,25 @@ func TestReplaceSwapsTheFile(t *testing.T) {
 		if err := db.Write(ctx, func(*dbx.Tx) error { return nil }); !errors.Is(err, dbx.ErrReplacing) {
 			t.Errorf("write during the swap: %v", err)
 		}
-		for _, suffix := range []string{"", "-wal", "-shm"} {
-			_ = os.Remove(live + suffix)
-		}
-		return os.Rename(next, live)
+		return dbx.SwapSchemas(ctx, url, next, live)
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if has(db, "old") || !has(db, "new") {
-		t.Fatal("the swapped database is not the new file")
+		t.Fatal("the swapped database is not the new schema")
 	}
 	mark(db, "after")
+}
+
+// ADR-0007: a duplicate key is recognised as a unique violation whatever the message language.
+func TestIsUniqueViolation(t *testing.T) {
+	db, _ := testutil.NewDB(t)
+	ctx := context.Background()
+	err := db.Write(ctx, func(tx *dbx.Tx) error {
+		return tx.Exec(ctx, "INSERT INTO cash_drawer (id, label) VALUES ('main', 'again')")
+	})
+	if !dbx.IsUniqueViolation(err) {
+		t.Fatalf("duplicate drawer: %v", err)
+	}
 }

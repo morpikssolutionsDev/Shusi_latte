@@ -8,7 +8,9 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { errorText } from '../admin/api';
+import { ExitScreenButton } from '../components/exit-screen';
 import { useRealtime } from '../realtime';
+import { meQuery } from '../session';
 
 type Ticket = Schemas['KitchenTicket'];
 type Item = Schemas['KitchenItem'];
@@ -43,6 +45,7 @@ export function KitchenDisplay({ area }: { area: string }) {
   const { t } = useTranslation();
   const qc = useQueryClient();
   const queue = useQuery(queueQuery(area));
+  const screen = useQuery(meQuery).data?.kind === 'screen';
   const prepAreaId = queue.data?.prepArea.id;
   useRealtime([prepAreaId ? `prep-area:${prepAreaId}` : '', 'menu'], () => void qc.invalidateQueries({ queryKey: ['kitchen', area] }), !!prepAreaId);
   const now = useServerNow(queue.data?.now);
@@ -104,6 +107,7 @@ export function KitchenDisplay({ area }: { area: string }) {
         <span className="text-base text-muted-foreground">{t('kitchen.counts.preparing')} <b className="tabular text-foreground">{preparing}</b></span>
         <span className="text-base text-muted-foreground">{t('kitchen.counts.ready')} <b className="tabular text-foreground">{ready}</b></span>
         <span className="tabular ml-auto text-xl font-bold">{new Date(now).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' })}</span>
+        {screen && <ExitScreenButton />}
       </header>
       <div className="flex min-h-0 flex-1">
         <main ref={scroller} className="relative flex min-w-0 flex-1 gap-6 overflow-x-auto p-6">

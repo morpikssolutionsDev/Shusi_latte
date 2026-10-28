@@ -11,7 +11,7 @@ import (
 )
 
 const closeDrawerSession = `-- name: CloseDrawerSession :exec
-UPDATE drawer_session SET expected_cash = ?, counted_cash = ?, difference = ?, closed_at = ?, closed_by = ? WHERE id = ? AND closed_at IS NULL
+UPDATE drawer_session SET expected_cash = $1, counted_cash = $2, difference = $3, closed_at = $4, closed_by = $5 WHERE id = $6 AND closed_at IS NULL
 `
 
 type CloseDrawerSessionParams struct {
@@ -37,7 +37,7 @@ func (q *Queries) CloseDrawerSession(ctx context.Context, arg CloseDrawerSession
 
 const createCashHandover = `-- name: CreateCashHandover :exec
 INSERT INTO cash_handover (id, drawer_session_id, waiter_crew_id, expected_amount, received_amount, difference, received_by, received_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 `
 
 type CreateCashHandoverParams struct {
@@ -67,7 +67,7 @@ func (q *Queries) CreateCashHandover(ctx context.Context, arg CreateCashHandover
 
 const createRefund = `-- name: CreateRefund :exec
 
-INSERT INTO refund (id, bill_id, amount, reason, refunded_by, approved_by, drawer_session_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO refund (id, bill_id, amount, reason, refunded_by, approved_by, drawer_session_id, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 `
 
 type CreateRefundParams struct {
@@ -97,7 +97,7 @@ func (q *Queries) CreateRefund(ctx context.Context, arg CreateRefundParams) erro
 }
 
 const getDrawerSession = `-- name: GetDrawerSession :one
-SELECT id, cash_drawer_id, cashier_crew_id, opening_float, opened_at, expected_cash, counted_cash, difference, closed_at, closed_by FROM drawer_session WHERE id = ?
+SELECT id, cash_drawer_id, cashier_crew_id, opening_float, opened_at, expected_cash, counted_cash, difference, closed_at, closed_by FROM drawer_session WHERE id = $1
 `
 
 func (q *Queries) GetDrawerSession(ctx context.Context, id string) (DrawerSession, error) {
@@ -143,7 +143,7 @@ func (q *Queries) GetOpenDrawerSession(ctx context.Context) (DrawerSession, erro
 }
 
 const getPayment = `-- name: GetPayment :one
-SELECT id, bill_id, sub_bill_id, method, status, amount, tendered, change_given, rounding, taken_by, taken_at, cash_handover_id, override_by, verified_by, verified_at, drawer_session_id, written_off_reason, written_off_by FROM payment WHERE id = ?
+SELECT id, bill_id, sub_bill_id, method, status, amount, tendered, change_given, rounding, taken_by, taken_at, cash_handover_id, override_by, verified_by, verified_at, drawer_session_id, written_off_reason, written_off_by FROM payment WHERE id = $1
 `
 
 func (q *Queries) GetPayment(ctx context.Context, id string) (Payment, error) {
@@ -219,7 +219,7 @@ func (q *Queries) ListAllHeldPayments(ctx context.Context) ([]Payment, error) {
 }
 
 const listDrawerSessionsBetween = `-- name: ListDrawerSessionsBetween :many
-SELECT id, cash_drawer_id, cashier_crew_id, opening_float, opened_at, expected_cash, counted_cash, difference, closed_at, closed_by FROM drawer_session WHERE opened_at >= ? AND opened_at < ? ORDER BY opened_at
+SELECT id, cash_drawer_id, cashier_crew_id, opening_float, opened_at, expected_cash, counted_cash, difference, closed_at, closed_by FROM drawer_session WHERE opened_at >= $1 AND opened_at < $2 ORDER BY opened_at
 `
 
 type ListDrawerSessionsBetweenParams struct {
@@ -263,7 +263,7 @@ func (q *Queries) ListDrawerSessionsBetween(ctx context.Context, arg ListDrawerS
 
 const listHeldPayments = `-- name: ListHeldPayments :many
 
-SELECT id, bill_id, sub_bill_id, method, status, amount, tendered, change_given, rounding, taken_by, taken_at, cash_handover_id, override_by, verified_by, verified_at, drawer_session_id, written_off_reason, written_off_by FROM payment WHERE taken_by = ? AND status = 'held_by_waiter' ORDER BY taken_at
+SELECT id, bill_id, sub_bill_id, method, status, amount, tendered, change_given, rounding, taken_by, taken_at, cash_handover_id, override_by, verified_by, verified_at, drawer_session_id, written_off_reason, written_off_by FROM payment WHERE taken_by = $1 AND status = 'held_by_waiter' ORDER BY taken_at
 `
 
 // ---------------------------------------------------------------- Cash Handover (BR-CS-05, TR-PAY-02)
@@ -413,7 +413,7 @@ func (q *Queries) ListPendingPayments(ctx context.Context) ([]Payment, error) {
 }
 
 const listRefundsBetween = `-- name: ListRefundsBetween :many
-SELECT id, bill_id, amount, reason, refunded_by, approved_by, drawer_session_id, created_at FROM refund WHERE created_at >= ? AND created_at < ? ORDER BY created_at
+SELECT id, bill_id, amount, reason, refunded_by, approved_by, drawer_session_id, created_at FROM refund WHERE created_at >= $1 AND created_at < $2 ORDER BY created_at
 `
 
 type ListRefundsBetweenParams struct {
@@ -454,7 +454,7 @@ func (q *Queries) ListRefundsBetween(ctx context.Context, arg ListRefundsBetween
 }
 
 const listRefundsByBill = `-- name: ListRefundsByBill :many
-SELECT id, bill_id, amount, reason, refunded_by, approved_by, drawer_session_id, created_at FROM refund WHERE bill_id = ? ORDER BY created_at
+SELECT id, bill_id, amount, reason, refunded_by, approved_by, drawer_session_id, created_at FROM refund WHERE bill_id = $1 ORDER BY created_at
 `
 
 func (q *Queries) ListRefundsByBill(ctx context.Context, billID string) ([]Refund, error) {
@@ -492,7 +492,7 @@ func (q *Queries) ListRefundsByBill(ctx context.Context, billID string) ([]Refun
 const listRemakesBetween = `-- name: ListRemakesBetween :many
 
 SELECT i.id, i.order_id, i.sort, i.product_id, i.variant_id, i.category_id, i.prep_area_id, i.product_name_id, i.product_name_en, i.variant_name_id, i.variant_name_en, i.unit_price, i.prep_time_seconds, i.quantity, i.note, i.status, i.cancel_reason, i.cancel_note, i.cancelled_by, i.cancelled_at, i.void_reason, i.voided_by, i.voided_override_by, i.voided_at, i.remake_of_id, i.remake_reason, i.remake_override_by, i.preparing_at, i.ready_at, i.served_at, i.served_by, i.sold_out_flag, i.unavailable_flag, i.created_at, i.updated_at, i.pickup_reminded_at, i.sub_bill_id, o.bill_id FROM order_item i JOIN orders o ON o.id = i.order_id
-WHERE i.remake_of_id IS NOT NULL AND i.created_at >= ? AND i.created_at < ? ORDER BY i.created_at
+WHERE i.remake_of_id IS NOT NULL AND i.created_at >= $1 AND i.created_at < $2 ORDER BY i.created_at
 `
 
 type ListRemakesBetweenParams struct {
@@ -605,7 +605,7 @@ func (q *Queries) ListRemakesBetween(ctx context.Context, arg ListRemakesBetween
 }
 
 const listSessionCashPayments = `-- name: ListSessionCashPayments :many
-SELECT id, bill_id, sub_bill_id, method, status, amount, tendered, change_given, rounding, taken_by, taken_at, cash_handover_id, override_by, verified_by, verified_at, drawer_session_id, written_off_reason, written_off_by FROM payment WHERE drawer_session_id = ? AND method = 'cash' AND cash_handover_id IS NULL ORDER BY taken_at
+SELECT id, bill_id, sub_bill_id, method, status, amount, tendered, change_given, rounding, taken_by, taken_at, cash_handover_id, override_by, verified_by, verified_at, drawer_session_id, written_off_reason, written_off_by FROM payment WHERE drawer_session_id = $1 AND method = 'cash' AND cash_handover_id IS NULL ORDER BY taken_at
 `
 
 func (q *Queries) ListSessionCashPayments(ctx context.Context, drawerSessionID sql.NullString) ([]Payment, error) {
@@ -651,7 +651,7 @@ func (q *Queries) ListSessionCashPayments(ctx context.Context, drawerSessionID s
 }
 
 const listSessionHandovers = `-- name: ListSessionHandovers :many
-SELECT id, drawer_session_id, waiter_crew_id, expected_amount, received_amount, difference, received_by, received_at FROM cash_handover WHERE drawer_session_id = ? ORDER BY received_at
+SELECT id, drawer_session_id, waiter_crew_id, expected_amount, received_amount, difference, received_by, received_at FROM cash_handover WHERE drawer_session_id = $1 ORDER BY received_at
 `
 
 func (q *Queries) ListSessionHandovers(ctx context.Context, drawerSessionID string) ([]CashHandover, error) {
@@ -687,7 +687,7 @@ func (q *Queries) ListSessionHandovers(ctx context.Context, drawerSessionID stri
 }
 
 const listSessionRefunds = `-- name: ListSessionRefunds :many
-SELECT id, bill_id, amount, reason, refunded_by, approved_by, drawer_session_id, created_at FROM refund WHERE drawer_session_id = ? ORDER BY created_at
+SELECT id, bill_id, amount, reason, refunded_by, approved_by, drawer_session_id, created_at FROM refund WHERE drawer_session_id = $1 ORDER BY created_at
 `
 
 func (q *Queries) ListSessionRefunds(ctx context.Context, drawerSessionID string) ([]Refund, error) {
@@ -723,7 +723,7 @@ func (q *Queries) ListSessionRefunds(ctx context.Context, drawerSessionID string
 }
 
 const listTodayBills = `-- name: ListTodayBills :many
-SELECT id, business_date, number, type, source, status, key_id, takeaway_name_enc, pay_now_serve_later_by, unpaid_reason, unpaid_override_by, merged_into_id, opened_at, closed_at, anonymised_at, updated_at, priced_at, manual_discount_id, manual_discount_by, subtotal, item_discount, bill_discount, service, tax, total FROM bill WHERE opened_at >= ? OR (closed_at IS NOT NULL AND closed_at >= ?) ORDER BY opened_at DESC
+SELECT id, business_date, number, type, source, status, key_id, takeaway_name_enc, pay_now_serve_later_by, unpaid_reason, unpaid_override_by, merged_into_id, opened_at, closed_at, anonymised_at, updated_at, priced_at, manual_discount_id, manual_discount_by, subtotal, item_discount, bill_discount, service, tax, total FROM bill WHERE opened_at >= $1 OR (closed_at IS NOT NULL AND closed_at >= $2) ORDER BY opened_at DESC
 `
 
 type ListTodayBillsParams struct {
@@ -781,7 +781,7 @@ func (q *Queries) ListTodayBills(ctx context.Context, arg ListTodayBillsParams) 
 }
 
 const openDrawerSession = `-- name: OpenDrawerSession :exec
-INSERT INTO drawer_session (id, cash_drawer_id, cashier_crew_id, opening_float, opened_at) VALUES (?, 'main', ?, ?, ?)
+INSERT INTO drawer_session (id, cash_drawer_id, cashier_crew_id, opening_float, opened_at) VALUES ($1, 'main', $2, $3, $4)
 `
 
 type OpenDrawerSessionParams struct {
@@ -802,7 +802,7 @@ func (q *Queries) OpenDrawerSession(ctx context.Context, arg OpenDrawerSessionPa
 }
 
 const serveItemAt = `-- name: ServeItemAt :exec
-UPDATE order_item SET status = 'served', preparing_at = ?, ready_at = ?, served_at = ?, served_by = ?, updated_at = ? WHERE id = ?
+UPDATE order_item SET status = 'served', preparing_at = $1, ready_at = $2, served_at = $3, served_by = $4, updated_at = $5 WHERE id = $6
 `
 
 type ServeItemAtParams struct {
@@ -827,7 +827,7 @@ func (q *Queries) ServeItemAt(ctx context.Context, arg ServeItemAtParams) error 
 }
 
 const setBillOpenedAt = `-- name: SetBillOpenedAt :exec
-UPDATE bill SET opened_at = ?, updated_at = ? WHERE id = ?
+UPDATE bill SET opened_at = $1, updated_at = $2 WHERE id = $3
 `
 
 type SetBillOpenedAtParams struct {
@@ -842,7 +842,7 @@ func (q *Queries) SetBillOpenedAt(ctx context.Context, arg SetBillOpenedAtParams
 }
 
 const setOrderTimes = `-- name: SetOrderTimes :exec
-UPDATE orders SET created_at = ?, claimed_at = ?, confirmed_at = ?, updated_at = ? WHERE id = ?
+UPDATE orders SET created_at = $1, claimed_at = $2, confirmed_at = $3, updated_at = $4 WHERE id = $5
 `
 
 type SetOrderTimesParams struct {
@@ -865,7 +865,7 @@ func (q *Queries) SetOrderTimes(ctx context.Context, arg SetOrderTimesParams) er
 }
 
 const setPaymentSession = `-- name: SetPaymentSession :exec
-UPDATE payment SET drawer_session_id = ? WHERE id = ?
+UPDATE payment SET drawer_session_id = $1 WHERE id = $2
 `
 
 type SetPaymentSessionParams struct {
@@ -879,8 +879,8 @@ func (q *Queries) SetPaymentSession(ctx context.Context, arg SetPaymentSessionPa
 }
 
 const settleHeldPayments = `-- name: SettleHeldPayments :exec
-UPDATE payment SET status = 'settled', cash_handover_id = ?, drawer_session_id = ?
-WHERE taken_by = ? AND status = 'held_by_waiter'
+UPDATE payment SET status = 'settled', cash_handover_id = $1, drawer_session_id = $2
+WHERE taken_by = $3 AND status = 'held_by_waiter'
 `
 
 type SettleHeldPaymentsParams struct {
@@ -895,7 +895,7 @@ func (q *Queries) SettleHeldPayments(ctx context.Context, arg SettleHeldPayments
 }
 
 const verifyPayment = `-- name: VerifyPayment :execrows
-UPDATE payment SET status = 'settled', verified_by = ?, verified_at = ? WHERE id = ? AND status = 'pending_verification'
+UPDATE payment SET status = 'settled', verified_by = $1, verified_at = $2 WHERE id = $3 AND status = 'pending_verification'
 `
 
 type VerifyPaymentParams struct {
@@ -913,7 +913,7 @@ func (q *Queries) VerifyPayment(ctx context.Context, arg VerifyPaymentParams) (i
 }
 
 const writeOffPayment = `-- name: WriteOffPayment :execrows
-UPDATE payment SET status = 'written_off', written_off_reason = ?, written_off_by = ? WHERE id = ? AND status = 'pending_verification'
+UPDATE payment SET status = 'written_off', written_off_reason = $1, written_off_by = $2 WHERE id = $3 AND status = 'pending_verification'
 `
 
 type WriteOffPaymentParams struct {

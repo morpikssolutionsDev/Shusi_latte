@@ -7,6 +7,7 @@ import { useMutation } from '@tanstack/react-query';
 import { CheckCircle2Icon, HandCoinsIcon, LogInIcon, LogOutIcon, TriangleAlertIcon } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ExitScreenButton } from '../components/exit-screen';
 import { errorMessage } from '../routes/login';
 import { hris, wibTime, type ClockResult, type OpenClaim } from './api';
 
@@ -75,7 +76,8 @@ export function ClockPad() {
   const date = new Date(now).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Asia/Jakarta' });
 
   return (
-    <main className="grid min-h-[calc(100dvh-28px)] place-items-center bg-background p-6">
+    <main className="relative grid min-h-[calc(100dvh-28px)] place-items-center bg-background p-6">
+      <ExitScreenButton className="absolute right-4 top-4" />
       <div className="grid w-full max-w-5xl items-center gap-10 md:grid-cols-2">
         <section className="flex flex-col items-center gap-3 text-center md:items-start md:text-left">
           <Logo className="size-16" />

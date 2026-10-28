@@ -10,7 +10,7 @@
 }
 @keyframes sl-float {
   0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
+  50% { transform: translateY(-6px); }
 }
 .sl-steam path { animation: sl-steam 2.8s ease-in-out infinite both; transform-box: fill-box; }
 .sl-steam path:nth-child(2) { animation-delay: 0.6s; }
@@ -18,7 +18,7 @@
 .sl-sparkle { animation: sl-twinkle 2.4s ease-in-out infinite both; transform-box: fill-box; transform-origin: center; }
 .sl-float { animation: sl-float 4s ease-in-out infinite; }
 
-html, body, #root { height: 100%; overflow: hidden; background: #12221B; }
+html, body, #root { height: 100%; overflow: hidden; background: var(--sl-color-bg-canvas); }
 
 @media (prefers-reduced-motion: reduce) {
   .sl-steam path, .sl-sparkle, .sl-float { animation: none; opacity: 0.8; transform: none; }

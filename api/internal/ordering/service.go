@@ -122,7 +122,7 @@ type CustomerRef struct {
 }
 
 // TableState is what a scan shows (OP-01): free, occupied (with the full names, BR-CM-12,
-// BR-P-07) or unavailable (QR regenerated or Table inactive).
+// BR-P-07) or unavailable (no Table with that code, or the Table is inactive).
 type TableState struct {
 	State     string        `json:"state"`
 	Table     *TableRef     `json:"table,omitempty"`
@@ -134,9 +134,9 @@ func unavailable() error {
 	return problem(http.StatusNotFound, "table_unavailable", "QR ini tidak aktif. Minta bantuan pelayan, ya.")
 }
 
-func (s *Service) Lookup(ctx context.Context, qr string) (TableState, error) {
+func (s *Service) Lookup(ctx context.Context, code string) (TableState, error) {
 	q := s.db.Read()
-	t, err := q.GetTableByQR(ctx, qr)
+	t, err := q.GetTableByCode(ctx, outlet.NormaliseTableCode(code))
 	if errors.Is(err, sql.ErrNoRows) || err == nil && t.Active == 0 {
 		return TableState{State: "unavailable", Customers: []CustomerRef{}}, nil
 	}
@@ -258,7 +258,7 @@ func (s *Service) validateJoin(ctx context.Context, in *JoinInput) error {
 // Join opens the Table's Bill if it has none, or joins the open one, and adds a new Customer
 // (BR-CM-01, BR-CM-06). BEGIN IMMEDIATE plus the one-open-Bill index make two simultaneous
 // first scans produce one Bill (TR-DM-01).
-func (s *Service) Join(ctx context.Context, qr string, in JoinInput) (Session, error) {
+func (s *Service) Join(ctx context.Context, code string, in JoinInput) (Session, error) {
 	if err := s.validateJoin(ctx, &in); err != nil {
 		return Session{}, err
 	}
@@ -287,7 +287,7 @@ func (s *Service) Join(ctx context.Context, qr string, in JoinInput) (Session, e
 	token, digest := platform.NewToken()
 	out := Session{Token: token, CustomerID: platform.NewID(), Name: in.Name}
 	err = s.db.Write(ctx, func(tx *dbx.Tx) error {
-		t, err := tx.GetTableByQR(ctx, qr)
+		t, err := tx.GetTableByCode(ctx, outlet.NormaliseTableCode(code))
 		if errors.Is(err, sql.ErrNoRows) || err == nil && t.Active == 0 {
 			return unavailable()
 		}
@@ -342,12 +342,12 @@ func (s *Service) openBill(ctx context.Context, tx *dbx.Tx, tableID string, now 
 
 // Rejoin continues as an existing Customer on a new device: the new token replaces the old
 // one, which is told "You continued on another device" (BR-CM-12, BR-CM-13, TR-AUTH-07).
-func (s *Service) Rejoin(ctx context.Context, qr, customerID string) (Session, error) {
+func (s *Service) Rejoin(ctx context.Context, code, customerID string) (Session, error) {
 	now := platform.Millis(s.clock.Now())
 	token, digest := platform.NewToken()
 	out := Session{Token: token, CustomerID: customerID}
 	err := s.db.Write(ctx, func(tx *dbx.Tx) error {
-		t, err := tx.GetTableByQR(ctx, qr)
+		t, err := tx.GetTableByCode(ctx, outlet.NormaliseTableCode(code))
 		if errors.Is(err, sql.ErrNoRows) || err == nil && t.Active == 0 {
 			return unavailable()
 		}
@@ -387,9 +387,9 @@ func (s *Service) Rejoin(ctx context.Context, qr, customerID string) (Session, e
 }
 
 // NotMine handles "This isn't my table": Waiters are notified (BR-CM-12).
-func (s *Service) NotMine(ctx context.Context, qr string) error {
+func (s *Service) NotMine(ctx context.Context, code string) error {
 	return s.db.Write(ctx, func(tx *dbx.Tx) error {
-		t, err := tx.GetTableByQR(ctx, qr)
+		t, err := tx.GetTableByCode(ctx, outlet.NormaliseTableCode(code))
 		if errors.Is(err, sql.ErrNoRows) || err == nil && t.Active == 0 {
 			return unavailable()
 		}

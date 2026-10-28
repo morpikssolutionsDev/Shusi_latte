@@ -63,10 +63,10 @@ export function CallWaiterButton({ me }: { me: CustomerView }) {
   );
 }
 
-export function OrdersLink({ qr, count }: { qr: string; count: number }) {
+export function OrdersLink({ code, count }: { code: string; count: number }) {
   const { t } = useTranslation();
   return (
-    <Link to="/t/$qr/orders" params={{ qr }} className="relative inline-flex size-10 items-center justify-center rounded-full bg-sunken" aria-label={t('menu.orders')}>
+    <Link to="/$code/orders" params={{ code }} className="relative inline-flex size-10 items-center justify-center rounded-full bg-sunken" aria-label={t('menu.orders')}>
       <ClipboardListIcon className="size-5" aria-hidden />
       {count > 0 && (
         <motion.span

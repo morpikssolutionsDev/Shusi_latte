@@ -87,7 +87,7 @@ func setup(t *testing.T) fixture {
 	}
 	t4, _ := tables.SaveTable(ctx, actor, outlet.Table{Number: 4, Label: "Meja 4", Active: true})
 	return fixture{db: db, clock: clock, svc: ordering.NewService(db, clock, testutil.NewVault(t)), cat: cat, actor: actor,
-		qr: t3.QRToken, qr2: t4.QRToken, dairy: dairy.ID, latte: latte, nigiri: nigiri}
+		qr: t3.Code, qr2: t4.Code, dairy: dairy.ID, latte: latte, nigiri: nigiri}
 }
 
 func (f fixture) join(t *testing.T, name string, restriction ...string) (ordering.Session, *ordering.Guest) {
@@ -370,7 +370,7 @@ func TestEditAndCancelBeforeClaim(t *testing.T) {
 
 	// Once Claimed, the Customer must ask the Waiter.
 	if err := f.db.Write(ctx, func(tx *dbx.Tx) error {
-		return tx.Exec(ctx, "UPDATE orders SET claimed_by = ?, claimed_at = ? WHERE id = ?", f.actor, platform.Millis(t0), id)
+		return tx.Exec(ctx, "UPDATE orders SET claimed_by = $1, claimed_at = $2 WHERE id = $3", f.actor, platform.Millis(t0), id)
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -501,3 +501,32 @@ func TestOrderStatusDerivation(t *testing.T) {
 }
 
 func nullMs(t time.Time) sql.NullInt64 { return sql.NullInt64{Int64: platform.Millis(t), Valid: true} }
+
+// BR-ADM-08, BR-CM-01 (decided 2026-10-28): a Table's QR opens a fixed /table-NN; the code follows
+// the number, accepts table-3 or TABLE-03, and an unknown or inactive Table is "please ask staff".
+func TestStaticTableCode(t *testing.T) {
+	f := setup(t)
+	ctx := context.Background()
+	if f.qr != "table-03" {
+		t.Fatalf("Meja 3 code = %q", f.qr)
+	}
+	for _, code := range []string{"table-03", "table-3", "TABLE-03"} {
+		if st, err := f.svc.Lookup(ctx, code); err != nil || st.Table.Label != "Meja 3" {
+			t.Fatalf("lookup %s: %+v %v", code, st, err)
+		}
+	}
+	if st, _ := f.svc.Lookup(ctx, "table-99"); st.State != "unavailable" {
+		t.Fatalf("unknown Table: %+v", st)
+	}
+	tables := outlet.NewService(f.db, f.clock)
+	all, _ := tables.Tables(ctx)
+	t4 := all[slices.IndexFunc(all, func(x outlet.Table) bool { return x.Number == 4 })]
+	t4.Number, t4.Active = 14, false
+	moved, err := tables.SaveTable(ctx, f.actor, t4)
+	if err != nil || moved.Code != "table-14" {
+		t.Fatalf("renumbered Table: %+v %v", moved, err)
+	}
+	if st, _ := f.svc.Lookup(ctx, "table-14"); st.State != "unavailable" {
+		t.Fatalf("inactive Table: %+v", st)
+	}
+}

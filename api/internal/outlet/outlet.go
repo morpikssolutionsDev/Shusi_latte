@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -330,16 +331,31 @@ func ToPricing(d Discount) pricing.Discount {
 // ---------------------------------------------------------------- Tables
 
 type Table struct {
-	ID              string `json:"id"`
-	Number          int64  `json:"number"`
-	Label           string `json:"label"`
-	QRToken         string `json:"qrToken"`
-	Active          bool   `json:"active"`
-	QRRegeneratedAt *int64 `json:"qrRegeneratedAt,omitempty"`
+	ID     string `json:"id"`
+	Number int64  `json:"number"`
+	Label  string `json:"label"`
+	Code   string `json:"code"` // table-01: the path its printed QR opens (TableCode)
+	Active bool   `json:"active"`
 }
 
 func toTable(t store.DiningTable) Table {
-	return Table{ID: t.ID, Number: t.Number, Label: t.Label, QRToken: t.QrToken, Active: t.Active == 1, QRRegeneratedAt: ptrInt(t.QrRegeneratedAt)}
+	return Table{ID: t.ID, Number: t.Number, Label: t.Label, Code: t.Code, Active: t.Active == 1}
+}
+
+// TableCode is a Table's fixed public code, table-01 … table-12: its QR opens /table-01 and never
+// changes, since it follows the number (BR-ADM-08, decided 2026-10-28).
+func TableCode(number int64) string { return fmt.Sprintf("table-%02d", number) }
+
+// NormaliseTableCode accepts table-1 or TABLE-01 as table-01; anything else is returned as is
+// (and finds no Table).
+func NormaliseTableCode(s string) string {
+	s = strings.ToLower(strings.TrimSpace(s))
+	if rest, ok := strings.CutPrefix(s, "table-"); ok {
+		if n, err := strconv.ParseInt(rest, 10, 64); err == nil && n > 0 {
+			return TableCode(n)
+		}
+	}
+	return s
 }
 
 func (s *Service) Tables(ctx context.Context) ([]Table, error) {
@@ -352,11 +368,6 @@ func (s *Service) Tables(ctx context.Context) ([]Table, error) {
 		out = append(out, toTable(r))
 	}
 	return out, nil
-}
-
-func qrToken() string {
-	token, _ := platform.NewToken()
-	return token[:22]
 }
 
 func (s *Service) SaveTable(ctx context.Context, actor string, in Table) (Table, error) {
@@ -372,7 +383,7 @@ func (s *Service) SaveTable(ctx context.Context, actor string, in Table) (Table,
 		now := platform.Millis(s.clock.Now())
 		if in.ID == "" {
 			in.ID = platform.NewID()
-			if err := tx.CreateTable(ctx, store.CreateTableParams{ID: in.ID, Number: in.Number, Label: in.Label, QrToken: qrToken(),
+			if err := tx.CreateTable(ctx, store.CreateTableParams{ID: in.ID, Number: in.Number, Label: in.Label, Code: TableCode(in.Number),
 				Active: 1, CreatedAt: now, UpdatedAt: now}); err != nil {
 				return uniqueNumber(err)
 			}
@@ -382,7 +393,7 @@ func (s *Service) SaveTable(ctx context.Context, actor string, in Table) (Table,
 			} else if err != nil {
 				return err
 			}
-			if err := tx.UpdateTable(ctx, store.UpdateTableParams{Number: in.Number, Label: in.Label, Active: boolInt(in.Active),
+			if err := tx.UpdateTable(ctx, store.UpdateTableParams{Number: in.Number, Code: TableCode(in.Number), Label: in.Label, Active: boolInt(in.Active),
 				UpdatedAt: now, ID: in.ID}); err != nil {
 				return uniqueNumber(err)
 			}
@@ -398,34 +409,10 @@ func (s *Service) SaveTable(ctx context.Context, actor string, in Table) (Table,
 }
 
 func uniqueNumber(err error) error {
-	if strings.Contains(err.Error(), "UNIQUE") {
+	if dbx.IsUniqueViolation(err) {
 		return invalid("Nomor meja sudah dipakai")
 	}
 	return err
-}
-
-// RegenerateQR issues a new QR token; printed codes for the old one stop working (TR-AUTH-07).
-func (s *Service) RegenerateQR(ctx context.Context, actor, id string) (Table, error) {
-	var out Table
-	err := s.db.Write(ctx, func(tx *dbx.Tx) error {
-		if _, err := tx.GetTable(ctx, id); errors.Is(err, sql.ErrNoRows) {
-			return errNotFound
-		} else if err != nil {
-			return err
-		}
-		now := platform.Millis(s.clock.Now())
-		if err := tx.RegenerateTableQR(ctx, store.RegenerateTableQRParams{QrToken: qrToken(), QrRegeneratedAt: sql.NullInt64{Int64: now, Valid: true},
-			UpdatedAt: now, ID: id}); err != nil {
-			return err
-		}
-		row, err := tx.GetTable(ctx, id)
-		if err != nil {
-			return err
-		}
-		out = toTable(row)
-		return s.audit(ctx, tx, actor, "table.qr_regenerated", "table", id, nil, nil)
-	})
-	return out, err
 }
 
 // ---------------------------------------------------------------- helpers

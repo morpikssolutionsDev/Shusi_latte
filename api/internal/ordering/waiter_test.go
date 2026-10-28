@@ -216,7 +216,7 @@ func TestTakeoverAndReassign(t *testing.T) {
 	if o.ClaimedBy.String != s.w1.ID || len(transfers) != 2 || transfers[0].Kind != "takeover" || transfers[1].Kind != "reassign" {
 		t.Fatalf("claimant %s, transfers %+v", o.ClaimedBy.String, transfers)
 	}
-	audits, _ := f.db.Read().SearchAudit(ctx, store.SearchAuditParams{ActionPrefix: "claim.", RowLimit: 10})
+	audits, _ := f.db.Read().SearchAudit(ctx, store.SearchAuditParams{ActionPrefix: sql.NullString{String: "claim.", Valid: true}, RowLimit: 10})
 	if len(audits) != 2 {
 		t.Fatalf("audit entries = %d", len(audits))
 	}

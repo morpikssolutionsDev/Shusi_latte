@@ -1,6 +1,8 @@
 ---
-status: accepted
+status: superseded by 0007
 ---
+
+> **Superseded 2026-10-28** by [ADR-0007](0007-postgresql.md): the prototype now runs on PostgreSQL.
 
 # SQLite with an in-process event bus for the prototype and demo
 

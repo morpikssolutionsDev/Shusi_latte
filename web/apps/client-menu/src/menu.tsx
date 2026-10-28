@@ -26,7 +26,7 @@ export const lowestPrice = (p: Product, promos: Menu['promos']) => {
   return { price: min, from: new Set(list.map((v) => v.price)).size > 1, base: Math.min(...list.map((v) => v.price)) };
 };
 
-export function MenuScreen({ qr, me, menu, online }: { qr: string; me: CustomerView; menu: Menu; online: boolean }) {
+export function MenuScreen({ code, me, menu, online }: { code: string; me: CustomerView; menu: Menu; online: boolean }) {
   const { t } = useTranslation();
   const { of } = useName();
   const lines = useCart();
@@ -77,7 +77,7 @@ export function MenuScreen({ qr, me, menu, online }: { qr: string; me: CustomerV
             <p className="truncate font-display text-lg font-bold">{t('menu.hello', { name: me.customer.name.split(' ')[0] })}</p>
           </div>
           <LanguageToggle />
-          <OrdersLink qr={qr} count={activeOrders} />
+          <OrdersLink code={code} count={activeOrders} />
         </div>
         <div className="flex items-center gap-2 px-4 pb-2">
           <CallWaiterButton me={me} />
@@ -147,7 +147,7 @@ export function MenuScreen({ qr, me, menu, online }: { qr: string; me: CustomerV
 
       <ProductSheet product={openProduct} menu={menu} restriction={restriction} onClose={() => setOpenId(null)} />
       <CartBar onOpen={() => setCartOpen(true)} />
-      <CartSheet open={cartOpen} onClose={() => setCartOpen(false)} qr={qr} menu={menu} me={me} />
+      <CartSheet open={cartOpen} onClose={() => setCartOpen(false)} code={code} menu={menu} me={me} />
     </div>
   );
 }

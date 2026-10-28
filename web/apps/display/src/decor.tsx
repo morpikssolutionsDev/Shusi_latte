@@ -43,13 +43,13 @@ export function Countdown({ ms }: { ms: number }) {
   const total = Math.max(0, Math.floor(ms / 1000));
   const parts = [Math.floor(total / 3600), Math.floor((total % 3600) / 60), total % 60].map((n) => String(n).padStart(2, '0'));
   return (
-    <span className="tabular inline-flex items-center gap-3 font-extrabold" aria-label={parts.join(':')}>
+    <span className="tabular inline-flex items-center gap-[0.12em] font-extrabold" aria-label={parts.join(':')}>
       {parts.map((part, i) => (
-        <span key={i} className="inline-flex items-center gap-3">
-          {i > 0 && <span className="opacity-60">:</span>}
-          <span className="inline-flex gap-1">
+        <span key={i} className="inline-flex items-center gap-[0.12em]">
+          {i > 0 && <span className="-mt-[0.08em] opacity-50">:</span>}
+          <span className="inline-flex gap-[0.06em]">
             {part.split('').map((digit, j) => (
-              <span key={j} className="relative inline-block w-[0.62em] overflow-hidden rounded-xl bg-white/10 text-center">
+              <span key={j} className="relative inline-block w-[0.78em] overflow-hidden rounded-[0.14em] bg-white/10 py-[0.06em] text-center leading-none">
                 <motion.span
                   key={digit}
                   className="inline-block"

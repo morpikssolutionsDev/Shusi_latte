@@ -356,7 +356,7 @@ func TestReceiptsAndReprint(t *testing.T) {
 		t.Fatalf("receipt lines %+v", cust.Lines)
 	}
 	again, _ := f.svc.Receipt(ctx, s.w1, g.BillID, "", "customer")
-	audits, _ := f.db.Read().SearchAudit(ctx, store.SearchAuditParams{ActionPrefix: "receipt.reprinted", RowLimit: 5})
+	audits, _ := f.db.Read().SearchAudit(ctx, store.SearchAuditParams{ActionPrefix: sql.NullString{String: "receipt.reprinted", Valid: true}, RowLimit: 5})
 	if !again.Reprint || len(audits) != 1 {
 		t.Fatalf("reprint=%v audits=%d", again.Reprint, len(audits))
 	}

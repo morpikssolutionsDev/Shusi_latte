@@ -48,7 +48,7 @@ func publicFixture(t *testing.T, db *dbx.DB) (qr, variantID string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return tbl.QRToken, p.Variants[0].ID
+	return tbl.Code, p.Variants[0].ID
 }
 
 func doJSON(t *testing.T, method, url, token, idemKey, body string) (*http.Response, []byte) {

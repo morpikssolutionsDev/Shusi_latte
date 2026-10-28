@@ -1,6 +1,6 @@
 # Sushi Latte
 
-Prototype and showcase of a single-outlet HORECA platform: one Go API with SQLite, plus three React apps (Client Menu, Staff PWA, Product Display), running on one local host. Repository layout: [TRD §3](docs/TRD.md#3-repository-structure).
+Prototype and showcase of a single-outlet HORECA platform: one Go API with PostgreSQL ([ADR-0007](docs/adr/0007-postgresql.md); `POSTGRE_URL` in the environment), plus three React apps (Client Menu, Staff PWA, Product Display), running on one local host. Repository layout: [TRD §3](docs/TRD.md#3-repository-structure).
 
 ## Language
 

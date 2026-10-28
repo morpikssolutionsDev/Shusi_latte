@@ -23,10 +23,10 @@ import { clearSession, forgetAllSessions, resume, setEnded, useEnded, useSession
  * Everything behind a Table QR: resume or join (OP-01), then load the Customer's view and
  * follow it live. Ended sessions show their plain notice (M12).
  */
-function GuestGate({ qr, fresh, children }: { qr: string; fresh: boolean; children: (me: CustomerView, menu: Menu, online: boolean) => ReactNode }) {
+function GuestGate({ code, fresh, children }: { code: string; fresh: boolean; children: (me: CustomerView, menu: Menu, online: boolean) => ReactNode }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  useState(() => resume(qr, fresh));
+  useState(() => resume(code, fresh));
   const session = useSession();
   const ended = useEnded();
   const [splash, setSplash] = useState(false);
@@ -36,9 +36,9 @@ function GuestGate({ qr, fresh, children }: { qr: string; fresh: boolean; childr
   if (session) loadCart(session.customerId);
 
   const restart = () => {
-    clearSession(qr);
+    clearSession(code);
     setEnded(null);
-    void navigate({ to: '/t/$qr', params: { qr }, search: { fresh: true } });
+    void navigate({ to: '/$code', params: { code }, search: { fresh: true } });
   };
   if (ended === 'continued_elsewhere') {
     return <Notice icon={<SmartphoneIcon className="size-8" aria-hidden />} title={t('ended.elsewhereTitle')} body={t('ended.elsewhereBody')} action={<Button onClick={restart}>{t('ended.scanAgain')}</Button>} />;
@@ -46,7 +46,7 @@ function GuestGate({ qr, fresh, children }: { qr: string; fresh: boolean; childr
   if (ended) {
     return <Notice title={t('ended.closedTitle')} body={t('ended.closedBody')} action={<Button onClick={restart}>{t('ended.scanAgain')}</Button>} />;
   }
-  if (!session || session.qr !== qr) return <JoinFlow qr={qr} onJoined={(first) => setSplash(first)} />;
+  if (!session || session.code !== code) return <JoinFlow code={code} onJoined={(first) => setSplash(first)} />;
   return (
     <>
       {me.data && menu.data ? children(me.data, menu.data, online) : <CenteredLoader />}
@@ -92,20 +92,20 @@ const landing = createRoute({ getParentRoute: () => root, path: '/', component: 
 const demo = createRoute({ getParentRoute: () => root, path: '/demo', component: lazyRouteComponent(() => import('./demo'), 'DemoLauncher') });
 const table = createRoute({
   getParentRoute: () => root,
-  path: '/t/$qr',
+  path: '/$code',
   validateSearch: search,
   component: function TableRoute() {
-    const { qr } = table.useParams();
+    const { code } = table.useParams();
     const { fresh } = table.useSearch();
-    return <GuestGate qr={qr} fresh={!!fresh}>{(me, menu, online) => <MenuScreen qr={qr} me={me} menu={menu} online={online} />}</GuestGate>;
+    return <GuestGate code={code} fresh={!!fresh}>{(me, menu, online) => <MenuScreen code={code} me={me} menu={menu} online={online} />}</GuestGate>;
   },
 });
 const orders = createRoute({
   getParentRoute: () => root,
-  path: '/t/$qr/orders',
+  path: '/$code/orders',
   component: function OrdersRoute() {
-    const { qr } = orders.useParams();
-    return <GuestGate qr={qr} fresh={false}>{(me) => <OrdersScreen qr={qr} me={me} />}</GuestGate>;
+    const { code } = orders.useParams();
+    return <GuestGate code={code} fresh={false}>{(me) => <OrdersScreen code={code} me={me} />}</GuestGate>;
   },
 });
 

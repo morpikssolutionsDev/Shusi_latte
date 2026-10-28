@@ -1,21 +1,24 @@
 import { api, unwrap } from '@sushi-latte/api-client';
 import { Button, Card, Dialog, Field, Input, Switch, cn } from '@sushi-latte/ui';
 import { useQuery } from '@tanstack/react-query';
-import { PlusIcon, PrinterIcon, RefreshCwIcon } from 'lucide-react';
+import { PlusIcon, PrinterIcon } from 'lucide-react';
 import QRCode from 'qrcode';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { tablesQuery, useSave, type Table } from './api';
 import { PageHeader } from './layout';
 
-/** The Client Menu entry point for a Table (BR-CM-01). Served at the site root. */
-export const tableUrl = (token: string) => `${import.meta.env.VITE_MENU_ORIGIN ?? location.origin}/t/${token}`;
+/**
+ * The Client Menu entry point for a Table (BR-CM-01): /table-01 at the site root. The code follows
+ * the Table number, so a printed QR never changes (BR-ADM-08).
+ */
+export const tableUrl = (code: string) => `${import.meta.env.VITE_MENU_ORIGIN ?? location.origin}/${code}`;
 
-function useQr(token: string) {
+function useQr(code: string) {
   const [src, setSrc] = useState('');
   useEffect(() => {
-    void QRCode.toDataURL(tableUrl(token), { margin: 1, width: 480, color: { dark: '#1E2B25', light: '#FFFFFF' } }).then(setSrc);
-  }, [token]);
+    void QRCode.toDataURL(tableUrl(code), { margin: 1, width: 480, color: { dark: '#1E2B25', light: '#FFFFFF' } }).then(setSrc);
+  }, [code]);
   return src;
 }
 
@@ -23,16 +26,10 @@ export function TablesPage() {
   const { t } = useTranslation();
   const { data } = useQuery(tablesQuery);
   const [edit, setEdit] = useState<Table | null>(null);
-  const [regen, setRegen] = useState<Table | null>(null);
   const save = useSave(
     async (x: Table) => (x.id ? unwrap(await api.PUT('/tables/{id}', { params: { path: { id: x.id } }, body: x })) : unwrap(await api.POST('/tables', { body: x }))),
     [['tables']],
     t('admin.common.saved'),
-  );
-  const regenerate = useSave(
-    async (id: string) => unwrap(await api.POST('/tables/{id}/regenerate-qr', { params: { path: { id } } })),
-    [['tables']],
-    t('admin.tables.regenerated'),
   );
   if (!data) return null;
   const nextNumber = Math.max(0, ...data.map((x) => x.number)) + 1;
@@ -56,8 +53,7 @@ export function TablesPage() {
       />
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
         {data.map((x) => (
-          <TableCard key={x.id} table={x} onEdit={() => setEdit(x)} onRegenerate={() => setRegen(x)}
-            onToggle={(active) => save.mutate({ ...x, active })} />
+          <TableCard key={x.id} table={x} onEdit={() => setEdit(x)} onToggle={(active) => save.mutate({ ...x, active })} />
         ))}
       </div>
 
@@ -68,7 +64,7 @@ export function TablesPage() {
             <Button disabled={save.isPending} onClick={() => save.mutate(edit, { onSuccess: () => setEdit(null) })}>{t('admin.common.save')}</Button>
           </>}>
           <div className="grid grid-cols-2 gap-4">
-            <Field label={t('admin.tables.number')} htmlFor="t-num">
+            <Field label={t('admin.tables.number')} htmlFor="t-num" hint={t('admin.tables.numberHint', { code: `table-${String(edit.number).padStart(2, '0')}` })}>
               <Input id="t-num" type="number" min={1} className="tabular" value={edit.number} onChange={(e) => setEdit({ ...edit, number: Number(e.target.value) })} />
             </Field>
             <Field label={t('admin.tables.label')} htmlFor="t-label">
@@ -77,25 +73,13 @@ export function TablesPage() {
           </div>
         </Dialog>
       )}
-      {regen && (
-        <Dialog open onOpenChange={(o) => !o && setRegen(null)} title={t('admin.tables.regenerate')}
-          description={t('admin.tables.regenerateConfirm', { label: regen.label })}
-          footer={<>
-            <Button variant="secondary" onClick={() => setRegen(null)}>{t('admin.common.cancel')}</Button>
-            <Button variant="danger" disabled={regenerate.isPending} onClick={() => regenerate.mutate(regen.id!, { onSuccess: () => setRegen(null) })}>
-              {t('admin.tables.regenerate')}
-            </Button>
-          </>}>
-          <p className="text-sm">{tableUrl(regen.qrToken ?? '')}</p>
-        </Dialog>
-      )}
     </>
   );
 }
 
-function TableCard({ table, onEdit, onRegenerate, onToggle }: { table: Table; onEdit: () => void; onRegenerate: () => void; onToggle: (active: boolean) => void }) {
+function TableCard({ table, onEdit, onToggle }: { table: Table; onEdit: () => void; onToggle: (active: boolean) => void }) {
   const { t } = useTranslation();
-  const qr = useQr(table.qrToken ?? '');
+  const qr = useQr(table.code ?? '');
   return (
     <Card className={cn('flex flex-col gap-3 p-4', !table.active && 'border-dashed')}>
       <div className="flex items-center justify-between gap-2">
@@ -103,11 +87,7 @@ function TableCard({ table, onEdit, onRegenerate, onToggle }: { table: Table; on
         <Switch aria-label={`${table.label} ${t('admin.common.active')}`} checked={table.active} onCheckedChange={onToggle} />
       </div>
       {qr && <img src={qr} alt={`${t('admin.tables.qr')} ${table.label}`} className="aspect-square w-full rounded-lg border border-border-subtle" />}
-      <p className="truncate font-mono text-xs text-muted-foreground" title={tableUrl(table.qrToken ?? '')}>/t/{table.qrToken}</p>
-      <Button variant="ghost" size="sm" onClick={onRegenerate}>
-        <RefreshCwIcon aria-hidden />
-        {t('admin.tables.regenerate')}
-      </Button>
+      <p className="truncate font-mono text-xs text-muted-foreground" title={tableUrl(table.code ?? '')}>/{table.code}</p>
     </Card>
   );
 }
@@ -115,7 +95,7 @@ function TableCard({ table, onEdit, onRegenerate, onToggle }: { table: Table; on
 /** Opens a print-friendly sheet of table tent cards. */
 async function printCards(tables: Table[], caption: string) {
   const cards = await Promise.all(
-    tables.map(async (x) => ({ label: x.label, qr: await QRCode.toDataURL(tableUrl(x.qrToken ?? ''), { margin: 1, width: 600 }) })),
+    tables.map(async (x) => ({ label: x.label, qr: await QRCode.toDataURL(tableUrl(x.code ?? ''), { margin: 1, width: 600 }) })),
   );
   const w = window.open('', '_blank');
   if (!w) return;

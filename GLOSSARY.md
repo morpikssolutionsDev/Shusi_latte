@@ -96,7 +96,7 @@ _Avoid_: Alert, block
 ## Ordering
 
 **Table**:
-A physical seating spot with its own QR entry point to the Client Menu.
+A physical seating spot with its own QR entry point to the Client Menu: a static code, `table-01`, that its QR opens and that never changes.
 
 **Bill**:
 The record of one Table visit, opened when the Table is first used and closed when paid.

@@ -224,13 +224,6 @@ paths:
       responses:
         '200': { description: Saved, content: { application/json: { schema: { $ref: '#/components/schemas/Table' } } } }
         '422': { $ref: '#/components/responses/Problem' }
-  /tables/{id}/regenerate-qr:
-    post:
-      operationId: regenerateTableQr
-      summary: Issue a new QR token; old printed codes stop working (TR-AUTH-07)
-      parameters: [{ $ref: '#/components/parameters/Id' }]
-      responses:
-        '200': { description: Table, content: { application/json: { schema: { $ref: '#/components/schemas/Table' } } } }
   /crew:
     get:
       operationId: listCrew
@@ -349,10 +342,21 @@ paths:
             schema: { type: object, required: [ids], properties: { ids: { type: array, items: { type: string } } } }
       responses:
         '204': { description: Reordered }
+  /demo/state:
+    get:
+      operationId: getDemoState
+      summary: What the demo seed built — the clean start or the scripted story (Demo mode only, DEMO-AND-SEED §9)
+      security: []
+      responses:
+        '200':
+          description: State
+          content:
+            application/json:
+              schema: { type: object, required: [story], properties: { story: { type: boolean }, t0: { type: integer, format: int64 } } }
   /demo/tables:
     get:
       operationId: listDemoTables
-      summary: Demo launcher cards — every Table with its QR token and scenario (Demo mode only)
+      summary: Demo launcher cards — every Table with its code and, in the story, its scenario (Demo mode only)
       security: []
       responses:
         '200':
@@ -363,39 +367,39 @@ paths:
                 type: array
                 items:
                   type: object
-                  required: [number, label, qrToken, active, scenario]
+                  required: [number, label, code, active, scenario]
                   properties:
                     number: { type: integer }
                     label: { type: string }
-                    qrToken: { type: string }
+                    code: { type: string, description: 'table-01: the Client Menu path its QR opens' }
                     active: { type: boolean }
                     scenario: { type: string }
   # ---------------------------------------------------------------- Phase 3: Client Menu (public)
-  /public/tables/{qr}:
+  /public/tables/{code}:
     get:
       operationId: lookupTable
       summary: What a QR scan shows — free, occupied with full names, or unavailable (OP-01, BR-CM-12)
       security: []
-      parameters: [{ $ref: '#/components/parameters/Qr' }]
+      parameters: [{ $ref: '#/components/parameters/TableCode' }]
       responses:
         '200': { description: Table state, content: { application/json: { schema: { $ref: '#/components/schemas/TableState' } } } }
-  /public/tables/{qr}/join:
+  /public/tables/{code}/join:
     post:
       operationId: joinTable
       summary: Open or join the Table's Bill as a new Customer (BR-CM-01, BR-CM-02, TR-DM-01)
       security: []
-      parameters: [{ $ref: '#/components/parameters/Qr' }]
+      parameters: [{ $ref: '#/components/parameters/TableCode' }]
       requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/JoinRequest' } } } }
       responses:
         '201': { description: Guest session, content: { application/json: { schema: { $ref: '#/components/schemas/GuestSession' } } } }
         '404': { $ref: '#/components/responses/Problem' }
         '422': { $ref: '#/components/responses/Problem' }
-  /public/tables/{qr}/rejoin:
+  /public/tables/{code}/rejoin:
     post:
       operationId: rejoinTable
       summary: Continue as an existing Customer on this device; the previous device is signed out (BR-CM-13)
       security: []
-      parameters: [{ $ref: '#/components/parameters/Qr' }]
+      parameters: [{ $ref: '#/components/parameters/TableCode' }]
       requestBody:
         required: true
         content: { application/json: { schema: { type: object, required: [customerId], properties: { customerId: { type: string } } } } }
@@ -403,12 +407,12 @@ paths:
         '200': { description: Guest session, content: { application/json: { schema: { $ref: '#/components/schemas/GuestSession' } } } }
         '404': { $ref: '#/components/responses/Problem' }
         '409': { $ref: '#/components/responses/Problem' }
-  /public/tables/{qr}/not-mine:
+  /public/tables/{code}/not-mine:
     post:
       operationId: notMyTable
       summary: '"This isn''t my table" — notifies on-duty Waiters (BR-CM-12)'
       security: []
-      parameters: [{ $ref: '#/components/parameters/Qr' }]
+      parameters: [{ $ref: '#/components/parameters/TableCode' }]
       responses:
         '204': { description: Waiters notified }
         '404': { $ref: '#/components/responses/Problem' }
@@ -988,7 +992,10 @@ paths:
   /demo/reset:
     post:
       operationId: resetDemo
-      summary: Rebuild the demo at T0 = now (Demo mode, Management + X-Override-Token demo_reset); answers at once and resets in the background, announced on the public `demo` topic (DEMO-AND-SEED §9)
+      summary: Rebuild the demo at T0 = now (Demo mode, Management + X-Override-Token demo_reset); the clean start unless story is set. Answers at once and resets in the background, announced on the public `demo` topic (DEMO-AND-SEED §9)
+      requestBody:
+        required: false
+        content: { application/json: { schema: { type: object, properties: { story: { type: boolean, description: 'add the scripted demo: busy Tables, 14 days of history' } } } } }
       responses:
         '202': { description: Reset started, content: { application/json: { schema: { type: object, required: [status, at], properties: { status: { type: string }, at: { type: integer, format: int64 } } } } } }
         '403': { $ref: '#/components/responses/Problem' }
@@ -1001,11 +1008,12 @@ components:
       name: X-Guest-Token
       description: Customer guest token from join/rejoin; WebSocket clients pass it as ?guest=
   parameters:
-    Qr:
-      name: qr
+    TableCode:
+      name: code
       in: path
       required: true
-      schema: { type: string }
+      description: The Table's fixed code, table-01 (table-1 and TABLE-01 are accepted)
+      schema: { type: string, example: table-01 }
     Id:
       name: id
       in: path
@@ -2054,9 +2062,8 @@ components:
         id: { type: string }
         number: { type: integer }
         label: { type: string }
-        qrToken: { type: string, readOnly: true }
+        code: { type: string, readOnly: true, description: 'table-01, from the number: its QR opens /table-01 and never changes' }
         active: { type: boolean }
-        qrRegeneratedAt: { type: integer, format: int64, readOnly: true }
     CrewMember:
       type: object
       required: [id, crewId, fullName, role, stations, active]

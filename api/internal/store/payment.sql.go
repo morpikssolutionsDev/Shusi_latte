@@ -11,7 +11,7 @@ import (
 )
 
 const assignItemSubBill = `-- name: AssignItemSubBill :exec
-UPDATE order_item SET sub_bill_id = ? WHERE id = ?
+UPDATE order_item SET sub_bill_id = $1 WHERE id = $2
 `
 
 type AssignItemSubBillParams struct {
@@ -25,7 +25,7 @@ func (q *Queries) AssignItemSubBill(ctx context.Context, arg AssignItemSubBillPa
 }
 
 const clearItemSubBills = `-- name: ClearItemSubBills :exec
-UPDATE order_item SET sub_bill_id = NULL WHERE order_id IN (SELECT id FROM orders WHERE bill_id = ?)
+UPDATE order_item SET sub_bill_id = NULL WHERE order_id IN (SELECT id FROM orders WHERE bill_id = $1)
 `
 
 func (q *Queries) ClearItemSubBills(ctx context.Context, billID string) error {
@@ -34,7 +34,7 @@ func (q *Queries) ClearItemSubBills(ctx context.Context, billID string) error {
 }
 
 const closeBillUnpaid = `-- name: CloseBillUnpaid :exec
-UPDATE bill SET status = 'unpaid', unpaid_reason = ?, unpaid_override_by = ?, closed_at = ?, updated_at = ? WHERE id = ?
+UPDATE bill SET status = 'unpaid', unpaid_reason = $1, unpaid_override_by = $2, closed_at = $3, updated_at = $4 WHERE id = $5
 `
 
 type CloseBillUnpaidParams struct {
@@ -57,8 +57,8 @@ func (q *Queries) CloseBillUnpaid(ctx context.Context, arg CloseBillUnpaidParams
 }
 
 const closeSubBill = `-- name: CloseSubBill :exec
-UPDATE sub_bill SET status = 'closed', subtotal = ?, item_discount = ?, bill_discount = ?, service = ?, tax = ?, total = ?, closed_at = ?
-WHERE id = ?
+UPDATE sub_bill SET status = 'closed', subtotal = $1, item_discount = $2, bill_discount = $3, service = $4, tax = $5, total = $6, closed_at = $7
+WHERE id = $8
 `
 
 type CloseSubBillParams struct {
@@ -87,7 +87,7 @@ func (q *Queries) CloseSubBill(ctx context.Context, arg CloseSubBillParams) erro
 }
 
 const countPaymentsByBill = `-- name: CountPaymentsByBill :one
-SELECT COUNT(*) FROM payment WHERE bill_id = ?
+SELECT COUNT(*) FROM payment WHERE bill_id = $1
 `
 
 func (q *Queries) CountPaymentsByBill(ctx context.Context, billID string) (int64, error) {
@@ -98,23 +98,17 @@ func (q *Queries) CountPaymentsByBill(ctx context.Context, billID string) (int64
 }
 
 const countReceiptPrints = `-- name: CountReceiptPrints :one
-SELECT COUNT(*) FROM receipt_print WHERE bill_id = ? AND copy = ? AND (sub_bill_id IS ? OR sub_bill_id = ?)
+SELECT COUNT(*) FROM receipt_print WHERE bill_id = $1 AND copy = $2 AND sub_bill_id IS NOT DISTINCT FROM $3
 `
 
 type CountReceiptPrintsParams struct {
-	BillID      string
-	Copy        string
-	SubBillID   sql.NullString
-	SubBillID_2 sql.NullString
+	BillID    string
+	Copy      string
+	SubBillID sql.NullString
 }
 
 func (q *Queries) CountReceiptPrints(ctx context.Context, arg CountReceiptPrintsParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countReceiptPrints,
-		arg.BillID,
-		arg.Copy,
-		arg.SubBillID,
-		arg.SubBillID_2,
-	)
+	row := q.db.QueryRowContext(ctx, countReceiptPrints, arg.BillID, arg.Copy, arg.SubBillID)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -124,7 +118,7 @@ const createPayment = `-- name: CreatePayment :exec
 
 INSERT INTO payment (id, bill_id, sub_bill_id, method, status, amount, tendered, change_given, rounding, taken_by, taken_at, override_by,
                      verified_by, verified_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 `
 
 type CreatePaymentParams struct {
@@ -167,7 +161,7 @@ func (q *Queries) CreatePayment(ctx context.Context, arg CreatePaymentParams) er
 
 const createReceiptPrint = `-- name: CreateReceiptPrint :exec
 
-INSERT INTO receipt_print (id, bill_id, sub_bill_id, copy, is_reprint, printed_by, printed_at) VALUES (?, ?, ?, ?, ?, ?, ?)
+INSERT INTO receipt_print (id, bill_id, sub_bill_id, copy, is_reprint, printed_by, printed_at) VALUES ($1, $2, $3, $4, $5, $6, $7)
 `
 
 type CreateReceiptPrintParams struct {
@@ -196,7 +190,7 @@ func (q *Queries) CreateReceiptPrint(ctx context.Context, arg CreateReceiptPrint
 
 const createSubBill = `-- name: CreateSubBill :exec
 
-INSERT INTO sub_bill (id, bill_id, method, share_index, share_count, created_at) VALUES (?, ?, ?, ?, ?, ?)
+INSERT INTO sub_bill (id, bill_id, method, share_index, share_count, created_at) VALUES ($1, $2, $3, $4, $5, $6)
 `
 
 type CreateSubBillParams struct {
@@ -222,7 +216,7 @@ func (q *Queries) CreateSubBill(ctx context.Context, arg CreateSubBillParams) er
 }
 
 const deleteSubBills = `-- name: DeleteSubBills :exec
-DELETE FROM sub_bill WHERE bill_id = ?
+DELETE FROM sub_bill WHERE bill_id = $1
 `
 
 func (q *Queries) DeleteSubBills(ctx context.Context, billID string) error {
@@ -231,7 +225,7 @@ func (q *Queries) DeleteSubBills(ctx context.Context, billID string) error {
 }
 
 const freezeBillTotals = `-- name: FreezeBillTotals :exec
-UPDATE bill SET subtotal = ?, item_discount = ?, bill_discount = ?, service = ?, tax = ?, total = ?, updated_at = ? WHERE id = ?
+UPDATE bill SET subtotal = $1, item_discount = $2, bill_discount = $3, service = $4, tax = $5, total = $6, updated_at = $7 WHERE id = $8
 `
 
 type FreezeBillTotalsParams struct {
@@ -260,7 +254,7 @@ func (q *Queries) FreezeBillTotals(ctx context.Context, arg FreezeBillTotalsPara
 }
 
 const getSubBill = `-- name: GetSubBill :one
-SELECT id, bill_id, method, share_index, share_count, status, subtotal, item_discount, bill_discount, service, tax, total, created_at, closed_at FROM sub_bill WHERE id = ?
+SELECT id, bill_id, method, share_index, share_count, status, subtotal, item_discount, bill_discount, service, tax, total, created_at, closed_at FROM sub_bill WHERE id = $1
 `
 
 func (q *Queries) GetSubBill(ctx context.Context, id string) (SubBill, error) {
@@ -287,7 +281,7 @@ func (q *Queries) GetSubBill(ctx context.Context, id string) (SubBill, error) {
 
 const listClosedBillsBetween = `-- name: ListClosedBillsBetween :many
 
-SELECT id, business_date, number, type, source, status, key_id, takeaway_name_enc, pay_now_serve_later_by, unpaid_reason, unpaid_override_by, merged_into_id, opened_at, closed_at, anonymised_at, updated_at, priced_at, manual_discount_id, manual_discount_by, subtotal, item_discount, bill_discount, service, tax, total FROM bill WHERE status IN ('closed', 'unpaid') AND closed_at >= ? AND closed_at < ? ORDER BY closed_at
+SELECT id, business_date, number, type, source, status, key_id, takeaway_name_enc, pay_now_serve_later_by, unpaid_reason, unpaid_override_by, merged_into_id, opened_at, closed_at, anonymised_at, updated_at, priced_at, manual_discount_id, manual_discount_by, subtotal, item_discount, bill_discount, service, tax, total FROM bill WHERE status IN ('closed', 'unpaid') AND closed_at >= $1 AND closed_at < $2 ORDER BY closed_at
 `
 
 type ListClosedBillsBetweenParams struct {
@@ -347,7 +341,7 @@ func (q *Queries) ListClosedBillsBetween(ctx context.Context, arg ListClosedBill
 
 const listPaymentsBetween = `-- name: ListPaymentsBetween :many
 SELECT p.id, p.bill_id, p.sub_bill_id, p.method, p.status, p.amount, p.tendered, p.change_given, p.rounding, p.taken_by, p.taken_at, p.cash_handover_id, p.override_by, p.verified_by, p.verified_at, p.drawer_session_id, p.written_off_reason, p.written_off_by FROM payment p JOIN bill b ON b.id = p.bill_id
-WHERE b.status IN ('closed', 'unpaid') AND b.closed_at >= ? AND b.closed_at < ?
+WHERE b.status IN ('closed', 'unpaid') AND b.closed_at >= $1 AND b.closed_at < $2
 `
 
 type ListPaymentsBetweenParams struct {
@@ -398,7 +392,7 @@ func (q *Queries) ListPaymentsBetween(ctx context.Context, arg ListPaymentsBetwe
 }
 
 const listPaymentsByBill = `-- name: ListPaymentsByBill :many
-SELECT id, bill_id, sub_bill_id, method, status, amount, tendered, change_given, rounding, taken_by, taken_at, cash_handover_id, override_by, verified_by, verified_at, drawer_session_id, written_off_reason, written_off_by FROM payment WHERE bill_id = ? ORDER BY taken_at
+SELECT id, bill_id, sub_bill_id, method, status, amount, tendered, change_given, rounding, taken_by, taken_at, cash_handover_id, override_by, verified_by, verified_at, drawer_session_id, written_off_reason, written_off_by FROM payment WHERE bill_id = $1 ORDER BY taken_at
 `
 
 func (q *Queries) ListPaymentsByBill(ctx context.Context, billID string) ([]Payment, error) {
@@ -444,9 +438,9 @@ func (q *Queries) ListPaymentsByBill(ctx context.Context, billID string) ([]Paym
 }
 
 const listSoldItemsBetween = `-- name: ListSoldItemsBetween :many
-SELECT i.product_id, i.product_name_id, SUM(i.quantity) AS quantity, SUM(i.quantity * i.unit_price) AS gross
+SELECT i.product_id, i.product_name_id, SUM(i.quantity)::bigint AS quantity, SUM(i.quantity * i.unit_price)::bigint AS gross
 FROM order_item i JOIN orders o ON o.id = i.order_id JOIN bill b ON b.id = o.bill_id
-WHERE b.status = 'closed' AND b.closed_at >= ? AND b.closed_at < ? AND i.status NOT IN ('cancelled', 'voided')
+WHERE b.status = 'closed' AND b.closed_at >= $1 AND b.closed_at < $2 AND i.status NOT IN ('cancelled', 'voided')
 GROUP BY i.product_id, i.product_name_id ORDER BY quantity DESC
 `
 
@@ -458,8 +452,8 @@ type ListSoldItemsBetweenParams struct {
 type ListSoldItemsBetweenRow struct {
 	ProductID     string
 	ProductNameID string
-	Quantity      sql.NullFloat64
-	Gross         sql.NullFloat64
+	Quantity      int64
+	Gross         int64
 }
 
 func (q *Queries) ListSoldItemsBetween(ctx context.Context, arg ListSoldItemsBetweenParams) ([]ListSoldItemsBetweenRow, error) {
@@ -491,7 +485,7 @@ func (q *Queries) ListSoldItemsBetween(ctx context.Context, arg ListSoldItemsBet
 }
 
 const listSubBills = `-- name: ListSubBills :many
-SELECT id, bill_id, method, share_index, share_count, status, subtotal, item_discount, bill_discount, service, tax, total, created_at, closed_at FROM sub_bill WHERE bill_id = ? ORDER BY share_index
+SELECT id, bill_id, method, share_index, share_count, status, subtotal, item_discount, bill_discount, service, tax, total, created_at, closed_at FROM sub_bill WHERE bill_id = $1 ORDER BY share_index
 `
 
 func (q *Queries) ListSubBills(ctx context.Context, billID string) ([]SubBill, error) {
@@ -533,7 +527,7 @@ func (q *Queries) ListSubBills(ctx context.Context, billID string) ([]SubBill, e
 }
 
 const markBillMerged = `-- name: MarkBillMerged :exec
-UPDATE bill SET status = 'merged', merged_into_id = ?, closed_at = ?, updated_at = ? WHERE id = ?
+UPDATE bill SET status = 'merged', merged_into_id = $1, closed_at = $2, updated_at = $3 WHERE id = $4
 `
 
 type MarkBillMergedParams struct {
@@ -554,7 +548,7 @@ func (q *Queries) MarkBillMerged(ctx context.Context, arg MarkBillMergedParams) 
 }
 
 const maxOrderSeq = `-- name: MaxOrderSeq :one
-SELECT CAST(COALESCE(MAX(seq), 0) AS INTEGER) FROM orders WHERE bill_id = ?
+SELECT CAST(COALESCE(MAX(seq), 0) AS BIGINT) FROM orders WHERE bill_id = $1
 `
 
 func (q *Queries) MaxOrderSeq(ctx context.Context, billID string) (int64, error) {
@@ -566,7 +560,7 @@ func (q *Queries) MaxOrderSeq(ctx context.Context, billID string) (int64, error)
 
 const moveBillTable = `-- name: MoveBillTable :exec
 
-UPDATE bill_table SET table_id = ?1 WHERE bill_id = ?2 AND table_id = ?3
+UPDATE bill_table SET table_id = $1 WHERE bill_id = $2 AND table_id = $3
 `
 
 type MoveBillTableParams struct {
@@ -582,7 +576,7 @@ func (q *Queries) MoveBillTable(ctx context.Context, arg MoveBillTableParams) er
 }
 
 const renumberOrders = `-- name: RenumberOrders :exec
-UPDATE orders SET seq = seq + ? WHERE bill_id = ?
+UPDATE orders SET seq = seq + $1 WHERE bill_id = $2
 `
 
 type RenumberOrdersParams struct {
@@ -596,7 +590,7 @@ func (q *Queries) RenumberOrders(ctx context.Context, arg RenumberOrdersParams) 
 }
 
 const repointBillTables = `-- name: RepointBillTables :exec
-UPDATE bill_table SET bill_id = ?1 WHERE bill_id = ?2
+UPDATE bill_table SET bill_id = $1 WHERE bill_id = $2
 `
 
 type RepointBillTablesParams struct {
@@ -610,7 +604,7 @@ func (q *Queries) RepointBillTables(ctx context.Context, arg RepointBillTablesPa
 }
 
 const repointCustomers = `-- name: RepointCustomers :exec
-UPDATE customer_entry SET bill_id = ?1 WHERE bill_id = ?2
+UPDATE customer_entry SET bill_id = $1 WHERE bill_id = $2
 `
 
 type RepointCustomersParams struct {
@@ -624,7 +618,7 @@ func (q *Queries) RepointCustomers(ctx context.Context, arg RepointCustomersPara
 }
 
 const repointOrders = `-- name: RepointOrders :exec
-UPDATE orders SET bill_id = ?1 WHERE bill_id = ?2
+UPDATE orders SET bill_id = $1 WHERE bill_id = $2
 `
 
 type RepointOrdersParams struct {
@@ -638,7 +632,7 @@ func (q *Queries) RepointOrders(ctx context.Context, arg RepointOrdersParams) er
 }
 
 const repointWaiterCalls = `-- name: RepointWaiterCalls :exec
-UPDATE waiter_call SET bill_id = ?1 WHERE bill_id = ?2
+UPDATE waiter_call SET bill_id = $1 WHERE bill_id = $2
 `
 
 type RepointWaiterCallsParams struct {
@@ -652,7 +646,7 @@ func (q *Queries) RepointWaiterCalls(ctx context.Context, arg RepointWaiterCalls
 }
 
 const setManualDiscount = `-- name: SetManualDiscount :exec
-UPDATE bill SET manual_discount_id = ?, manual_discount_by = ?, updated_at = ? WHERE id = ?
+UPDATE bill SET manual_discount_id = $1, manual_discount_by = $2, updated_at = $3 WHERE id = $4
 `
 
 type SetManualDiscountParams struct {
@@ -673,7 +667,7 @@ func (q *Queries) SetManualDiscount(ctx context.Context, arg SetManualDiscountPa
 }
 
 const setPayNowServeLater = `-- name: SetPayNowServeLater :exec
-UPDATE bill SET pay_now_serve_later_by = ? WHERE id = ?
+UPDATE bill SET pay_now_serve_later_by = $1 WHERE id = $2
 `
 
 type SetPayNowServeLaterParams struct {
@@ -688,7 +682,7 @@ func (q *Queries) SetPayNowServeLater(ctx context.Context, arg SetPayNowServeLat
 
 const settleBill = `-- name: SettleBill :execrows
 
-UPDATE bill SET status = 'settling', priced_at = ?, updated_at = ? WHERE id = ? AND status = 'open'
+UPDATE bill SET status = 'settling', priced_at = $1, updated_at = $2 WHERE id = $3 AND status = 'open'
 `
 
 type SettleBillParams struct {
@@ -707,7 +701,7 @@ func (q *Queries) SettleBill(ctx context.Context, arg SettleBillParams) (int64, 
 }
 
 const unlockBill = `-- name: UnlockBill :execrows
-UPDATE bill SET status = 'open', priced_at = NULL, updated_at = ? WHERE id = ? AND status = 'settling'
+UPDATE bill SET status = 'open', priced_at = NULL, updated_at = $1 WHERE id = $2 AND status = 'settling'
 `
 
 type UnlockBillParams struct {

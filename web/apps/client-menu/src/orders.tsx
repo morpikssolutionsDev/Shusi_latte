@@ -131,6 +131,9 @@ function statusLine(status: OrderView['status'], t: (k: string) => string) {
 
 const toneOf = (s: string): Tone => (s === 'claimed' ? 'pending' : (s as Tone));
 
+/** BR-CM-16: an item repeats no status its Order already shows; a Claimed Order's items are still Pending. */
+const differs = (item: string, order: OrderView['status']) => item !== order && !(order === 'claimed' && item === 'pending');
+
 function OrderCard({ order: o, onEdit, onCancel }: { order: OrderView; onEdit: () => void; onCancel: () => void }) {
   const { t } = useTranslation();
   const { bi } = useName();
@@ -154,7 +157,7 @@ function OrderCard({ order: o, onEdit, onCancel }: { order: OrderView; onEdit: (
                   {it.variantName.en && <span className="text-text-secondary"> · {bi(it.variantName)}</span>}
                   {it.modifiers.length > 0 && <span className="block text-xs text-text-secondary">{it.modifiers.map((m) => bi(m.name)).join(', ')}</span>}
                 </span>
-                {o.status !== 'pending' && o.status !== 'claimed' || gone ? (
+                {differs(it.status, o.status) ? (
                   <Chip tone={it.status as Tone} icon={ItemIcon && <ItemIcon aria-hidden />} className="h-6 px-2">{t(`status.${it.status}`)}</Chip>
                 ) : (
                   <span className="tabular text-sm">{formatRupiah(it.lineTotal)}</span>

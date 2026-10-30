@@ -205,13 +205,13 @@ function OrderCard({ order: o, now, onEdit, onCancel }: { order: OrderView; now:
 
 /** BR-CM-17: the Estimated Wait as a clock time; overdue reads softly, never "late". */
 function ReadyBy({ order: o, now }: { order: OrderView; now: number }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   let text: string | null = null;
   if (o.status === 'pending' || o.status === 'claimed') text = t('orders.estimateLater');
   else if ((o.status === 'confirmed' || o.status === 'preparing') && o.estimatedWait) {
     const at = o.estimatedWait.asOf + o.estimatedWait.seconds * 1000;
     const left = Math.ceil((at - now) / 60_000);
-    const time = new Date(at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' });
+    const time = new Date(at).toLocaleTimeString(i18n.language === 'en' ? 'en-GB' : 'id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' });
     text = left > 0 ? t('orders.readyBy', { time, n: left }) : t('orders.longer');
   }
   if (!text) return null;

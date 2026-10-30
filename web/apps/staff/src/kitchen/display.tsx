@@ -11,6 +11,7 @@ import { errorText } from '../admin/api';
 import { ExitScreenButton } from '../components/exit-screen';
 import { useRealtime } from '../realtime';
 import { meQuery } from '../session';
+import { serverTime } from './clock';
 
 type Ticket = Schemas['KitchenTicket'];
 type Item = Schemas['KitchenItem'];
@@ -25,14 +26,14 @@ const queueQuery = (area: string) => ({
 const idem = () => ({ 'Idempotency-Key': idempotencyKey() });
 
 /** Server-aligned clock: tickets time against the API's clock, not the TV's. */
-function useServerNow(serverNow: number | undefined) {
-  const offset = useRef(0);
-  if (serverNow) offset.current = serverNow - Date.now();
-  const [now, setNow] = useState(Date.now() + offset.current);
+function useServerNow(serverNow: number | undefined, receivedAt: number) {
+  const tick = () => (serverNow ? serverTime(serverNow, receivedAt, Date.now()) : Date.now());
+  const [now, setNow] = useState(tick);
   useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now() + offset.current), 1000);
+    setNow(tick());
+    const timer = setInterval(() => setNow(tick()), 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [serverNow, receivedAt]);
   return now;
 }
 
@@ -48,7 +49,7 @@ export function KitchenDisplay({ area }: { area: string }) {
   const screen = useQuery(meQuery).data?.kind === 'screen';
   const prepAreaId = queue.data?.prepArea.id;
   useRealtime([prepAreaId ? `prep-area:${prepAreaId}` : '', 'menu'], () => void qc.invalidateQueries({ queryKey: ['kitchen', area] }), !!prepAreaId);
-  const now = useServerNow(queue.data?.now);
+  const now = useServerNow(queue.data?.now, queue.dataUpdatedAt);
   const [cancel, setCancel] = useState<Item | null>(null);
   // How many tickets are scrolled out of view to the right.
   const scroller = useRef<HTMLElement>(null);

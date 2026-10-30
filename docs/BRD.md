@@ -158,6 +158,9 @@ The Product catalog is the single definition of what the Business sells. Every M
 | BR-CM-13 | A Customer is bound to the Bill, not to a device. Only one device is active per Customer: the latest Rejoin wins, and the previous device shows "You continued on another device". | M |
 | BR-CM-14 | A Customer may edit or Cancel their own Order while it is Pending and unclaimed; after Claim they must ask the Waiter. | M |
 | BR-CM-15 | While a Bill is Settling, the Client Menu blocks new Orders and shows "Bill is being settled — please ask the waiter". | M |
+| BR-CM-16 | Each Order shows its status once; an Order Item shows its own status only when it differs from its Order's (e.g. one item Cancelled or Ready early). | M |
+| BR-CM-17 | Each Confirmed or Preparing Order shows its Estimated Wait as an expected-ready clock time and minutes left; once that time passes before Ready it reads "Taking a little longer", never "late". Pending and Claimed Orders say the estimate appears once the Waiter confirms. | M |
+| BR-CM-18 | From Claim onwards, the Customer sees the claiming Waiter introduce themselves by first name and Crew portrait (initials when none). The Waiter's full name is not shown. | M |
 
 ### 6.3 Product Display
 

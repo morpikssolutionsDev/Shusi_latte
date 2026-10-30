@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"strings"
 
 	"sushilatte/api/internal/kitchen"
 	"sushilatte/api/internal/platform"
@@ -63,6 +64,16 @@ type OrderView struct {
 	EstimatedWait *Wait      `json:"estimatedWait,omitempty"`
 	Subtotal      int64      `json:"subtotal"`
 	Items         []ItemView `json:"items"`
+	// Waiter is the claiming Waiter introduced to the Customer (BR-CM-18); set on the Customer's
+	// own view only, since staff views carry ClaimedBy.
+	Waiter *OrderWaiter `json:"waiter,omitempty"`
+}
+
+// OrderWaiter is the Waiter as a Customer sees them: first name and Crew portrait, never the
+// full name (BR-CM-18).
+type OrderWaiter struct {
+	FirstName string  `json:"firstName"`
+	ImageKey  *string `json:"imageKey,omitempty"`
 }
 
 type BillInfo struct {
@@ -120,17 +131,42 @@ func (s *Service) Me(ctx context.Context, g *Guest) (Me, error) {
 	if err != nil {
 		return Me{}, err
 	}
+	waiters := map[string]*OrderWaiter{}
 	for _, o := range orders {
-		if o.customerID == e.ID {
-			out.Orders = append(out.Orders, o.OrderView)
+		if o.customerID != e.ID {
+			continue
 		}
+		if o.claimedBy != "" && o.Status != "pending" && o.Status != "cancelled" {
+			w, seen := waiters[o.claimedBy]
+			if !seen {
+				c, err := q.GetCrew(ctx, o.claimedBy)
+				if err != nil {
+					return Me{}, err
+				}
+				w = &OrderWaiter{FirstName: firstName(c.FullName)}
+				if c.ImageKey.Valid {
+					w.ImageKey = &c.ImageKey.String
+				}
+				waiters[o.claimedBy] = w
+			}
+			o.Waiter = w
+		}
+		out.Orders = append(out.Orders, o.OrderView)
 	}
 	return out, nil
+}
+
+func firstName(full string) string {
+	if f := strings.Fields(full); len(f) > 0 {
+		return f[0]
+	}
+	return full
 }
 
 type orderWithOwner struct {
 	OrderView
 	customerID string
+	claimedBy  string
 }
 
 // billOrders builds the views of every Order on a Bill, with derived status and Estimated Wait.
@@ -203,7 +239,7 @@ func (s *Service) billOrders(ctx context.Context, q *store.Queries, billID strin
 		if w, ok := wait(o.ID); ok {
 			v.EstimatedWait = &w
 		}
-		out = append(out, orderWithOwner{OrderView: v, customerID: o.CustomerEntryID.String})
+		out = append(out, orderWithOwner{OrderView: v, customerID: o.CustomerEntryID.String, claimedBy: o.ClaimedBy.String})
 	}
 	return out, nil
 }

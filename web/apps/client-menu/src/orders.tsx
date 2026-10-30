@@ -1,10 +1,10 @@
 // OrderStatusTracker (COMPONENTS.md §2): the Customer's own Orders with per-item status and the
 // cup-fill Estimated Wait (BR-CM-08, M9, M10); edit or Cancel before Claim (BR-CM-14).
 import { api, idempotencyKey, unwrap } from '@sushi-latte/api-client';
-import { Button, Chip, formatRupiah, statusIcons, type Tone } from '@sushi-latte/ui';
+import { Button, Chip, formatRupiah, imageUrl, statusIcons, type Tone } from '@sushi-latte/ui';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import { ArrowLeftIcon, PencilIcon, Trash2Icon, XIcon } from 'lucide-react';
+import { ArrowLeftIcon, Clock3Icon, PencilIcon, Trash2Icon, XIcon } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -89,6 +89,7 @@ export function OrdersScreen({ code, me }: { code: string; me: CustomerView }) {
         {focus?.estimatedWait && focus.status !== 'ready' && (
           <p className="tabular text-sm text-text-secondary">{t('orders.estimate', { n: focus.estimatedWait.minutes })}</p>
         )}
+        {focus?.waiter && <WaiterIntro waiter={focus.waiter} />}
         <div className="mt-2 flex gap-2">
           <CallWaiterButton me={me} />
           <Link to="/$code" params={{ code }} className="inline-flex h-10 items-center rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground">
@@ -101,7 +102,7 @@ export function OrdersScreen({ code, me }: { code: string; me: CustomerView }) {
         <AnimatePresence initial={false}>
           {[...me.orders].reverse().map((o) => (
             <motion.li key={o.id} layout initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={ease.expressive}>
-              <OrderCard order={o} onEdit={() => setEditing(o)} onCancel={() => setCancelling(o)} />
+              <OrderCard order={o} now={now} onEdit={() => setEditing(o)} onCancel={() => setCancelling(o)} />
             </motion.li>
           ))}
         </AnimatePresence>
@@ -110,6 +111,24 @@ export function OrdersScreen({ code, me }: { code: string; me: CustomerView }) {
       <EditOrderSheet order={editing} customerId={me.customer.id} onClose={() => setEditing(null)} />
       <CancelOrderSheet order={cancelling} customerId={me.customer.id} onClose={() => setCancelling(null)} />
     </div>
+  );
+}
+
+/** BR-CM-18: the claiming Waiter's first name and Crew portrait, initial when there is none. */
+function WaiterIntro({ waiter }: { waiter: NonNullable<OrderView['waiter']> }) {
+  const { t } = useTranslation();
+  return (
+    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={ease.expressive}
+      className="mt-2 flex w-full items-center gap-3 rounded-[20px] bg-card p-3 text-left shadow-[var(--sl-product-card-shadow)]">
+      {waiter.imageKey ? (
+        <img src={imageUrl(waiter.imageKey, 'sq320')} alt="" className="size-12 shrink-0 rounded-full object-cover" />
+      ) : (
+        <span aria-hidden className="grid size-12 shrink-0 place-items-center rounded-full bg-sunken font-display text-lg font-semibold">
+          {waiter.firstName.charAt(0).toUpperCase()}
+        </span>
+      )}
+      <p className="text-sm">{t('orders.waiterIntro', { name: waiter.firstName })}</p>
+    </motion.div>
   );
 }
 
@@ -131,7 +150,10 @@ function statusLine(status: OrderView['status'], t: (k: string) => string) {
 
 const toneOf = (s: string): Tone => (s === 'claimed' ? 'pending' : (s as Tone));
 
-function OrderCard({ order: o, onEdit, onCancel }: { order: OrderView; onEdit: () => void; onCancel: () => void }) {
+/** BR-CM-16: an item repeats no status its Order already shows; a Claimed Order's items are still Pending. */
+const differs = (item: string, order: OrderView['status']) => item !== order && !(order === 'claimed' && item === 'pending');
+
+function OrderCard({ order: o, now, onEdit, onCancel }: { order: OrderView; now: number; onEdit: () => void; onCancel: () => void }) {
   const { t } = useTranslation();
   const { bi } = useName();
   const StatusIcon = statusIcons[toneOf(o.status) as keyof typeof statusIcons];
@@ -141,6 +163,7 @@ function OrderCard({ order: o, onEdit, onCancel }: { order: OrderView; onEdit: (
         <h2 className="font-semibold">{t('orders.order', { n: o.seq })}</h2>
         <Chip tone={toneOf(o.status)} icon={StatusIcon && <StatusIcon aria-hidden />}>{t(`status.${o.status}`)}</Chip>
       </header>
+      <ReadyBy order={o} now={now} />
       <ul className="flex flex-col gap-2">
         {o.items.map((it) => {
           const ItemIcon = statusIcons[it.status as keyof typeof statusIcons];
@@ -154,7 +177,7 @@ function OrderCard({ order: o, onEdit, onCancel }: { order: OrderView; onEdit: (
                   {it.variantName.en && <span className="text-text-secondary"> · {bi(it.variantName)}</span>}
                   {it.modifiers.length > 0 && <span className="block text-xs text-text-secondary">{it.modifiers.map((m) => bi(m.name)).join(', ')}</span>}
                 </span>
-                {o.status !== 'pending' && o.status !== 'claimed' || gone ? (
+                {differs(it.status, o.status) ? (
                   <Chip tone={it.status as Tone} icon={ItemIcon && <ItemIcon aria-hidden />} className="h-6 px-2">{t(`status.${it.status}`)}</Chip>
                 ) : (
                   <span className="tabular text-sm">{formatRupiah(it.lineTotal)}</span>
@@ -177,6 +200,26 @@ function OrderCard({ order: o, onEdit, onCancel }: { order: OrderView; onEdit: (
         )}
       </footer>
     </article>
+  );
+}
+
+/** BR-CM-17: the Estimated Wait as a clock time; overdue reads softly, never "late". */
+function ReadyBy({ order: o, now }: { order: OrderView; now: number }) {
+  const { t, i18n } = useTranslation();
+  let text: string | null = null;
+  if (o.status === 'pending' || o.status === 'claimed') text = t('orders.estimateLater');
+  else if ((o.status === 'confirmed' || o.status === 'preparing') && o.estimatedWait) {
+    const at = o.estimatedWait.asOf + o.estimatedWait.seconds * 1000;
+    const left = Math.ceil((at - now) / 60_000);
+    const time = new Date(at).toLocaleTimeString(i18n.language === 'en' ? 'en-GB' : 'id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' });
+    text = left > 0 ? t('orders.readyBy', { time, n: left }) : t('orders.longer');
+  }
+  if (!text) return null;
+  return (
+    <p className="tabular mb-3 flex items-center gap-1.5 text-sm text-text-secondary">
+      <Clock3Icon className="size-4 shrink-0" aria-hidden />
+      {text}
+    </p>
   );
 }
 

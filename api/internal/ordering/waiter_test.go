@@ -134,6 +134,36 @@ func TestClaimAndConfirm(t *testing.T) {
 	}
 }
 
+// BR-CM-18: the Customer meets the claiming Waiter by first name from Claim onwards, and the
+// introduction follows the Order when the claim moves to another Waiter.
+func TestCustomerSeesClaimingWaiter(t *testing.T) {
+	f := setup(t)
+	s := f.staff(t)
+	ctx := context.Background()
+	orderID, g := f.pending(t, f.nigiriLine())
+	waiter := func() *ordering.OrderWaiter {
+		t.Helper()
+		me, err := f.svc.Me(ctx, g)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return me.Orders[0].Waiter
+	}
+	if w := waiter(); w != nil {
+		t.Fatalf("pending order introduces %+v", w)
+	}
+	_ = f.svc.Claim(ctx, s.w1, orderID)
+	if w := waiter(); w == nil || w.FirstName != "W001" || w.ImageKey != nil {
+		t.Fatalf("after claim: %+v", w)
+	}
+	if err := f.svc.TransferClaim(ctx, s.w2, orderID, ""); err != nil {
+		t.Fatal(err)
+	}
+	if w := waiter(); w == nil || w.FirstName != "W002" {
+		t.Fatalf("after takeover: %+v", w)
+	}
+}
+
 // BR-R-11..13, TR-SM-04, Phase 4 done-when: an Out of Stock Cancel marks the Variant Sold Out
 // and flags its other open items; nothing else is cancelled; the flagged Order can't be
 // confirmed until the item is Cancelled.

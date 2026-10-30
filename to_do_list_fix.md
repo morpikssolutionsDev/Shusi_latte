@@ -11,4 +11,4 @@ mark [] when task / fix is done
 ## Add
 
 [x] - Add order SLA information on my order view
-[ ] - add staff waiter information on my order (Hi im [Crewname] your waiter, happy to serving you) this only showed up after the order is beign proceed from waiters
+[x] - add staff waiter information on my order (Hi im [Crewname] your waiter, happy to serving you) this only showed up after the order is beign proceed from waiters

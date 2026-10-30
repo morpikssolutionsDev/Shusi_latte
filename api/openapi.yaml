@@ -1178,6 +1178,13 @@ components:
         estimatedWait: { $ref: '#/components/schemas/Wait' }
         subtotal: { type: integer, format: int64 }
         items: { type: array, items: { $ref: '#/components/schemas/ItemView' } }
+        waiter:
+          description: The claiming Waiter, on the Customer's own view from Claim onwards (BR-CM-18)
+          type: object
+          required: [firstName]
+          properties:
+            firstName: { type: string }
+            imageKey: { type: string }
     WaiterCall:
       type: object
       required: [id, createdAt]

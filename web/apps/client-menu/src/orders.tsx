@@ -1,7 +1,7 @@
 // OrderStatusTracker (COMPONENTS.md §2): the Customer's own Orders with per-item status and the
 // cup-fill Estimated Wait (BR-CM-08, M9, M10); edit or Cancel before Claim (BR-CM-14).
 import { api, idempotencyKey, unwrap } from '@sushi-latte/api-client';
-import { Button, Chip, formatRupiah, statusIcons, type Tone } from '@sushi-latte/ui';
+import { Button, Chip, formatRupiah, imageUrl, statusIcons, type Tone } from '@sushi-latte/ui';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { ArrowLeftIcon, Clock3Icon, PencilIcon, Trash2Icon, XIcon } from 'lucide-react';
@@ -89,6 +89,7 @@ export function OrdersScreen({ code, me }: { code: string; me: CustomerView }) {
         {focus?.estimatedWait && focus.status !== 'ready' && (
           <p className="tabular text-sm text-text-secondary">{t('orders.estimate', { n: focus.estimatedWait.minutes })}</p>
         )}
+        {focus?.waiter && <WaiterIntro waiter={focus.waiter} />}
         <div className="mt-2 flex gap-2">
           <CallWaiterButton me={me} />
           <Link to="/$code" params={{ code }} className="inline-flex h-10 items-center rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground">
@@ -110,6 +111,24 @@ export function OrdersScreen({ code, me }: { code: string; me: CustomerView }) {
       <EditOrderSheet order={editing} customerId={me.customer.id} onClose={() => setEditing(null)} />
       <CancelOrderSheet order={cancelling} customerId={me.customer.id} onClose={() => setCancelling(null)} />
     </div>
+  );
+}
+
+/** BR-CM-18: the claiming Waiter's first name and Crew portrait, initial when there is none. */
+function WaiterIntro({ waiter }: { waiter: NonNullable<OrderView['waiter']> }) {
+  const { t } = useTranslation();
+  return (
+    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={ease.expressive}
+      className="mt-2 flex w-full items-center gap-3 rounded-[20px] bg-card p-3 text-left shadow-[var(--sl-product-card-shadow)]">
+      {waiter.imageKey ? (
+        <img src={imageUrl(waiter.imageKey, 'sq320')} alt="" className="size-12 shrink-0 rounded-full object-cover" />
+      ) : (
+        <span aria-hidden className="grid size-12 shrink-0 place-items-center rounded-full bg-sunken font-display text-lg font-semibold">
+          {waiter.firstName.charAt(0).toUpperCase()}
+        </span>
+      )}
+      <p className="text-sm">{t('orders.waiterIntro', { name: waiter.firstName })}</p>
+    </motion.div>
   );
 }
 

@@ -58,7 +58,7 @@ Grid of the 13 Dietary Tags as toggle chips with icons; free-text Dietary Note b
 - Disabled with explanation while Bill is Settling (BR-CM-15).
 
 ### OrderStatusTracker (E)
-- **Anatomy:** animated latte cup (cup-fill = elapsed ÷ Estimated Wait, capped at 95 % until Ready) · Estimated Wait "± 12 mnt" (tabular) · list of the Customer's Orders with per-item StatusChips · "Ubah pesanan" while Pending and unclaimed (BR-CM-14).
+- **Anatomy:** animated latte cup (cup-fill = elapsed ÷ Estimated Wait, capped at 95 % until Ready) · Estimated Wait "± 12 mnt" (tabular) · WaiterIntro from Claim (first name + portrait, BR-CM-18) · list of the Customer's Orders, each with one Order StatusChip, an item StatusChip only where the item differs (BR-CM-16), and the expected-ready time (BR-CM-17) · "Ubah pesanan" while Pending and unclaimed (BR-CM-14).
 - **Motion:** M8 on send, M9 continuous, M10 on Ready.
 - **A11y:** progress exposed as `role="progressbar"` with text value; status changes announced politely.
 

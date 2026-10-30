@@ -50,9 +50,9 @@
 - Totals pinned at the bottom of the right pane; PaymentPad keys 64 px tall.
 
 ### Kitchen — 1920×1080 landscape, one screen per Prep Area
-- Horizontal flow of KitchenTicket columns (360 px wide, 24 px gaps), oldest left; REMAKE tickets first.
+- Masonry grid of KitchenTickets (360 px wide, 24 px gaps, height follows content), filled in reading order from the top left: REMAKE tickets first, then oldest. Ready rail 340 px on the right.
 - Top bar 72 px: Prep Area name, counts by status, clock.
-- No scrolling inside a ticket; overflow tickets scroll horizontally with a visible "+N more" indicator.
+- No scrolling inside a ticket; when the grid overflows it scrolls vertically with a visible "+N more" indicator at the bottom edge.
 
 ### Admin Panel / HRIS — desktop ≥ 1280 px
 - Left navigation rail 248 px (collapsible to 72 px), content max 1440 px with 48 px padding.

@@ -1,5 +1,6 @@
 // Kitchen / Bar display (OP-05, COMPONENTS.md §4, LAYOUT.md §3): 1920×1080 landscape, dark
-// kitchen surface, ticket columns oldest left with Remakes first, Ready items in the last column.
+// kitchen surface, a masonry grid of tickets read from the top left with Remakes first, then
+// oldest; Ready items in the right rail.
 import { api, idempotencyKey, unwrap, type Schemas } from '@sushi-latte/api-client';
 import { Button, Dialog, Field, Select, Textarea, cn, dietaryIcons } from '@sushi-latte/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -37,6 +38,9 @@ function useServerNow(serverNow: number | undefined, receivedAt: number) {
   return now;
 }
 
+const TICKET = 360;
+const GAP = 24;
+
 const mmss = (ms: number) => {
   const s = Math.max(0, Math.floor(ms / 1000));
   return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
@@ -51,16 +55,19 @@ export function KitchenDisplay({ area }: { area: string }) {
   useRealtime([prepAreaId ? `prep-area:${prepAreaId}` : '', 'menu'], () => void qc.invalidateQueries({ queryKey: ['kitchen', area] }), !!prepAreaId);
   const now = useServerNow(queue.data?.now, queue.dataUpdatedAt);
   const [cancel, setCancel] = useState<Item | null>(null);
-  // How many tickets are scrolled out of view to the right.
+  // As many 360 px columns as fit, and how many tickets are scrolled out of view below.
   const scroller = useRef<HTMLElement>(null);
+  const [columns, setColumns] = useState(1);
   const [hidden, setHidden] = useState(0);
   useEffect(() => {
     const el = scroller.current;
     if (!el) return;
     const measure = () => {
+      const inner = el.clientWidth - 2 * GAP;
+      setColumns(Math.max(1, Math.floor((inner + GAP) / (TICKET + GAP))));
       const cards = [...el.querySelectorAll('article[data-ticket]')];
-      const edge = el.getBoundingClientRect().right;
-      setHidden(cards.filter((c) => c.getBoundingClientRect().left > edge - 40).length);
+      const edge = el.getBoundingClientRect().bottom;
+      setHidden(cards.filter((c) => c.getBoundingClientRect().top > edge - 40).length);
     };
     measure();
     el.addEventListener('scroll', measure);
@@ -111,19 +118,26 @@ export function KitchenDisplay({ area }: { area: string }) {
         {screen && <ExitScreenButton />}
       </header>
       <div className="flex min-h-0 flex-1">
-        <main ref={scroller} className="relative flex min-w-0 flex-1 gap-6 overflow-x-auto p-6">
-          {q && q.tickets.length === 0 && <p className="m-auto text-lg text-muted-foreground">{t('kitchen.empty')}</p>}
-          {q?.tickets.map((ticket) => (
-            <TicketCard key={ticket.key} ticket={ticket} now={now} fresh={fresh.has(ticket.key)} busy={step.isPending}
-              onStart={(ids) => step.mutate({ kind: 'start', ids })} onReady={(ids) => step.mutate({ kind: 'ready', ids })} onCancel={setCancel} />
-          ))}
-        </main>
-        {hidden > 0 && (
-          // LAYOUT.md §3: overflow tickets scroll, with a visible "+N more".
-          <span className="pointer-events-none absolute right-[360px] top-1/2 z-10 -translate-y-1/2 rounded-l-control bg-[var(--sl-color-status-pending-solid)] px-3 py-2 text-base font-bold text-[var(--sl-color-status-pending-on-solid)]">
-            {t('kitchen.more', { count: hidden })}
-          </span>
-        )}
+        <div className="relative flex min-w-0 flex-1">
+          <main ref={scroller} className="flex min-w-0 flex-1 items-start gap-6 overflow-y-auto p-6">
+            {q && q.tickets.length === 0 && <p className="m-auto text-lg text-muted-foreground">{t('kitchen.empty')}</p>}
+            {/* Ticket i goes to column i mod n, so the grid reads left to right, top to bottom, in queue order. */}
+            {q && q.tickets.length > 0 && Array.from({ length: columns }, (_, c) => (
+              <div key={c} className="flex w-[360px] shrink-0 flex-col gap-6">
+                {q.tickets.filter((_, i) => i % columns === c).map((ticket) => (
+                  <TicketCard key={ticket.key} ticket={ticket} now={now} fresh={fresh.has(ticket.key)} busy={step.isPending}
+                    onStart={(ids) => step.mutate({ kind: 'start', ids })} onReady={(ids) => step.mutate({ kind: 'ready', ids })} onCancel={setCancel} />
+                ))}
+              </div>
+            ))}
+          </main>
+          {hidden > 0 && (
+            // LAYOUT.md §3: overflow tickets scroll, with a visible "+N more" at the bottom edge.
+            <span className="pointer-events-none absolute bottom-0 left-1/2 z-10 -translate-x-1/2 rounded-t-control bg-[var(--sl-color-status-pending-solid)] px-4 py-2 text-base font-bold text-[var(--sl-color-status-pending-on-solid)]">
+              {t('kitchen.more', { count: hidden })}
+            </span>
+          )}
+        </div>
         {q && (
           <aside className="flex w-[340px] shrink-0 flex-col gap-3 overflow-y-auto border-l border-border p-4" aria-label={t('kitchen.counts.ready')}>
             <h2 className="text-base font-bold uppercase tracking-[0.12em] text-muted-foreground">{t('kitchen.counts.ready')}</h2>
@@ -158,7 +172,7 @@ function TicketCard({ ticket: k, now, fresh, busy, onStart, onReady, onCancel }:
       data-ticket={k.tables.join(' + ')}
       data-remake={k.remake || undefined}
       className={cn(
-        'flex w-[360px] shrink-0 flex-col overflow-hidden rounded-card border-2 bg-card transition-shadow',
+        'flex w-full flex-col overflow-hidden rounded-card border-2 bg-card transition-shadow',
         k.remake ? 'border-[var(--sl-kitchen-ticket-remake-border)]' : timer === 'late' ? 'border-[var(--sl-kitchen-ticket-late-border)]' : 'border-border',
         fresh && 'ring-4 ring-[var(--sl-color-status-pending-solid)]',
       )}
@@ -172,12 +186,18 @@ function TicketCard({ ticket: k, now, fresh, busy, onStart, onReady, onCancel }:
         </div>
         {k.remake && <span className="rounded bg-white px-2 py-0.5 text-sm font-black text-black">{t('kitchen.remake')}</span>}
       </header>
-      <div className="flex items-center gap-3 whitespace-nowrap border-b border-border px-4 py-2">
-        <span className="tabular text-2xl font-bold" style={{ color: `var(--sl-color-timer-${timer})` }} role="timer">{mmss(elapsed)}</span>
-        <span className="tabular text-sm text-muted-foreground">/ {mmss(k.prepTimeSeconds * 1000)}</span>
-        {timer === 'late' && <span className="ml-auto text-sm font-black" style={{ color: 'var(--sl-color-timer-late)' }}>{t('kitchen.late')}</span>}
+      <div className="border-b border-border px-4 pb-2 pt-2">
+        <div className="flex items-center gap-3 whitespace-nowrap">
+          <span className="tabular text-2xl font-bold" style={{ color: `var(--sl-color-timer-${timer})` }} role="timer">{mmss(elapsed)}</span>
+          <span className="tabular text-sm text-muted-foreground">/ {mmss(k.prepTimeSeconds * 1000)}</span>
+          {timer === 'late' && <span className="ml-auto text-sm font-black" style={{ color: 'var(--sl-color-timer-late)' }}>{t('kitchen.late')}</span>}
+        </div>
+        {/* Prep Time used, readable from across the kitchen. */}
+        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted" aria-hidden>
+          <div className="h-full rounded-full" style={{ width: `${Math.min(1, ratio) * 100}%`, background: `var(--sl-color-timer-${timer})` }} />
+        </div>
       </div>
-      <ul className="flex flex-1 flex-col divide-y divide-border overflow-y-auto">
+      <ul className="flex flex-col divide-y divide-border">
         {k.items.map((i) => (
           <li key={i.id} className="flex flex-col gap-1.5 px-4 py-3" data-item={i.name}>
             <div className="flex items-start gap-2">

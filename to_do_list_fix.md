@@ -6,7 +6,7 @@ mark [] when task / fix is done
 
 [x] - Clinet view On My order view the badge for order status is reduntant
 [x] - Fix timmer count on kitchen display 
-[ ] - refractor and improve verall design kitchen display , not limited to 1 column card queue list
+[x] - refractor and improve verall design kitchen display , not limited to 1 column card queue list
 
 ## Add
 
